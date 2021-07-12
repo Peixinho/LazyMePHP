@@ -41,6 +41,9 @@ class BuildTableAPI
             break;
 		}
 
+    // Create Folder if doesn't exist
+    if (!is_dir($apiPath)) \LazyMePHP\Helper\MKDIR($apiPath);
+
 		// Create Routing Rules
 		if ($replaceRouteApi) {
 			if (\LazyMePHP\Helper\UNLINK($apiPath."/RouteAPI.php"))
@@ -124,6 +127,9 @@ class BuildTableAPI
 
 	protected function ConstructAPI($apiPath, $classesPath, $db)
 	{
+    // Create Folder if doesn't exist
+    if (!is_dir($apiPath)) \LazyMePHP\Helper\MKDIR($apiPath);
+
 		if (\LazyMePHP\Helper\UNLINK($apiPath."/".$db->GetTableName().".API.php"))
 		{
 			if (\LazyMePHP\Helper\TOUCH($apiPath."/".$db->GetTableName().".API.php"))

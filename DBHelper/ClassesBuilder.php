@@ -46,8 +46,10 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
      */
 	function __construct($classesPath, $tablesList, $replaceInclude, $tableDescriptors)
 	{
+    // Create Folder if doesn't exist
+    if (!is_dir($classesPath)) \LazyMePHP\Helper\MKDIR($classesPath);
 
-        // Create Last File to Help on Requires
+    // Create Last File to Help on Requires
 		$failedInclude = false;
 		if ($replaceInclude) {
 			if (\LazyMePHP\Helper\UNLINK($classesPath."/includes.php"))

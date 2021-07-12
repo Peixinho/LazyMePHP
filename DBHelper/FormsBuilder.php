@@ -41,6 +41,9 @@ class BuildTableForms
             break;
 		}
 
+    // Create Folder if doesn't exist
+    if (!is_dir($controllersPath)) \LazyMePHP\Helper\MKDIR($controllersPath);
+
 		// Create Routing Rules
 		if ($replaceRouteForms) {
 			if (\LazyMePHP\Helper\UNLINK($controllersPath."/RouteForms.php"))
@@ -95,6 +98,9 @@ class BuildTableForms
 
 	protected function ConstructForm($controllersPath, $classesPath, $db, $cssClass)
 	{
+    // Create Folder if doesn't exist
+    if (!is_dir($controllersPath)) \LazyMePHP\Helper\MKDIR($controllersPath);
+
 		if (\LazyMePHP\Helper\UNLINK($controllersPath."/".$db->GetTableName().".View.php"))
 		{
 			if (\LazyMePHP\Helper\TOUCH($controllersPath."/".$db->GetTableName().".View.php"))
@@ -404,6 +410,9 @@ class BuildTableForms
 
 	function ConstructController($controllersPath, $viewsPath, $classesPath, $db)
 	{
+    // Create Folder if doesn't exist
+    if (!is_dir($controllersPath)) \LazyMePHP\Helper\MKDIR($controllersPath);
+
 		if (\LazyMePHP\Helper\UNLINK($controllersPath."/".$db->GetTableName().".Controller.php"))
 		{
 			if (\LazyMePHP\Helper\TOUCH($controllersPath."/".$db->GetTableName().".Controller.php"))
