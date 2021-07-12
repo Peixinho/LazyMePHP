@@ -159,7 +159,7 @@ Every table generated will have a class that works as follows:
     // Not building foreign members
     foreach($users->GetList(false) as $u) ...
     
- ```
+    ```
  
 
 ## API
