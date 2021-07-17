@@ -330,7 +330,6 @@ class BuildTableForms
           fwrite($viewFile, "\n");
           fwrite($viewFile, "\t\t}");
         }
-        fwrite($viewFile, "\t\t\t\$list->FindAll();");
 				fwrite($viewFile, "\n");
 				fwrite($viewFile, "\t\t\$count = \$list->GetCount();");
 				fwrite($viewFile, "\n");
@@ -376,15 +375,21 @@ class BuildTableForms
 				}
 				fwrite($viewFile, "\t\techo \"</tr>\";");
 				fwrite($viewFile, "\n");
-				fwrite($viewFile, "\t\tforeach(\$list->GetList(false) as \$member) {");
+				fwrite($viewFile, "\t\tforeach(\$list->GetList() as \$member) {");
 				fwrite($viewFile, "\n");
 				fwrite($viewFile, "\t\t\techo \"<tr>\";");
 				fwrite($viewFile, "\n");
 				if ($primaryKey) fwrite($viewFile, "\t\t\techo \"<td><a href='\".APP::URLENCODE(\"?controller=".$db->GetTableName()."&action=edit&".$primaryKey->GetName()."=\".\$member->Get".$primaryKey->GetName()."()).\"'>e</a></td><td><a href='\".APP::URLENCODE(\"?controller=".$db->GetTableName()."&action=delete&".$primaryKey->GetName()."=\".\$member->Get".$primaryKey->GetName()."()).\"'>d</a></td>\";");
 				fwrite($viewFile, "\n");
 				foreach ($db->GetTableFields() as $field) {
-					if ($primaryKey) fwrite($viewFile, "\t\t\techo \"<td>\".\$member->Get".$field->GetName()."().\"</td>\";");
-					fwrite($viewFile, "\n");
+					if ($primaryKey) { 
+            if ($field->HasForeignKey()) 
+              fwrite($viewFile, "\t\t\techo \"<td>\".\$member->Get".$field->GetName()."Object()->GetDescriptor().\"</td>\";");
+            else
+              fwrite($viewFile, "\t\t\techo \"<td>\".\$member->Get".$field->GetName()."().\"</td>\";");
+
+            fwrite($viewFile, "\n");
+          }
 				}
 				fwrite($viewFile, "\t\t\techo \"</tr>\";");
 				fwrite($viewFile, "\n");
