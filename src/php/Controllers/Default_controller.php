@@ -1,12 +1,14 @@
 <?php
 
 /**
- * @copyright This file is part of the framework developed by Peixinho
- * @author Peixinho
+ * @copyright This file is part of the LazyMePHP Framework developed by Duarte Peixinho
+ * @author Duarte Peixinho
+ *
+ * Source File Generated Automatically
  */
 
-namespace FrameWork\Controller;
-use \FrameWork\Config\Internal\APP;
+namespace LazyMePHP\Classes;
+use \LazyMePHP\Config\Internal\APP;
 
 require_once APP::ROOT_PATH()."/src/php/Views/Default_view.php";
 

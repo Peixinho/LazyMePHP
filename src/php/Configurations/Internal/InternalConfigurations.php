@@ -50,8 +50,8 @@ function ErrorHandler($errno, $errstr, $errfile, $errline)
         $from_mail=APP::APP_SUPPORT_EMAIL();
         $subject="Application ".APP::APP_NAME()." thrown an error.";
         $message=$errorMsg;
-        $mail = Sendmail($from_mail, $to_mail, $subject, $message);
-		if ($mail) { echo $errorMsg; }
+        echo $message;
+        @Sendmail($from_mail, $to_mail, $subject, $message);
         die();
     }
 }
@@ -66,7 +66,7 @@ function ErrorHandler($errno, $errstr, $errfile, $errline)
 function fatalErrorShutdownHandler()
 {
   $last_error = error_get_last();
-  if (array_key_exists('type', $last_error) && $last_error['type'] === E_ERROR) {
+  if (is_array($last_error) && array_key_exists('type', $last_error) && $last_error['type'] === E_ERROR) {
     // fatal error
     ErrorHandler(E_ERROR, $last_error['message'], $last_error['file'], $last_error['line']);
   }
