@@ -23,7 +23,7 @@ cd myAwesomeProject && rm -rf .git
 git init
 
 # run initial config
-php -S localhost:8001 myAwesomeProject
+php -S localhost:8001
 # but I advise you to use a real webserver like apache or whatever...
 ```
 
