@@ -16,7 +16,7 @@ require_once 'ClassesBuilder.php';
 require_once 'FormsBuilder.php';
 require_once 'APIBuilder.php';
 
-if ((!$_SESSION['username'] || !$_SESSION['password']) && ($_POST && $_POST['username'] && $_POST['password'] && $_POST['username'] == APP::DB_USER() && $_POST['password'] == APP::DB_PASSWORD()))
+if ((!array_key_exists('username', $_SESSION) || !array_key_exists('password', $_SESSION)) && ($_POST && $_POST['username'] && $_POST['password'] && $_POST['username'] == APP::DB_USER() && $_POST['password'] == APP::DB_PASSWORD()))
 {
     $_SESSION['username'] = $_POST['username'];
     $_SESSION['password'] = $_POST['password'];
