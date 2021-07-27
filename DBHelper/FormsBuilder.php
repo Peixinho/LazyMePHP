@@ -107,6 +107,7 @@ class BuildTableForms
 			{
         $buttonClass = $cssClass['button'];
         $inputClass = $cssClass['input'];
+        $anchorClass = $cssClass['anchor'];
         $tableClass = $cssClass['table'];
 
 				$viewFile = fopen($controllersPath."/".$db->GetTableName().".View.php","w+");
@@ -238,7 +239,7 @@ class BuildTableForms
 				fwrite($viewFile, "\n");
 				fwrite($viewFile, "\t\t\$limit = APP::APP_NRESULTS();");
 				fwrite($viewFile, "\n");
-				fwrite($viewFile, "\t\techo \"<a href='\".APP::URLENCODE(\"?controller=".$db->GetTableName()."&action=new\").\"'>Add New</a>\";");
+				fwrite($viewFile, "\t\techo \"<a ".($anchorClass?"class='".$anchorClass."'":"")." href='\".APP::URLENCODE(\"?controller=".$db->GetTableName()."&action=new\").\"'>Add New</a>\";");
 				fwrite($viewFile, "\n");
 				fwrite($viewFile, "\t\techo \"<br>\";");
 				fwrite($viewFile, "echo \"<br>\";");
@@ -340,13 +341,13 @@ class BuildTableForms
 				fwrite($viewFile, "\t\t\$list->Limit(\$limit,(\$page-1)*\$limit);");
 				fwrite($viewFile, "\n");
 
-				fwrite($viewFile, "\t\tif (\$page > 1) echo \"<a href='\".APP::URLENCODE(\"?controller=".$db->GetTableName()."&page=\".(\$page-1)).\"'>&lt;&lt;</a>\";");
+				fwrite($viewFile, "\t\tif (\$page > 1) echo \"<a ".($anchorClass?"class='".$anchorClass."'":"")." href='\".APP::URLENCODE(\"?controller=".$db->GetTableName()."&page=\".(\$page-1)).\"'>&lt;&lt;</a>\";");
 				fwrite($viewFile, "\n");
 				fwrite($viewFile, "\t\tfor (\$i=1;\$i<=\$countPage;\$i++) {");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "\t\t\tif (\$i!=\$page)");
         fwrite($viewFile, "\n");
-        fwrite($viewFile, "\t\t\t\techo \" <a href='\".APP::URLENCODE(\"?controller=".$db->GetTableName()."&page=\$i\").\"'>\". \$i .\"</a> \";");
+        fwrite($viewFile, "\t\t\t\techo \" <a ".($anchorClass?"class='".$anchorClass."'":"")." href='\".APP::URLENCODE(\"?controller=".$db->GetTableName()."&page=\$i\").\"'>\". \$i .\"</a> \";");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "\t\t\telse");
         fwrite($viewFile, "\n");
@@ -355,7 +356,7 @@ class BuildTableForms
 				fwrite($viewFile, "\t\t}");
 				fwrite($viewFile, "\n");
 				fwrite($viewFile, "\n");
-				fwrite($viewFile, "\t\tif ((\$page+1) < \$countPage) echo \"<a href='\".APP::URLENCODE(\"?controller=".$db->GetTableName()."&page=\".(\$page+1)).\"'>&gt;&gt;</a>\";");
+				fwrite($viewFile, "\t\tif ((\$page+1) < \$countPage) echo \"<a ".($anchorClass?"class='".$anchorClass."'":"")." href='\".APP::URLENCODE(\"?controller=".$db->GetTableName()."&page=\".(\$page+1)).\"'>&gt;&gt;</a>\";");
 				fwrite($viewFile, "echo \"<br>\";");
 				fwrite($viewFile, "echo \"<br>\";");
 				fwrite($viewFile, "\n");
@@ -379,7 +380,7 @@ class BuildTableForms
 				fwrite($viewFile, "\n");
 				fwrite($viewFile, "\t\t\techo \"<tr>\";");
 				fwrite($viewFile, "\n");
-				if ($primaryKey) fwrite($viewFile, "\t\t\techo \"<td><a href='\".APP::URLENCODE(\"?controller=".$db->GetTableName()."&action=edit&".$primaryKey->GetName()."=\".\$member->Get".$primaryKey->GetName()."()).\"'>e</a></td><td><a href='\".APP::URLENCODE(\"?controller=".$db->GetTableName()."&action=delete&".$primaryKey->GetName()."=\".\$member->Get".$primaryKey->GetName()."()).\"'>d</a></td>\";");
+				if ($primaryKey) fwrite($viewFile, "\t\t\techo \"<td><a ".($anchorClass?"class='".$anchorClass."'":"")." href='\".APP::URLENCODE(\"?controller=".$db->GetTableName()."&action=edit&".$primaryKey->GetName()."=\".\$member->Get".$primaryKey->GetName()."()).\"'>edit</a></td>\";\n\t\t\techo \"<td><a ".($anchorClass?"class='".$anchorClass."'":"")." href='\".APP::URLENCODE(\"?controller=".$db->GetTableName()."&action=delete&".$primaryKey->GetName()."=\".\$member->Get".$primaryKey->GetName()."()).\"'>delete</a></td>\";");
 				fwrite($viewFile, "\n");
 				foreach ($db->GetTableFields() as $field) {
 					if ($primaryKey) { 

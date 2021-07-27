@@ -86,6 +86,8 @@ if ($_SESSION && $_SESSION['username'] == APP::DB_USER() && $_SESSION['password'
         $tableText .= "<br>";
         $tableText .= "Input CSS Classes: <input name='forms_class[input]' type='text' value='' />";
         $tableText .= "<br>";
+        $tableText .= "Anchor CSS Classes: <input name='forms_class[anchor]' type='text' value='' />";
+        $tableText .= "<br>";
         $tableText .= "Table CSS Classes: <input name='forms_class[table]' type='text' value='' />";
         $tableText .= "<br>";
         $tableText .= "<br>";
