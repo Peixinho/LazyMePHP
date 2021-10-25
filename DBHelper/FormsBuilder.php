@@ -356,7 +356,7 @@ class BuildTableForms
 				fwrite($viewFile, "\t\t}");
 				fwrite($viewFile, "\n");
 				fwrite($viewFile, "\n");
-				fwrite($viewFile, "\t\tif ((\$page+1) < \$countPage) echo \"<a ".($anchorClass?"class='".$anchorClass."'":"")." href='\".APP::URLENCODE(\"?controller=".$db->GetTableName()."&page=\".(\$page+1)).\"'>&gt;&gt;</a>\";");
+				fwrite($viewFile, "\t\tif ((\$page+1) <= \$countPage) echo \"<a ".($anchorClass?"class='".$anchorClass."'":"")." href='\".APP::URLENCODE(\"?controller=".$db->GetTableName()."&page=\".(\$page+1)).\"'>&gt;&gt;</a>\";");
 				fwrite($viewFile, "echo \"<br>\";");
 				fwrite($viewFile, "echo \"<br>\";");
 				fwrite($viewFile, "\n");
