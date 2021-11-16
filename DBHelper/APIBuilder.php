@@ -115,8 +115,7 @@ class BuildTableAPI
 			if (is_array($tablesList))
 			foreach($tablesList as $__table)
 			{
-				if ($__table == $o->Table)
-				{
+        if (array_search($o->Table, $tablesList)) {
 					$db = new \LazyMePHP\DatabaseHelper\_DB_TABLE($o->Table);
 					$db->GetFieldsFromDB();
 					$this->ConstructAPI($apiPath, $classesPath, $db);

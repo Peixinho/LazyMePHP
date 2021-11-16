@@ -29,28 +29,18 @@ class BuildTableForms
      */
 	function __construct($controllersPath, $viewsPath, $classesPath, $tablesList, $replaceRouteForms, $cssClass)
 	{
-        // SELECT Tables
-        $queryString = "";
-        switch (APP::DB_TYPE())
-        {
-            case 1: // MSSQL
-                $queryString = "SELECT TABLE_NAME as [Table] FROM INFORMATION_SCHEMA.TABLES";
-            break;
-            case 2: // MYSQL
-                $queryString = "SELECT DISTINCT TABLE_NAME as `Table` FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='".APP::DB_NAME()."'";
-            break;
-		}
-
     // Create Folder if doesn't exist
     if (!is_dir($controllersPath)) \LazyMePHP\Helper\MKDIR($controllersPath);
 
-		// Create Routing Rules
+    $failedRouterFile = false;
+
+    // Create Last File to Help on Requires
 		if ($replaceRouteForms) {
 			if (\LazyMePHP\Helper\UNLINK($controllersPath."/RouteForms.php"))
 			{
 				if (\LazyMePHP\Helper\TOUCH($controllersPath."/RouteForms.php"))
 				{
-					$routerFile = fopen($controllersPath."/RouteForms.php","w+");
+          $routerFile = fopen($controllersPath."/RouteForms.php","w+");
 					fwrite($routerFile,"<?php");
 					fwrite($routerFile, "\n");
 					fwrite($routerFile, "\n");
@@ -75,24 +65,50 @@ class BuildTableForms
 					fwrite($routerFile,"require_once APP::ROOT_PATH().\"/src/php/Router/Router.php\";");
 					fwrite($routerFile, "\n");
 					fwrite($routerFile, "\n");
-
-          APP::DB_CONNECTION()->Query($queryString, $sqlObj);
-          while ($o=$sqlObj->FetchObject())
-          {
-            $db = new \LazyMePHP\DatabaseHelper\_DB_TABLE($o->Table);
-            $db->GetFieldsFromDB();
-            $this->ConstructForm($viewsPath, $classesPath, $db, $cssClass);
-            $this->ConstructController($controllersPath, $viewsPath, $classesPath, $db);
-
-            fwrite($routerFile, "Router::Create(\"controller\", \"".$o->Table."\", __DIR__.\"/".$o->Table.".Controller.php\");");
-            fwrite($routerFile, "\n");
-          }
-          fwrite($routerFile, "\n");
-          fwrite($routerFile, "?>");
         }
-        else echo "ERROR: Check your permissions to write ".$controllersPath."/RouteForms.php";
+        else {
+          echo "ERROR: Check your permissions to write ".$routerFile."/RouteForms.php";
+          $failedRouterFile = true;
+        }
       }
-      else echo "ERROR: Check your permissions to remove ".$controllersPath."/RouteForms.php";
+      else {
+        echo "ERROR: Check your permissions to remove ".$routerFile."/RouteForms.php";
+        $failedRouterFile = true;
+      }
+    }
+
+    // SELECT Tables
+    $queryString = "";
+    switch (APP::DB_TYPE())
+    {
+      case 1: // MSSQL
+        $queryString = "SELECT TABLE_NAME as [Table] FROM INFORMATION_SCHEMA.TABLES";
+      break;
+      case 2: // MYSQL
+        $queryString = "SELECT DISTINCT TABLE_NAME as `Table` FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='".APP::DB_NAME()."'";
+      break;
+    }
+
+    APP::DB_CONNECTION()->Query($queryString, $sqlObj);
+    while ($o=$sqlObj->FetchObject())
+    {
+      if (is_array($tablesList) && array_search($o->Table, $tablesList)) {
+        $db = new \LazyMePHP\DatabaseHelper\_DB_TABLE($o->Table);
+        $db->GetFieldsFromDB();
+        $this->ConstructForm($viewsPath, $classesPath, $db, $cssClass);
+        $this->ConstructController($controllersPath, $viewsPath, $classesPath, $db);
+      }
+
+      if ($replaceRouteForms && !$failedRouterFile) {
+        fwrite($routerFile, "Router::Create(\"controller\", \"".$o->Table."\", __DIR__.\"/".$o->Table.".Controller.php\");");
+        fwrite($routerFile, "\n");
+      }
+    }
+
+    // Close Include file
+    if ($replaceRouteForms && !$failedRouterFile) {
+      fwrite($routerFile, "\n");
+      fwrite($routerFile,"?>");
     }
   }
 

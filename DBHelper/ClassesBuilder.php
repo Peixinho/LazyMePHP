@@ -49,8 +49,9 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
     // Create Folder if doesn't exist
     if (!is_dir($classesPath)) \LazyMePHP\Helper\MKDIR($classesPath);
 
+    $failedIncludeFile = false;
+
     // Create Last File to Help on Requires
-		$failedInclude = false;
 		if ($replaceInclude) {
 			if (\LazyMePHP\Helper\UNLINK($classesPath."/includes.php"))
 			{
@@ -71,35 +72,50 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
           fwrite($classFile, "\n");
           fwrite($classFile," */");
           fwrite($classFile, "\n");
-
-          // SELECT Tables
-          $queryString = "";
-          switch (APP::DB_TYPE())
-          {
-            case 1: // MSSQL
-              $queryString = "SELECT TABLE_NAME as [Table] FROM INFORMATION_SCHEMA.TABLES";
-            break;
-            case 2: // MYSQL
-              $queryString = "SELECT DISTINCT TABLE_NAME as `Table` FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='".APP::DB_NAME()."'";
-            break;
-          }
-
-          APP::DB_CONNECTION()->Query($queryString, $sqlObj);
-          while ($o=$sqlObj->FetchObject())
-          {
-            $db = new \LazyMePHP\DatabaseHelper\_DB_TABLE($o->Table);
-            $this->ConstructClass($classesPath,$db,$tableDescriptors);
-            fwrite($classFile, "\n");
-            fwrite($classFile, "require_once __DIR__.'/".$o->Table.".php';");
-          }
-          fwrite($classFile, "\n");
-          fwrite($classFile,"?>");
         }
-        else echo "ERROR: Check your permissions to write ".$apiPath."/RouteAPI.php";
+        else {
+          echo "ERROR: Check your permissions to write ".$classesPath."/includes.php";
+          $failedIncludeFile = true;
+        }
       }
-      else echo "ERROR: Check your permissions to remove ".$apiPath."/RouteAPI.php";
+      else {
+        echo "ERROR: Check your permissions to write ".$classesPath."/includes.php";
+        $failedIncludeFile = true;
+      }
     }
-	}
+
+    // SELECT Tables
+    $queryString = "";
+    switch (APP::DB_TYPE())
+    {
+      case 1: // MSSQL
+        $queryString = "SELECT TABLE_NAME as [Table] FROM INFORMATION_SCHEMA.TABLES";
+      break;
+      case 2: // MYSQL
+        $queryString = "SELECT DISTINCT TABLE_NAME as `Table` FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='".APP::DB_NAME()."'";
+      break;
+    }
+
+    APP::DB_CONNECTION()->Query($queryString, $sqlObj);
+    while ($o=$sqlObj->FetchObject())
+    {
+      if (is_array($tablesList) && array_search($o->Table, $tablesList)) {
+        $db = new \LazyMePHP\DatabaseHelper\_DB_TABLE($o->Table);
+        $this->ConstructClass($classesPath,$db,$tableDescriptors);
+      }
+
+      if ($replaceInclude && !$failedIncludeFile) {
+        fwrite($classFile, "\n");
+        fwrite($classFile, "require_once __DIR__.'/".$o->Table.".php';");
+      }
+    }
+
+    // Close Include file
+    if ($replaceInclude && !$failedIncludeFile) {
+      fwrite($classFile, "\n");
+      fwrite($classFile,"?>");
+    }
+  }
 
 	protected function ConstructClass($classesPath, $db, $tableDescriptors)
 	{
@@ -631,7 +647,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\t */");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\tpublic function GetCount() {");
+        fwrite($classFile, "\tpublic function GetCount(\$buildForeignMembers = false) {");
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
         fwrite($classFile,"\t\t\$_sql = \"SELECT ");
@@ -661,7 +677,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             fwrite($classFile,"\":\"\").\"");
           }
         }
-        fwrite($classFile," FROM ".$db->_Tablename.(strlen($foreignTablesJoin)>0?" ":"")."\".(\$this->_searchNeedsForeignMembers || \$buildForeignMembers?\"$foreignTablesJoin\":\"\").\""." \".(strlen(\$this->_sql)>0?\"WHERE \".\$this->_sql:\"\");");
+        fwrite($classFile," FROM ".$db->_Tablename.(strlen($foreignTablesJoin)>0?" ":"")."\".(\$this->_searchNeedsForeignMembers || \$buildForeignMembers?\"$foreignTablesJoin\":\"\").\""." \".(strlen(\$_sql)>0?\"WHERE \".\$_sql:\"\");");
 
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
@@ -671,8 +687,6 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile,"\t}");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t/**");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t * GetList");
         fwrite($classFile, "\n");

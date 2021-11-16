@@ -121,6 +121,7 @@ if ($_SESSION && $_SESSION['username'] == APP::DB_USER() && $_SESSION['password'
         echo "Classes and Forms Built!<br>";
     }
 } else {
+  session_destroy();
   // Show login if user not logged
   echo "<img src='../src/img/logo.png' />";
   echo "<br>";
