@@ -45,7 +45,7 @@ filling the form again .. so, to be lazy in the end)
  - **URL Encryption Secret** (*string*): 'blabla' (string to be used to generate URL Encryption, just some random word)
  - **Email Support** (*string*): 'myemail@myawesomeproject.com'
  - **Nr Results In Each Collection** (*int*): 100 (All generated forms will have a paginated list, in here you define a default list count for each page)
- - **Run DB Class Builder Helper** (*bit*): 'check of uncheck' (this will run the automatic generation tools based on the data you configured in this form)
+ - **Run DB Class Builder Helper** (*bit*): 'check or uncheck' (this will run the automatic generation tools based on the data you configured in this form)
 
 # LazyMePHP Auto Generation Tools
 If you selected **Run DB Class Builder Helper** option from the last form, or if you access to:
