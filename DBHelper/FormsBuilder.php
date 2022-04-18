@@ -92,7 +92,7 @@ class BuildTableForms
     APP::DB_CONNECTION()->Query($queryString, $sqlObj);
     while ($o=$sqlObj->FetchObject())
     {
-      if (is_array($tablesList) && array_search($o->Table, $tablesList)) {
+      if (is_array($tablesList) && array_search($o->Table, $tablesList)>=0) {
         $db = new \LazyMePHP\DatabaseHelper\_DB_TABLE($o->Table);
         $db->GetFieldsFromDB();
         $this->ConstructForm($viewsPath, $classesPath, $db, $cssClass);
