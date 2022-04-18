@@ -688,6 +688,8 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile,"\t}");
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
+        fwrite($classFile, "\t/**");
+        fwrite($classFile, "\n");
         fwrite($classFile, "\t * GetList");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t *");
