@@ -63,7 +63,7 @@ function ErrorHandler($errno, $errstr, $errfile, $errline)
  *
  * @return (NULL)
  */
-function fatalErrorShutdownHandler()
+function FatalErrorShutdownHandler()
 {
   $last_error = error_get_last();
   if (is_array($last_error) && array_key_exists('type', $last_error) && $last_error['type'] === E_ERROR) {
@@ -73,7 +73,7 @@ function fatalErrorShutdownHandler()
 }
 
 /**
- * sendMail
+ * SendMail
  *
  * Send Email obviously
  *
@@ -88,6 +88,32 @@ function SendMail($from_mail,$to_mail,$subject,$message) {
     $headers.="From: $from_mail\n";
     $send=mail("$to_mail", "$subject", "$message", "$headers");
     return $send;
+}
+
+/**
+ * Log Activity
+ *
+ * Records Activity
+ *
+ * @param (string) (controller)
+ * @param (string) (multiple arguments)
+ * @return (null)
+ */
+function LOG_ACTIVITY() {
+    $queryString = "INSERT INTO __LOG_ACTIVITY (date, controller, user) VALUES ('".date("Y-m-d H:i")."', '".$_GET['controller']."', '".APP::APP_ACTIVITY_AUTH()."')";
+    APP::DB_CONNECTION()->Query($queryString, $obj);
+    $id = APP::DB_CONNECTION()->GetLastInsertedID('__LOG_ACTIVITY');
+    $queryString = "INSERT INTO __LOG_ACTIVITY_OPTIONS (id_log_activity, subOption, value) VALUES ";
+    $count = 0;
+    foreach($_GET as $kArg => $arg) {
+      if ($arg && strtolower($kArg)!="controller") {
+        $queryString.=($count>0?",":"")."($id, '".$kArg."', '".$arg."')";
+        $count++;
+      }
+    }
+    if ($count>0)
+      APP::DB_CONNECTION()->Query($queryString, $obj);
+
 }
 
 class APP
@@ -348,24 +374,24 @@ class APP
      * @param (string)
      * @return (string) (url)
      */
-	static function URLENCODE($url)
-	{
-		if (APP::APP_URL_ENCRYPTION())
-		{
-			require_once __DIR__."/../../Ext/jwt_helper.php";
+    static function URLENCODE($url)
+    {
+      if (APP::APP_URL_ENCRYPTION())
+      {
+        require_once __DIR__."/../../Ext/jwt_helper.php";
 
-			$_token = array();
-			if (count(parse_url($url))>0)
-			{
-				foreach(parse_url($url) as $key => $arg) {
-					$_token[$key] = $arg;
-				}
-				$token = \JWT::encode($_token,APP::APP_URL_TOKEN());
-				return substr($url, 0, strpos($url, '?'))."?".$token;
-			}
-		}
-		return $url;
-	}
+        $_token = array();
+        if (count(parse_url($url))>0)
+        {
+          foreach(parse_url($url) as $key => $arg) {
+            $_token[$key] = $arg;
+          }
+          $token = \JWT::encode($_token,APP::APP_URL_TOKEN());
+          return substr($url, 0, strpos($url, '?'))."?".$token;
+        }
+      }
+      return $url;
+    }
     /**
      * URLDECODE
      *
@@ -374,20 +400,20 @@ class APP
      * @param (string)
      * @return (string) (url)
      */
-	static function URLDECODE($url)
-	{
-		if (APP::APP_URL_ENCRYPTION())
-		{
-			require_once __DIR__."/../../Ext/jwt_helper.php";
-			$token = \JWT::decode(parse_url($url)['query'],APP::APP_URL_TOKEN());
-			$url="?".($token->query);
-			// Set _GET
-			parse_str($token->query, $query);
-			foreach($query as $key => $arg)
-				$_GET[$key] = $arg;
-		}
-		return $url;
-	}
+    static function URLDECODE($url)
+    {
+      if (APP::APP_URL_ENCRYPTION())
+      {
+        require_once __DIR__."/../../Ext/jwt_helper.php";
+        $token = \JWT::decode(parse_url($url)['query'],APP::APP_URL_TOKEN());
+        $url="?".($token->query);
+        // Set _GET
+        parse_str($token->query, $query);
+        foreach($query as $key => $arg)
+          $_GET[$key] = $arg;
+      }
+      return $url;
+    }
 
     /** @var _app_url_token */
     private static $_app_url_token;
@@ -399,10 +425,10 @@ class APP
      * @param (null)
      * @return (string) (url)
      */
-	static function APP_URL_TOKEN()
-	{
-		return APP::$_app_url_token;
-	}
+    static function APP_URL_TOKEN()
+    {
+      return APP::$_app_url_token;
+    }
 
     /** @var _app_nresults */
     private static $_app_nresults;
@@ -414,10 +440,40 @@ class APP
      * @param (null)
      * @return (string) (url)
      */
-	static function APP_NRESULTS()
-	{
-		return APP::$_app_nresults;
-	}
+    static function APP_NRESULTS()
+    {
+      return APP::$_app_nresults;
+    }
+
+    /** @var _app_activity_log */
+    private static $_app_activity_log;
+    /**
+     * APP_ACTIVITY_LOG
+     *
+     * Returns If Activity Log is enabled
+     *
+     * @param (null)
+     * @return (bool)
+     */
+    static function APP_ACTIVITY_LOG()
+    {
+      return APP::$_app_activity_log;
+    }
+
+    /** @var _app_activity_auth */
+    private static $_app_activity_auth;
+    /**
+     * APP_ACTIVITY_LOG
+     *
+     * Returns Activity Auth to be Used
+     *
+     * @param (null)
+     * @return (string) (possiblu, username)
+     */
+    static function APP_ACTIVITY_AUTH()
+    {
+      return APP::$_app_activity_auth;
+    }
 
     /**
      * Constructor
@@ -450,15 +506,17 @@ class APP
         APP::$_app_timezone       = $CONFIG['APP_TIMEZONE'];
         APP::$_support_email      = $CONFIG['APP_EMAIL_SUPPORT'];
         APP::$_app_url_encryption = $CONFIG['APP_URL_ENCRYPTION'];
-		APP::$_app_url_token	  = $CONFIG['APP_URL_TOKEN'];
-		APP::$_app_nresults 	  = $CONFIG['APP_NRESULTS'];
+        APP::$_app_activity_log   = $CONFIG['APP_ACTIVITY_LOG'];
+        APP::$_app_activity_auth  = $CONFIG['APP_ACTIVITY_AUTH'];
+        APP::$_app_url_token	    = $CONFIG['APP_URL_TOKEN'];
+        APP::$_app_nresults 	    = $CONFIG['APP_NRESULTS'];
 
         // Set Timezone
         date_default_timezone_set(APP::$_app_timezone);
         // Registers User Error Function Replacement
         @set_error_handler('\LazyMePHP\Config\Internal\ErrorHandler');
         // Registers Fatal Error Function Replacement */
-        @register_shutdown_function('\LazyMePHP\Config\Internal\fatalErrorShutdownHandler');
+        @register_shutdown_function('\LazyMePHP\Config\Internal\FatalErrorShutdownHandler');
     }
 }
 ?>

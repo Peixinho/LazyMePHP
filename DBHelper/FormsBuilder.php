@@ -82,10 +82,10 @@ class BuildTableForms
     switch (APP::DB_TYPE())
     {
       case 1: // MSSQL
-        $queryString = "SELECT TABLE_NAME as [Table] FROM INFORMATION_SCHEMA.TABLES";
+            $queryString = "SELECT [Table] FROM (SELECT TABLE_NAME as [Table] FROM INFORMATION_SCHEMA.TABLES) SCH WHERE [Table] NOT LIKE '\_\_%'";
       break;
       case 2: // MYSQL
-        $queryString = "SELECT DISTINCT TABLE_NAME as `Table` FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='".APP::DB_NAME()."'";
+          $queryString = "SELECT `Table` FROM (SELECT DISTINCT TABLE_NAME as `Table` FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='".APP::DB_NAME()."') SCH WHERE `Table` NOT LIKE '\_\_%'";
       break;
     }
 
@@ -495,7 +495,7 @@ class BuildTableForms
 						{
 							if (!$field->AllowNull())
 							{
-								fwrite($controllerFile, "\t\tif (filter_input(INPUT_POST, \"".$field->GetName()."\")==false) \$fieldsNull .= (!is_null(\$fieldsNull)?\",\":\"\").\"".$field->GetName()."\";");
+								fwrite($controllerFile, "\t\tif (filter_input(INPUT_POST, \"".$field->GetName()."\")===false) \$fieldsNull .= (!is_null(\$fieldsNull)?\",\":\"\").\"".$field->GetName()."\";");
 								fwrite($controllerFile, "\n");
 							}
 							fwrite($controllerFile, "\t\t".(!$field->AllowNull()?"else ":"")."\$obj->Set".$field->GetName()."(filter_input(INPUT_POST, \"".$field->GetName()."\"));");

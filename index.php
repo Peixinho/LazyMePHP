@@ -80,6 +80,10 @@ function P($name)
 			fwrite($file, "\$CONFIG['APP_URL_TOKEN']\t\t\t=\"".P("url_encryption_token")."\";\n");
 			fwrite($file, "\$CONFIG['APP_NRESULTS']\t\t\t=\"".P("app_nresults")."\";\n");
 			fwrite($file, "\n");
+			fwrite($file, "// ACTIVITY LOG\n");
+			fwrite($file, "\$CONFIG['APP_ACTIViTY_LOG']\t\t\t\t=\"".P("activity_log")."\";\n");
+			fwrite($file, "\$CONFIG['APP_ACTIViTY_AUTH']\t\t\t\t=\"\";\n");
+			fwrite($file, "\n");
 			fwrite($file, "// SUPPORT EMAIL\n");
 			fwrite($file, "\$CONFIG['APP_EMAIL_SUPPORT']\t=\"".P("email_support")."\";\n");
 			fwrite($file, "\n");
@@ -244,6 +248,9 @@ function P($name)
 				</tr>
 				<tr>
 					<td><b>Nr Results In Each Collection:</b></td><td><input type="text" name="app_nresults" id="app_nresults" value="100" /></td>
+				</tr>
+				<tr>
+					<td><b>Enable Activity Log:</b></td><td><input type="checkbox" name="activity_log" id="activity_log" value="1" /></td>
 				</tr>
 				<tr>
 					<td><b>Run DB Class Builder Helper:</b></td><td><input type="checkbox" name="run_db_helper" id="run_db_helper" value="1" /></td>
