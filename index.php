@@ -81,8 +81,8 @@ function P($name)
 			fwrite($file, "\$CONFIG['APP_NRESULTS']\t\t\t=\"".P("app_nresults")."\";\n");
 			fwrite($file, "\n");
 			fwrite($file, "// ACTIVITY LOG\n");
-			fwrite($file, "\$CONFIG['APP_ACTIViTY_LOG']\t\t\t\t=\"".P("activity_log")."\";\n");
-			fwrite($file, "\$CONFIG['APP_ACTIViTY_AUTH']\t\t\t\t=\"\";\n");
+			fwrite($file, "\$CONFIG['APP_ACTIVITY_LOG']\t\t\t\t=\"".P("activity_log")."\";\n");
+			fwrite($file, "\$CONFIG['APP_ACTIVITY_AUTH']\t\t\t\t=\"\";\n");
 			fwrite($file, "\n");
 			fwrite($file, "// SUPPORT EMAIL\n");
 			fwrite($file, "\$CONFIG['APP_EMAIL_SUPPORT']\t=\"".P("email_support")."\";\n");
