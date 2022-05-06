@@ -100,7 +100,9 @@ else
 
 Router::Dispatch($url);
 
-if (APP::APP_ACTIVITY_LOG())
-  \LazyMePHP\Config\Internal\LOG_ACTIVITY();
+/*
+ * Runs logging activity
+ */
+APP::LOG_ACTIVITY();
 
 ?>

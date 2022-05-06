@@ -90,32 +90,6 @@ function SendMail($from_mail,$to_mail,$subject,$message) {
     return $send;
 }
 
-/**
- * Log Activity
- *
- * Records Activity
- *
- * @param (string) (controller)
- * @param (string) (multiple arguments)
- * @return (null)
- */
-function LOG_ACTIVITY() {
-    $queryString = "INSERT INTO __LOG_ACTIVITY (date, controller, user) VALUES ('".date("Y-m-d H:i")."', '".$_GET['controller']."', '".APP::APP_ACTIVITY_AUTH()."')";
-    APP::DB_CONNECTION()->Query($queryString, $obj);
-    $id = APP::DB_CONNECTION()->GetLastInsertedID('__LOG_ACTIVITY');
-    $queryString = "INSERT INTO __LOG_ACTIVITY_OPTIONS (id_log_activity, subOption, value) VALUES ";
-    $count = 0;
-    foreach($_GET as $kArg => $arg) {
-      if ($arg && strtolower($kArg)!="controller") {
-        $queryString.=($count>0?",":"")."($id, '".$kArg."', '".$arg."')";
-        $count++;
-      }
-    }
-    if ($count>0)
-      APP::DB_CONNECTION()->Query($queryString, $obj);
-
-}
-
 class APP
 {
     // DATABASE
@@ -468,11 +442,27 @@ class APP
      * Returns Activity Auth to be Used
      *
      * @param (null)
-     * @return (string) (possiblu, username)
+     * @return (string) (possibly, username)
      */
     static function APP_ACTIVITY_AUTH()
     {
       return APP::$_app_activity_auth;
+    }
+
+    /** @var _logdata */
+    private static $_app_logdata;
+    /**
+     * APP_LOGDATA
+     *
+     * Sets LOG DATA
+     *
+     * @param (string) table
+     * @param (array) log
+     * @return (null)
+     */
+    static function APP_LOGDATA($table,$log)
+    {
+      APP::$_app_logdata[$table] = $log;
     }
 
     /**
@@ -517,6 +507,49 @@ class APP
         @set_error_handler('\LazyMePHP\Config\Internal\ErrorHandler');
         // Registers Fatal Error Function Replacement */
         @register_shutdown_function('\LazyMePHP\Config\Internal\FatalErrorShutdownHandler');
+    }
+
+    /**
+     * Log Activity
+     *
+     * Records Activity
+     *
+     * @param (string) (controller)
+     * @param (string) (multiple arguments)
+     * @return (null)
+     */
+    static function LOG_ACTIVITY() {
+      if (APP::$_app_activity_log) {
+        $queryString = "INSERT INTO __LOG_ACTIVITY (`date`, `controller`, `user`) VALUES ('".date("Y-m-d H:i")."', '".(array_key_exists("controller", $_GET)?$_GET['controller']:NULL)."', '".APP::$_app_activity_auth."')";
+        APP::DB_CONNECTION()->Query($queryString, $obj);
+        $id = APP::DB_CONNECTION()->GetLastInsertedID('__LOG_ACTIVITY');
+        $queryString = "INSERT INTO __LOG_ACTIVITY_OPTIONS (`id_log_activity`, `subOption`, `value`) VALUES ";
+        $count = 0;
+        foreach($_GET as $kArg => $arg) {
+          if ($arg && strtolower($kArg)!="controller") {
+            $queryString.=($count>0?",":"")."($id, '".$kArg."', '".$arg."')";
+            $count++;
+          }
+        }
+        if ($count>0)
+          APP::DB_CONNECTION()->Query($queryString, $obj);
+
+        $count = 0;
+        $queryString = "INSERT INTO __LOG_DATA (`id_log_activity`, `table`, `field`, `dataBefore`, `dataAfter`) VALUES ";
+        if (is_array(APP::$_app_logdata)) {
+          foreach(APP::$_app_logdata as $table => $data) {
+            if (is_array($data)) {
+              foreach($data as $field => $values) {
+                $queryString.=($count>0?",":"")."($id, '$table', '$field', '".$values[0]."', '".$values[1]."')";
+                $count++;
+              }
+            }
+          }
+        }
+
+        if ($count>0)
+          APP::DB_CONNECTION()->Query($queryString, $obj);
+      }
     }
 }
 ?>

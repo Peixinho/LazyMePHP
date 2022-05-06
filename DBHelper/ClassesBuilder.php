@@ -157,6 +157,15 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\t/**");
         fwrite($classFile, "\n");
+        fwrite($classFile, "\t * Log Data");
+        fwrite($classFile, "\n");
+        fwrite($classFile, "\t */");
+        fwrite($classFile, "\n");
+        fwrite($classFile, "\tprivate \$__log = array();");
+        fwrite($classFile, "\n");
+        fwrite($classFile, "\n");
+        fwrite($classFile, "\t/**");
+        fwrite($classFile, "\n");
         fwrite($classFile, "\t * Descriptor");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t *");
@@ -177,7 +186,6 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         $addToSerialize = "";
         $primaryKeyFound = false;
         foreach ($db->_Tablefields as $field) {
-          fwrite($classFile, "\n");
           fwrite($classFile, "\n");
           fwrite($classFile, "\t/** @var ".$field->GetName()."*/");
           fwrite($classFile, "\n");
@@ -212,6 +220,9 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
               fwrite($classFile, "\n");
               fwrite($classFile, "\t\t}");
             }
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t\tif (APP::APP_ACTIVITY_LOG() && \$this->".$field->GetName()."!=\$".$field->GetName()." && \$this->".$field->GetName()."!==NULL)\n\t\t\t\$this->__log['".$field->GetName()."']=array(substr(\$this->".$field->GetName().",0,255), substr(\$".$field->GetName().",0,255));");
+            fwrite($classFile, "\n");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t\t\$this->".$field->GetName()."=(\$".$field->GetName()."!=NULL?\$".$field->GetName().":NULL);");
             fwrite($classFile, "\n");
@@ -396,7 +407,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
 
             // Save
             fwrite($classFile, "\n");
-                    fwrite($classFile, "\n");
+            fwrite($classFile, "\n");
             fwrite($classFile, "\t/**");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t * Save");
@@ -502,6 +513,10 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             fwrite($classFile, "\n");
             fwrite($classFile, "\t\t\t}");
             fwrite($classFile, "\n");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t\t\tif (APP::APP_ACTIVITY_LOG()) APP::APP_LOGDATA(\"".$db->_Tablename."\",\$this->__log);");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\n");
             fwrite($classFile, "\t\t\treturn true;");
             fwrite($classFile, "\n");
             // End Save
@@ -596,6 +611,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
         fwrite($classFile, "class ".$db->_Tablename."_List implements IDB_CLASS_LIST {");
+        fwrite($classFile, "\n");
         fwrite($classFile, "\n");
         fwrite($classFile, "\tprotected \$_args = array();");
         fwrite($classFile, "\n");

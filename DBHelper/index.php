@@ -37,17 +37,31 @@ if ($_SESSION && $_SESSION['username'] == APP::DB_USER() && $_SESSION['password'
           `id_log_activity` int(255) NOT NULL,
           `subOption` varchar(255) NOT NULL,
           `value` varchar(255) NOT NULL);
+        CREATE TABLE IF NOT EXISTS `__LOG_DATA` (
+          `id` int(255) NOT NULL,
+          `id_log_activity` int(255) NOT NULL,
+          `table` varchar(255) NOT NULL,
+          `field` varchar(255) NOT NULL,
+          `dataBefore` varchar(255) NULL,
+          `dataAfter` varchar(255) NULL);
         ALTER TABLE `__LOG_ACTIVITY`
           ADD PRIMARY KEY (`id`);
         ALTER TABLE `__LOG_ACTIVITY_OPTIONS`
+          ADD PRIMARY KEY (`id`),
+          ADD KEY `id_log_activity` (`id_log_activity`);
+        ALTER TABLE `__LOG_DATA`
           ADD PRIMARY KEY (`id`),
           ADD KEY `id_log_activity` (`id_log_activity`);
         ALTER TABLE `__LOG_ACTIVITY`
           MODIFY `id` int(255) NOT NULL AUTO_INCREMENT;
         ALTER TABLE `__LOG_ACTIVITY_OPTIONS`
           MODIFY `id` int(255) NOT NULL AUTO_INCREMENT;
+        ALTER TABLE `__LOG_DATA`
+          MODIFY `id` int(255) NOT NULL AUTO_INCREMENT;
         ALTER TABLE `__LOG_ACTIVITY_OPTIONS`
           ADD CONSTRAINT `__LOG_ACTIVITY_OPTIONS_ibfk_1` FOREIGN KEY (`id_log_activity`) REFERENCES `__LOG_ACTIVITY` (`id`);
+        ALTER TABLE `__LOG_DATA`
+          ADD CONSTRAINT `__LOG_DATA_ibfk_1` FOREIGN KEY (`id_log_activity`) REFERENCES `__LOG_ACTIVITY` (`id`);
       ";
       APP::DB_CONNECTION()->Query($queryString, $sqlObj);
       APP::DB_CONNECTION()->Close();
