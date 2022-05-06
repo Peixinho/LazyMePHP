@@ -520,13 +520,13 @@ class APP
      */
     static function LOG_ACTIVITY() {
       if (APP::$_app_activity_log) {
-        $queryString = "INSERT INTO __LOG_ACTIVITY (`date`, `controller`, `user`) VALUES ('".date("Y-m-d H:i")."', '".(array_key_exists("controller", $_GET)?$_GET['controller']:NULL)."', '".APP::$_app_activity_auth."')";
+        $queryString = "INSERT INTO __LOG_ACTIVITY (`date`,`user`) VALUES ('".date("Y-m-d H:i")."','".APP::$_app_activity_auth."')";
         APP::DB_CONNECTION()->Query($queryString, $obj);
         $id = APP::DB_CONNECTION()->GetLastInsertedID('__LOG_ACTIVITY');
         $queryString = "INSERT INTO __LOG_ACTIVITY_OPTIONS (`id_log_activity`, `subOption`, `value`) VALUES ";
         $count = 0;
         foreach($_GET as $kArg => $arg) {
-          if ($arg && strtolower($kArg)!="controller") {
+          if ($arg) {
             $queryString.=($count>0?",":"")."($id, '".$kArg."', '".$arg."')";
             $count++;
           }
