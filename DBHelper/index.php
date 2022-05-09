@@ -30,7 +30,8 @@ if ($_SESSION && $_SESSION['username'] == APP::DB_USER() && $_SESSION['password'
         CREATE TABLE IF NOT EXISTS `__LOG_ACTIVITY` (
           `id` int(255) NOT NULL,
           `date` datetime NOT NULL,
-          `user` varchar(255) DEFAULT NULL);
+          `user` varchar(255) DEFAULT NULL,
+          `method`varchar(10) DEFAULT NULL);
         CREATE TABLE IF NOT EXISTS `__LOG_ACTIVITY_OPTIONS` (
           `id` int(255) NOT NULL,
           `id_log_activity` int(255) NOT NULL,

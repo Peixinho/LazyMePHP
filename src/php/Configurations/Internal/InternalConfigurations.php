@@ -520,7 +520,7 @@ class APP
      */
     static function LOG_ACTIVITY() {
       if (APP::$_app_activity_log) {
-        $queryString = "INSERT INTO __LOG_ACTIVITY (`date`,`user`) VALUES ('".date("Y-m-d H:i")."','".APP::$_app_activity_auth."')";
+        $queryString = "INSERT INTO __LOG_ACTIVITY (`date`,`user`,`method`) VALUES ('".date("Y-m-d H:i")."','".APP::$_app_activity_auth."','".$_SERVER['REQUEST_METHOD']."')";
         APP::DB_CONNECTION()->Query($queryString, $obj);
         $id = APP::DB_CONNECTION()->GetLastInsertedID('__LOG_ACTIVITY');
         $queryString = "INSERT INTO __LOG_ACTIVITY_OPTIONS (`id_log_activity`, `subOption`, `value`) VALUES ";
