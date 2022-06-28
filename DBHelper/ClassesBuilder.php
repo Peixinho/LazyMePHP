@@ -923,7 +923,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
           fwrite($classFile, "\n");
           fwrite($classFile, "\tpublic function FindBy".$field->GetName()."(\$var, \$operator = '=') {");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\t\t\$this->_args[]=\$var;");
+          fwrite($classFile, "\t\tif (strlen(\$var)>0) \$this->_args[]=\$var;");
           fwrite($classFile, "\n");
           fwrite($classFile, "\t\t\$this->_sql .= \" \".(strlen(\$this->_sql)>0?\"AND\":\"\").\" ".$db->GetTableName().".".$field->GetName()." \$operator \".(\$var || \$operator=='='?\"?\":\"\").\"\";");
           fwrite($classFile, "\n");
