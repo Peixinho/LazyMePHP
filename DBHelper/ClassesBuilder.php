@@ -677,7 +677,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             fwrite($classFile,"\":\"\").\"");
           }
         }
-        fwrite($classFile," FROM ".$db->_Tablename.(strlen($foreignTablesJoin)>0?" ":"")."\".(\$this->_searchNeedsForeignMembers || \$buildForeignMembers?\"$foreignTablesJoin\":\"\").\""." \".(strlen(\$_sql)>0?\"WHERE \".\$_sql:\"\");");
+        fwrite($classFile," FROM ".$db->_Tablename.(strlen($foreignTablesJoin)>0?" ":"")."\".(\$this->_searchNeedsForeignMembers || \$buildForeignMembers?\"$foreignTablesJoin\":\"\").\""." \".(strlen(\$this->_sql)>0?\"WHERE \".\$this->_sql:\"\");");
 
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
