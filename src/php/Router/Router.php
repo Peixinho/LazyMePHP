@@ -106,7 +106,7 @@ class Router {
 						}
 					}
 				}
-			} else { // API Request with defined Method
+			} else { // API Request with defined Methof
 				if (array_key_exists($method,Router::$Routes[$paramFound][$controller][1])) {
 					$found = true;
 				}

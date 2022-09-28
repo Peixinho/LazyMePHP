@@ -82,10 +82,10 @@ class BuildTableForms
     switch (APP::DB_TYPE())
     {
       case 1: // MSSQL
-            $queryString = "SELECT [Table] FROM (SELECT TABLE_NAME as [Table] FROM INFORMATION_SCHEMA.TABLES) SCH WHERE [Table] NOT LIKE '\_\_%'";
+        $queryString = "SELECT TABLE_NAME as [Table] FROM INFORMATION_SCHEMA.TABLES";
       break;
       case 2: // MYSQL
-          $queryString = "SELECT `Table` FROM (SELECT DISTINCT TABLE_NAME as `Table` FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='".APP::DB_NAME()."') SCH WHERE `Table` NOT LIKE '\_\_%'";
+        $queryString = "SELECT DISTINCT TABLE_NAME as `Table` FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='".APP::DB_NAME()."'";
       break;
     }
 
@@ -458,6 +458,7 @@ class BuildTableForms
 				fwrite($controllerFile, "\n");
 				fwrite($controllerFile, "namespace LazyMePHP\Forms;\n");
 				fwrite($controllerFile, "use \LazyMePHP\Config\Internal\APP;\n");
+				fwrite($controllerFile, "use \LazyMePHP\Classes;\n");
 				fwrite($controllerFile, "\n");
 				fwrite($controllerFile, "require_once __DIR__.\"/../Configurations/Configurations.php\";");
 				fwrite($controllerFile, "\n");
@@ -466,7 +467,7 @@ class BuildTableForms
 				fwrite($controllerFile, "\n");
 
         // reload page with _get params from filter post
-        fwrite($controllerFile, "if (key_exists(\"filter\", \$_POST)) {\n");
+        fwrite($controllerFile, "if (array_key_exists(\"filter\",\$_POST)) {\n");
           fwrite($controllerFile, "\t\$url=\"\";\n");
           fwrite($controllerFile, "\tforeach(\$_POST as \$k=>\$g) if (\$g) \$url.=(strlen(\$url)>0?\"&\":\"?\").\"\$k=\$g\";\n");
           fwrite($controllerFile, "\theader(\"location: \".APP::URLENCODE(\$url));\n");
@@ -503,7 +504,7 @@ class BuildTableForms
 						{
 							if (!$field->AllowNull())
 							{
-								fwrite($controllerFile, "\t\tif (filter_input(INPUT_POST, \"".$field->GetName()."\")===false) \$fieldsNull .= (!is_null(\$fieldsNull)?\",\":\"\").\"".$field->GetName()."\";");
+								fwrite($controllerFile, "\t\tif (filter_input(INPUT_POST, \"".$field->GetName()."\")==false) \$fieldsNull .= (!is_null(\$fieldsNull)?\",\":\"\").\"".$field->GetName()."\";");
 								fwrite($controllerFile, "\n");
 							}
 							fwrite($controllerFile, "\t\t".(!$field->AllowNull()?"else ":"")."\$obj->Set".$field->GetName()."(filter_input(INPUT_POST, \"".$field->GetName()."\"));");
