@@ -294,7 +294,7 @@ class BuildTableForms
 						fwrite($viewFile, "\n");
 						fwrite($viewFile, "\t\t\tforeach(\$list as \$member) {");
 						fwrite($viewFile, "\n");
-						fwrite($viewFile, "\t\t\t\techo \"<option value='\".\$member->Get".$field->GetForeignField()."().\"' \".(array_key_exists('".$field->GetName()."', \$_POST) && \$_POST[\"".$field->GetName()."\"]==\$member->Get".$field->GetForeignField()."()?\"selected\":\"\").\">\".\$member->GetDescriptor().\"</option>\";");
+						fwrite($viewFile, "\t\t\t\techo \"<option value='\".\$member->Get".$field->GetForeignField()."().\"' \".(array_key_exists('".$field->GetName()."', \$_GET) && \$_GET[\"".$field->GetName()."\"]==\$member->Get".$field->GetForeignField()."()?\"selected\":\"\").\">\".\$member->GetDescriptor().\"</option>\";");
 						fwrite($viewFile, "\n");
 						fwrite($viewFile, "\t\t\t}");
 						fwrite($viewFile, "\n");
@@ -310,7 +310,7 @@ class BuildTableForms
 				{
 					fwrite($viewFile, "\t\techo \"<br>\";");
 					fwrite($viewFile, "\n");
-					fwrite($viewFile, "\t\techo \"<input type='submit' ".($buttonClass?"class='".$buttonClass."'":"")." value='Filter'/>\";");
+					fwrite($viewFile, "\t\techo \"<input type='submit' ".($buttonClass?"class='".$buttonClass."'":"")." name='filter' value='Filter'/>\";");
 					fwrite($viewFile, "\n");
 					fwrite($viewFile, "\t\techo \"</form>\";");
 					fwrite($viewFile, "\n");
@@ -331,7 +331,7 @@ class BuildTableForms
 					{
 						if ($field->HasForeignKey() && !is_null($field->GetForeignField()))
 						{
-							fwrite($viewFile, "\t\tif (array_key_exists('".$field->GetName()."', \$_POST) && \$_POST[\"".$field->GetName()."\"]) { \$filter.= (strlen(\$filter)>0?\" AND \":\"\").\"".$db->GetTableName().".".$field->GetName()." = '\".\$_POST[\"".$field->GetName()."\"].\"'\"; \$haveFilter = true; }");
+							fwrite($viewFile, "\t\tif (array_key_exists('".$field->GetName()."', \$_GET) && \$_GET[\"".$field->GetName()."\"]) { \$filter.= (strlen(\$filter)>0?\" AND \":\"\").\"".$db->GetTableName().".".$field->GetName()." = '\".\$_GET[\"".$field->GetName()."\"].\"'\"; \$haveFilter = true; }");
 							fwrite($viewFile, "\n");
 						}
 					}
@@ -357,13 +357,13 @@ class BuildTableForms
 				fwrite($viewFile, "\t\t\$list->Limit(\$limit,(\$page-1)*\$limit);");
 				fwrite($viewFile, "\n");
 
-				fwrite($viewFile, "\t\tif (\$page > 1) echo \"<a ".($anchorClass?"class='".$anchorClass."'":"")." href='\".APP::URLENCODE(\"?controller=".$db->GetTableName()."&page=\".(\$page-1)).\"'>&lt;&lt;</a>\";");
+				fwrite($viewFile, "\t\tif (\$page > 1) echo \"<a ".($anchorClass?"class='".$anchorClass."'":"")." href='\".APP::URLENCODEAPPEND(\"page=\".(\$page-1)).\"'>&lt;&lt;</a>\";");
 				fwrite($viewFile, "\n");
 				fwrite($viewFile, "\t\tfor (\$i=1;\$i<=\$countPage;\$i++) {");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "\t\t\tif (\$i!=\$page)");
         fwrite($viewFile, "\n");
-        fwrite($viewFile, "\t\t\t\techo \" <a ".($anchorClass?"class='".$anchorClass."'":"")." href='\".APP::URLENCODE(\"?controller=".$db->GetTableName()."&page=\$i\").\"'>\". \$i .\"</a> \";");
+        fwrite($viewFile, "\t\t\t\techo \" <a ".($anchorClass?"class='".$anchorClass."'":"")." href='\".APP::URLENCODEAPPEND(\"page=\$i\").\"'>\". \$i .\"</a> \";");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "\t\t\telse");
         fwrite($viewFile, "\n");
@@ -372,7 +372,7 @@ class BuildTableForms
 				fwrite($viewFile, "\t\t}");
 				fwrite($viewFile, "\n");
 				fwrite($viewFile, "\n");
-				fwrite($viewFile, "\t\tif ((\$page+1) <= \$countPage) echo \"<a ".($anchorClass?"class='".$anchorClass."'":"")." href='\".APP::URLENCODE(\"?controller=".$db->GetTableName()."&page=\".(\$page+1)).\"'>&gt;&gt;</a>\";");
+				fwrite($viewFile, "\t\tif ((\$page+1) <= \$countPage) echo \"<a ".($anchorClass?"class='".$anchorClass."'":"")." href='\".APP::URLENCODEAPPEND(\"page=\".(\$page+1)).\"'>&gt;&gt;</a>\";");
 				fwrite($viewFile, "echo \"<br>\";");
 				fwrite($viewFile, "echo \"<br>\";");
 				fwrite($viewFile, "\n");
@@ -458,11 +458,19 @@ class BuildTableForms
 				fwrite($controllerFile, "\n");
 				fwrite($controllerFile, "namespace LazyMePHP\Forms;\n");
 				fwrite($controllerFile, "use \LazyMePHP\Config\Internal\APP;\n");
-				fwrite($controllerFile, "use \LazyMePHP\Classes;\n");
 				fwrite($controllerFile, "\n");
 				fwrite($controllerFile, "require_once __DIR__.\"/../Configurations/Configurations.php\";");
 				fwrite($controllerFile, "\n");
 				fwrite($controllerFile, "require_once \"".$classesPath."/includes.php\";");
+				fwrite($controllerFile, "\n");
+				fwrite($controllerFile, "\n");
+
+        // reload page with _get params from filter post
+        fwrite($controllerFile, "if (key_exists(\"filter\", \$_POST)) {\n");
+          fwrite($controllerFile, "\t\$url=\"\";\n");
+          fwrite($controllerFile, "\tforeach(\$_POST as \$k=>\$g) if (\$g) \$url.=(strlen(\$url)>0?\"&\":\"?\").\"\$k=\$g\";\n");
+          fwrite($controllerFile, "\theader(\"location: \".APP::URLENCODE(\$url));\n");
+        fwrite($controllerFile, "}\n");
 				fwrite($controllerFile, "\n");
 				fwrite($controllerFile, "\n");
 

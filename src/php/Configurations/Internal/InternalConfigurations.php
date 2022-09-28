@@ -374,21 +374,37 @@ class APP
      * @param (string)
      * @return (string) (url)
      */
-    static function URLDECODE($url)
-    {
-      if (APP::APP_URL_ENCRYPTION())
-      {
-        require_once __DIR__."/../../Ext/jwt_helper.php";
-        $token = \JWT::decode(parse_url($url)['query'],APP::APP_URL_TOKEN());
-        $url="?".($token->query);
-        // Set _GET
-        parse_str($token->query, $query);
-        foreach($query as $key => $arg)
-          $_GET[$key] = $arg;
-      }
-      return $url;
-    }
-
+	static function URLDECODE($url)
+	{
+		if (APP::APP_URL_ENCRYPTION())
+		{
+			require_once __DIR__."/../../Ext/jwt_helper.php";
+			$token = \JWT::decode(parse_url($url)['query'],APP::APP_URL_TOKEN());
+			$url="?".($token->query);
+			// Set _GET
+			parse_str($token->query, $query);
+			foreach($query as $key => $arg)
+				$_GET[$key] = $arg;
+		}
+		return $url;
+	}
+    /**
+     * URLENCODEAPPEND
+     *
+     * Returns URL Encoded with
+     * appended var
+     *
+     * @param (string)
+     * @return (string) (url)
+     */
+	static function URLENCODEAPPEND($url)
+	{
+    // Get GET vars
+    $get = "";
+    foreach($_GET as $k => $g) if ($g) $get.=(strlen($get)==0?"?":"&")."$k=$g";
+		return APP::URLENCODE($get.(strlen($get)==0?"?":"&").$url);
+	}
+  
     /** @var _app_url_token */
     private static $_app_url_token;
     /**
