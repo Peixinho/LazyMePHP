@@ -471,7 +471,7 @@ class BuildTableForms
         fwrite($controllerFile, "if (\array_key_exists(\"filter\",\$_POST)) {\n");
           fwrite($controllerFile, "\t\$url=\"\";\n");
           fwrite($controllerFile, "\tforeach(\$_POST as \$k=>\$g) if (\$g) \$url.=(strlen(\$url)>0?\"&\":\"?\").\"\$k=\$g\";\n");
-          fwrite($controllerFile, "\theader(\"location: \$url\");\n");
+          fwrite($controllerFile, "\theader(\"location: \".APP::URLENCODE(\$url));\n");
         fwrite($controllerFile, "}\n");
 				fwrite($controllerFile, "\n");
 				fwrite($controllerFile, "\n");
