@@ -89,10 +89,10 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
     switch (APP::DB_TYPE())
     {
       case 1: // MSSQL
-        $queryString = "SELECT TABLE_NAME as [Table] FROM INFORMATION_SCHEMA.TABLES";
+            $queryString = "SELECT [Table] FROM (SELECT TABLE_NAME as [Table] FROM INFORMATION_SCHEMA.TABLES) SCH WHERE [Table] NOT LIKE '\_\_%'";
       break;
       case 2: // MYSQL
-        $queryString = "SELECT DISTINCT TABLE_NAME as `Table` FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='".APP::DB_NAME()."'";
+          $queryString = "SELECT `Table` FROM (SELECT DISTINCT TABLE_NAME as `Table` FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='".APP::DB_NAME()."') SCH WHERE `Table` NOT LIKE '\_\_%'";
       break;
     }
 
@@ -157,6 +157,15 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\t/**");
         fwrite($classFile, "\n");
+        fwrite($classFile, "\t * Log Data");
+        fwrite($classFile, "\n");
+        fwrite($classFile, "\t */");
+        fwrite($classFile, "\n");
+        fwrite($classFile, "\tprivate \$__log = array();");
+        fwrite($classFile, "\n");
+        fwrite($classFile, "\n");
+        fwrite($classFile, "\t/**");
+        fwrite($classFile, "\n");
         fwrite($classFile, "\t * Descriptor");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t *");
@@ -177,7 +186,6 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         $addToSerialize = "";
         $primaryKeyFound = false;
         foreach ($db->_Tablefields as $field) {
-          fwrite($classFile, "\n");
           fwrite($classFile, "\n");
           fwrite($classFile, "\t/** @var ".$field->GetName()."*/");
           fwrite($classFile, "\n");
@@ -212,6 +220,9 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
               fwrite($classFile, "\n");
               fwrite($classFile, "\t\t}");
             }
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t\tif (APP::APP_ACTIVITY_LOG() && \$this->".$field->GetName()."!=\$".$field->GetName()." && \$this->".$field->GetName()."!==NULL)\n\t\t\t\$this->__log['".$field->GetName()."']=array(substr(\$this->".$field->GetName().",0,255), substr(\$".$field->GetName().",0,255));");
+            fwrite($classFile, "\n");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t\t\$this->".$field->GetName()."=(\$".$field->GetName()."!=NULL?\$".$field->GetName().":NULL);");
             fwrite($classFile, "\n");
@@ -396,7 +407,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
 
             // Save
             fwrite($classFile, "\n");
-                    fwrite($classFile, "\n");
+            fwrite($classFile, "\n");
             fwrite($classFile, "\t/**");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t * Save");
@@ -502,6 +513,10 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             fwrite($classFile, "\n");
             fwrite($classFile, "\t\t\t}");
             fwrite($classFile, "\n");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t\t\tif (APP::APP_ACTIVITY_LOG()) APP::APP_LOGDATA(\"".$db->_Tablename."\",\$this->__log);");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\n");
             fwrite($classFile, "\t\t\treturn true;");
             fwrite($classFile, "\n");
             // End Save
@@ -596,6 +611,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
         fwrite($classFile, "class ".$db->_Tablename."_List implements IDB_CLASS_LIST {");
+        fwrite($classFile, "\n");
         fwrite($classFile, "\n");
         fwrite($classFile, "\tprotected \$_args = array();");
         fwrite($classFile, "\n");
@@ -907,7 +923,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
           fwrite($classFile, "\n");
           fwrite($classFile, "\tpublic function FindBy".$field->GetName()."(\$var, \$operator = '=') {");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\t\t\$this->_args[]=\$var;");
+          fwrite($classFile, "\t\tif (strlen(\$var)>0) \$this->_args[]=\$var;");
           fwrite($classFile, "\n");
           fwrite($classFile, "\t\t\$this->_sql .= \" \".(strlen(\$this->_sql)>0?\"AND\":\"\").\" ".$db->GetTableName().".".$field->GetName()." \$operator \".(\$var || \$operator=='='?\"?\":\"\").\"\";");
           fwrite($classFile, "\n");
