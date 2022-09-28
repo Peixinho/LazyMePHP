@@ -294,7 +294,7 @@ class BuildTableForms
 						fwrite($viewFile, "\n");
 						fwrite($viewFile, "\t\t\tforeach(\$list as \$member) {");
 						fwrite($viewFile, "\n");
-						fwrite($viewFile, "\t\t\t\techo \"<option value='\".\$member->Get".$field->GetForeignField()."().\"' \".(array_key_exists('".$field->GetName()."', \$_POST) && \$_POST[\"".$field->GetName()."\"]==\$member->Get".$field->GetForeignField()."()?\"selected\":\"\").\">\".\$member->GetDescriptor().\"</option>\";");
+						fwrite($viewFile, "\t\t\t\techo \"<option value='\".\$member->Get".$field->GetForeignField()."().\"' \".(array_key_exists('".$field->GetName()."', \$_GET) && \$_GET[\"".$field->GetName()."\"]==\$member->Get".$field->GetForeignField()."()?\"selected\":\"\").\">\".\$member->GetDescriptor().\"</option>\";");
 						fwrite($viewFile, "\n");
 						fwrite($viewFile, "\t\t\t}");
 						fwrite($viewFile, "\n");
@@ -331,7 +331,7 @@ class BuildTableForms
 					{
 						if ($field->HasForeignKey() && !is_null($field->GetForeignField()))
 						{
-							fwrite($viewFile, "\t\tif (array_key_exists('".$field->GetName()."', \$_POST) && \$_POST[\"".$field->GetName()."\"]) { \$filter.= (strlen(\$filter)>0?\" AND \":\"\").\"".$db->GetTableName().".".$field->GetName()." = '\".\$_POST[\"".$field->GetName()."\"].\"'\"; \$haveFilter = true; }");
+							fwrite($viewFile, "\t\tif (array_key_exists('".$field->GetName()."', \$_GET) && \$_GET[\"".$field->GetName()."\"]) { \$filter.= (strlen(\$filter)>0?\" AND \":\"\").\"".$db->GetTableName().".".$field->GetName()." = '\".\$_GET[\"".$field->GetName()."\"].\"'\"; \$haveFilter = true; }");
 							fwrite($viewFile, "\n");
 						}
 					}
@@ -458,7 +458,6 @@ class BuildTableForms
 				fwrite($controllerFile, "\n");
 				fwrite($controllerFile, "namespace LazyMePHP\Forms;\n");
 				fwrite($controllerFile, "use \LazyMePHP\Config\Internal\APP;\n");
-				fwrite($controllerFile, "use \LazyMePHP\Classes;\n");
 				fwrite($controllerFile, "\n");
 				fwrite($controllerFile, "require_once __DIR__.\"/../Configurations/Configurations.php\";");
 				fwrite($controllerFile, "\n");
@@ -467,10 +466,10 @@ class BuildTableForms
 				fwrite($controllerFile, "\n");
 
         // reload page with _get params from filter post
-        fwrite($controllerFile, "if (\$_POST['filter']) {\n");
+        fwrite($controllerFile, "if (key_exists(\"filter\", \$_POST)) {\n");
           fwrite($controllerFile, "\t\$url=\"\";\n");
-          fwrite($controllerFile, "\t\foreach(\$_GET as \$k=>\$g) if (\$g) \$url.=(strlen(\$url)>0?\"&\":\"?\").\"\$k=\$g\";\n");
-          fwrite($controllerFile, "\t\header(\"location: \$url\");\n");
+          fwrite($controllerFile, "\tforeach(\$_POST as \$k=>\$g) if (\$g) \$url.=(strlen(\$url)>0?\"&\":\"?\").\"\$k=\$g\";\n");
+          fwrite($controllerFile, "\theader(\"location: \".APP::URLENCODE(\$url));\n");
         fwrite($controllerFile, "}\n");
 				fwrite($controllerFile, "\n");
 				fwrite($controllerFile, "\n");
