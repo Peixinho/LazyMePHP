@@ -63,7 +63,7 @@ function ErrorHandler($errno, $errstr, $errfile, $errline)
  *
  * @return (NULL)
  */
-function FatalErrorShutdownHandler()
+function fatalErrorShutdownHandler()
 {
   $last_error = error_get_last();
   if (is_array($last_error) && array_key_exists('type', $last_error) && $last_error['type'] === E_ERROR) {
@@ -73,7 +73,7 @@ function FatalErrorShutdownHandler()
 }
 
 /**
- * SendMail
+ * sendMail
  *
  * Send Email obviously
  *
@@ -348,24 +348,24 @@ class APP
      * @param (string)
      * @return (string) (url)
      */
-    static function URLENCODE($url)
-    {
-      if (APP::APP_URL_ENCRYPTION())
-      {
-        require_once __DIR__."/../../Ext/jwt_helper.php";
+	static function URLENCODE($url)
+	{
+		if (APP::APP_URL_ENCRYPTION())
+		{
+			require_once __DIR__."/../../Ext/jwt_helper.php";
 
-        $_token = array();
-        if (count(parse_url($url))>0)
-        {
-          foreach(parse_url($url) as $key => $arg) {
-            $_token[$key] = $arg;
-          }
-          $token = \JWT::encode($_token,APP::APP_URL_TOKEN());
-          return substr($url, 0, strpos($url, '?'))."?".$token;
-        }
-      }
-      return $url;
-    }
+			$_token = array();
+			if (count(parse_url($url))>0)
+			{
+				foreach(parse_url($url) as $key => $arg) {
+					$_token[$key] = $arg;
+				}
+				$token = \JWT::encode($_token,APP::APP_URL_TOKEN());
+				return substr($url, 0, strpos($url, '?'))."?".$token;
+			}
+		}
+		return $url;
+	}
     /**
      * URLDECODE
      *
@@ -404,7 +404,7 @@ class APP
     foreach($_GET as $k => $g) if ($g) $get.=(strlen($get)==0?"?":"&")."$k=$g";
 		return APP::URLENCODE($get.(strlen($get)==0?"?":"&").$url);
 	}
-  
+
     /** @var _app_url_token */
     private static $_app_url_token;
     /**
@@ -415,10 +415,10 @@ class APP
      * @param (null)
      * @return (string) (url)
      */
-    static function APP_URL_TOKEN()
-    {
-      return APP::$_app_url_token;
-    }
+	static function APP_URL_TOKEN()
+	{
+		return APP::$_app_url_token;
+	}
 
     /** @var _app_nresults */
     private static $_app_nresults;
@@ -430,56 +430,10 @@ class APP
      * @param (null)
      * @return (string) (url)
      */
-    static function APP_NRESULTS()
-    {
-      return APP::$_app_nresults;
-    }
-
-    /** @var _app_activity_log */
-    private static $_app_activity_log;
-    /**
-     * APP_ACTIVITY_LOG
-     *
-     * Returns If Activity Log is enabled
-     *
-     * @param (null)
-     * @return (bool)
-     */
-    static function APP_ACTIVITY_LOG()
-    {
-      return APP::$_app_activity_log;
-    }
-
-    /** @var _app_activity_auth */
-    private static $_app_activity_auth;
-    /**
-     * APP_ACTIVITY_LOG
-     *
-     * Returns Activity Auth to be Used
-     *
-     * @param (null)
-     * @return (string) (possibly, username)
-     */
-    static function APP_ACTIVITY_AUTH()
-    {
-      return APP::$_app_activity_auth;
-    }
-
-    /** @var _logdata */
-    private static $_app_logdata;
-    /**
-     * APP_LOGDATA
-     *
-     * Sets LOG DATA
-     *
-     * @param (string) table
-     * @param (array) log
-     * @return (null)
-     */
-    static function APP_LOGDATA($table,$log)
-    {
-      APP::$_app_logdata[$table] = $log;
-    }
+	static function APP_NRESULTS()
+	{
+		return APP::$_app_nresults;
+	}
 
     /**
      * Constructor
@@ -512,60 +466,15 @@ class APP
         APP::$_app_timezone       = $CONFIG['APP_TIMEZONE'];
         APP::$_support_email      = $CONFIG['APP_EMAIL_SUPPORT'];
         APP::$_app_url_encryption = $CONFIG['APP_URL_ENCRYPTION'];
-        APP::$_app_activity_log   = $CONFIG['APP_ACTIVITY_LOG'];
-        APP::$_app_activity_auth  = $CONFIG['APP_ACTIVITY_AUTH'];
-        APP::$_app_url_token	    = $CONFIG['APP_URL_TOKEN'];
-        APP::$_app_nresults 	    = $CONFIG['APP_NRESULTS'];
+        APP::$_app_url_token	  = $CONFIG['APP_URL_TOKEN'];
+        APP::$_app_nresults 	  = $CONFIG['APP_NRESULTS'];
 
         // Set Timezone
         date_default_timezone_set(APP::$_app_timezone);
         // Registers User Error Function Replacement
         @set_error_handler('\LazyMePHP\Config\Internal\ErrorHandler');
         // Registers Fatal Error Function Replacement */
-        @register_shutdown_function('\LazyMePHP\Config\Internal\FatalErrorShutdownHandler');
-    }
-
-    /**
-     * Log Activity
-     *
-     * Records Activity
-     *
-     * @param (string) (controller)
-     * @param (string) (multiple arguments)
-     * @return (null)
-     */
-    static function LOG_ACTIVITY() {
-      if (APP::$_app_activity_log) {
-        $queryString = "INSERT INTO __LOG_ACTIVITY (`date`,`user`,`method`) VALUES ('".date("Y-m-d H:i")."','".APP::$_app_activity_auth."','".$_SERVER['REQUEST_METHOD']."')";
-        APP::DB_CONNECTION()->Query($queryString, $obj);
-        $id = APP::DB_CONNECTION()->GetLastInsertedID('__LOG_ACTIVITY');
-        $queryString = "INSERT INTO __LOG_ACTIVITY_OPTIONS (`id_log_activity`, `subOption`, `value`) VALUES ";
-        $count = 0;
-        foreach($_GET as $kArg => $arg) {
-          if ($arg) {
-            $queryString.=($count>0?",":"")."($id, '".$kArg."', '".$arg."')";
-            $count++;
-          }
-        }
-        if ($count>0)
-          APP::DB_CONNECTION()->Query($queryString, $obj);
-
-        $count = 0;
-        $queryString = "INSERT INTO __LOG_DATA (`id_log_activity`, `table`, `field`, `dataBefore`, `dataAfter`) VALUES ";
-        if (is_array(APP::$_app_logdata)) {
-          foreach(APP::$_app_logdata as $table => $data) {
-            if (is_array($data)) {
-              foreach($data as $field => $values) {
-                $queryString.=($count>0?",":"")."($id, '$table', '$field', '".$values[0]."', '".$values[1]."')";
-                $count++;
-              }
-            }
-          }
-        }
-
-        if ($count>0)
-          APP::DB_CONNECTION()->Query($queryString, $obj);
-      }
+        @register_shutdown_function('\LazyMePHP\Config\Internal\fatalErrorShutdownHandler');
     }
 }
 ?>

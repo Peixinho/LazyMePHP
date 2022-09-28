@@ -7,6 +7,7 @@
 */
 
 use \LazyMePHP\Config\Internal\APP;
+use \LazyMePHP\DatabaseHelper;
 session_start();
 
 require_once 'DatabaseHelper.php';
@@ -23,59 +24,15 @@ if ((!array_key_exists('username', $_SESSION) || !array_key_exists('password', $
 
 // If user is logged with database credentials
 if ($_SESSION && $_SESSION['username'] == APP::DB_USER() && $_SESSION['password'] == APP::DB_PASSWORD()) {
-
-    // Create Activity Log Structure if Needed
-    if (APP::APP_ACTIVITY_LOG()) {
-      $queryString = "
-        CREATE TABLE IF NOT EXISTS `__LOG_ACTIVITY` (
-          `id` int(255) NOT NULL,
-          `date` datetime NOT NULL,
-          `user` varchar(255) DEFAULT NULL,
-          `method`varchar(10) DEFAULT NULL);
-        CREATE TABLE IF NOT EXISTS `__LOG_ACTIVITY_OPTIONS` (
-          `id` int(255) NOT NULL,
-          `id_log_activity` int(255) NOT NULL,
-          `subOption` varchar(255) NOT NULL,
-          `value` varchar(255) NOT NULL);
-        CREATE TABLE IF NOT EXISTS `__LOG_DATA` (
-          `id` int(255) NOT NULL,
-          `id_log_activity` int(255) NOT NULL,
-          `table` varchar(255) NOT NULL,
-          `field` varchar(255) NOT NULL,
-          `dataBefore` varchar(255) NULL,
-          `dataAfter` varchar(255) NULL);
-        ALTER TABLE `__LOG_ACTIVITY`
-          ADD PRIMARY KEY (`id`);
-        ALTER TABLE `__LOG_ACTIVITY_OPTIONS`
-          ADD PRIMARY KEY (`id`),
-          ADD KEY `id_log_activity` (`id_log_activity`);
-        ALTER TABLE `__LOG_DATA`
-          ADD PRIMARY KEY (`id`),
-          ADD KEY `id_log_activity` (`id_log_activity`);
-        ALTER TABLE `__LOG_ACTIVITY`
-          MODIFY `id` int(255) NOT NULL AUTO_INCREMENT;
-        ALTER TABLE `__LOG_ACTIVITY_OPTIONS`
-          MODIFY `id` int(255) NOT NULL AUTO_INCREMENT;
-        ALTER TABLE `__LOG_DATA`
-          MODIFY `id` int(255) NOT NULL AUTO_INCREMENT;
-        ALTER TABLE `__LOG_ACTIVITY_OPTIONS`
-          ADD CONSTRAINT `__LOG_ACTIVITY_OPTIONS_ibfk_1` FOREIGN KEY (`id_log_activity`) REFERENCES `__LOG_ACTIVITY` (`id`);
-        ALTER TABLE `__LOG_DATA`
-          ADD CONSTRAINT `__LOG_DATA_ibfk_1` FOREIGN KEY (`id_log_activity`) REFERENCES `__LOG_ACTIVITY` (`id`);
-      ";
-      APP::DB_CONNECTION()->Query($queryString, $sqlObj);
-      APP::DB_CONNECTION()->Close();
-    }
-
     // Read All Tables From Database
     $queryString = "";
     switch (APP::DB_TYPE())
     {
         case 1: // MSSQL
-            $queryString = "SELECT [Table] FROM (SELECT TABLE_NAME as [Table] FROM INFORMATION_SCHEMA.TABLES) SCH WHERE [Table] NOT LIKE '\_\_%'";
+            $queryString = "SELECT TABLE_NAME as [Table] FROM INFORMATION_SCHEMA.TABLES";
         break;
         case 2: // MYSQL
-          $queryString = "SELECT `Table` FROM (SELECT DISTINCT TABLE_NAME as `Table` FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='".APP::DB_NAME()."') SCH WHERE `Table` NOT LIKE '\_\_%'";
+            $queryString = "SELECT DISTINCT TABLE_NAME as `Table` FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='".APP::DB_NAME()."'";
         break;
     }
 

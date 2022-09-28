@@ -100,9 +100,4 @@ else
 
 Router::Dispatch($url);
 
-/*
- * Runs logging activity
- */
-APP::LOG_ACTIVITY();
-
 ?>

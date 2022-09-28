@@ -29,17 +29,17 @@ class BuildTableAPI
 	function __construct($apiPath, $classesPath, $tablesList, $replaceRouteApi)
 	{
 
-    // SELECT Tables
-    $queryString = "";
-    switch (APP::DB_TYPE())
-    {
-      case 1: // MSSQL
-            $queryString = "SELECT [Table] FROM (SELECT TABLE_NAME as [Table] FROM INFORMATION_SCHEMA.TABLES) SCH WHERE [Table] NOT LIKE '\_\_%'";
-      break;
-      case 2: // MYSQL
-          $queryString = "SELECT `Table` FROM (SELECT DISTINCT TABLE_NAME as `Table` FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='".APP::DB_NAME()."') SCH WHERE `Table` NOT LIKE '\_\_%'";
-      break;
-    }
+        // SELECT Tables
+        $queryString = "";
+        switch (APP::DB_TYPE())
+        {
+            case 1: // MSSQL
+                $queryString = "SELECT TABLE_NAME as [Table] FROM INFORMATION_SCHEMA.TABLES";
+            break;
+            case 2: // MYSQL
+                $queryString = "SELECT DISTINCT TABLE_NAME as `Table` FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='".APP::DB_NAME()."'";
+            break;
+		}
 
     // Create Folder if doesn't exist
     if (!is_dir($apiPath)) \LazyMePHP\Helper\MKDIR($apiPath);
