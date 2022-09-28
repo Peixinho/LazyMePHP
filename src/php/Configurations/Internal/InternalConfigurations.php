@@ -388,6 +388,22 @@ class APP
 		}
 		return $url;
 	}
+    /**
+     * URLENCODEAPPEND
+     *
+     * Returns URL Encoded with
+     * appended var
+     *
+     * @param (string)
+     * @return (string) (url)
+     */
+	static function URLENCODEAPPEND($url)
+	{
+    // Get GET vars
+    $get = "";
+    foreach($_GET as $k => $g) if ($g) $get.=(strlen($get)==0?"?":"&")."$k=$g";
+		return APP::URLENCODE($get.(strlen($get)==0?"?":"&").$url);
+	}
 
     /** @var _app_url_token */
     private static $_app_url_token;
@@ -450,8 +466,8 @@ class APP
         APP::$_app_timezone       = $CONFIG['APP_TIMEZONE'];
         APP::$_support_email      = $CONFIG['APP_EMAIL_SUPPORT'];
         APP::$_app_url_encryption = $CONFIG['APP_URL_ENCRYPTION'];
-		APP::$_app_url_token	  = $CONFIG['APP_URL_TOKEN'];
-		APP::$_app_nresults 	  = $CONFIG['APP_NRESULTS'];
+        APP::$_app_url_token	  = $CONFIG['APP_URL_TOKEN'];
+        APP::$_app_nresults 	  = $CONFIG['APP_NRESULTS'];
 
         // Set Timezone
         date_default_timezone_set(APP::$_app_timezone);
