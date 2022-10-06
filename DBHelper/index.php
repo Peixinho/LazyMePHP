@@ -41,6 +41,8 @@ if ($_SESSION && $_SESSION['username'] == APP::DB_USER() && $_SESSION['password'
           `id` int(255) NOT NULL,
           `id_log_activity` int(255) NOT NULL,
           `table` varchar(255) NOT NULL,
+          `pk` int(255) NULL,
+          `method` varchar(1) NULL,
           `field` varchar(255) NOT NULL,
           `dataBefore` varchar(255) NULL,
           `dataAfter` varchar(255) NULL);
@@ -80,7 +82,7 @@ if ($_SESSION && $_SESSION['username'] == APP::DB_USER() && $_SESSION['password'
     }
 
     if (!filter_input(INPUT_POST, 'step1')) {
-        echo "<img src='../src/img/logo.png' />";
+        echo "<img src='../src/img/logo.png'/>";
         echo "<br>";
         echo "<br>";
         echo "<h3>Tables Found in Database</h3>";
@@ -148,7 +150,7 @@ if ($_SESSION && $_SESSION['username'] == APP::DB_USER() && $_SESSION['password'
         echo $tableText;
     }
     if (filter_input(INPUT_POST, 'step1')) {
-        echo "<img src='../src/img/logo.png' />";
+        echo "<img src='../src/img/logo.png'/>";
         echo "<br>";
         echo "<br>";
         if (filter_input(INPUT_POST, 'classes_path') &&
@@ -166,7 +168,7 @@ if ($_SESSION && $_SESSION['username'] == APP::DB_USER() && $_SESSION['password'
 } else {
   session_destroy();
   // Show login if user not logged
-  echo "<img src='../src/img/logo.png' />";
+  echo "<img src='../src/img/logo.png'/>";
   echo "<br>";
   echo "<br>";
   echo "<b>Login in with database credentials to continue</b>";

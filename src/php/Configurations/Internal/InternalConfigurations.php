@@ -476,9 +476,13 @@ class APP
      * @param (array) log
      * @return (null)
      */
-    static function APP_LOGDATA($table,$log)
+    static function APP_LOGDATA($table,$log,$pk=NULL,$method=NULL)
     {
-      APP::$_app_logdata[$table] = $log;
+      APP::$_app_logdata[$table]['log'] = $log;
+      if ($pk!==NULL)
+        APP::$_app_logdata[$table]['pk'] = $pk;
+      if ($method!==NULL)
+        APP::$_app_logdata[$table]['method'] = $method;
     }
 
     /**
@@ -551,18 +555,17 @@ class APP
           APP::DB_CONNECTION()->Query($queryString, $obj);
 
         $count = 0;
-        $queryString = "INSERT INTO __LOG_DATA (`id_log_activity`, `table`, `field`, `dataBefore`, `dataAfter`) VALUES ";
+        $queryString = "INSERT INTO __LOG_DATA (`id_log_activity`, `table`, `pk`, `method`, `field`, `dataBefore`, `dataAfter`) VALUES ";
         if (is_array(APP::$_app_logdata)) {
           foreach(APP::$_app_logdata as $table => $data) {
-            if (is_array($data)) {
-              foreach($data as $field => $values) {
-                $queryString.=($count>0?",":"")."($id, '$table', '$field', '".$values[0]."', '".$values[1]."')";
+            if (is_array($data['log'])) {
+              foreach($data['log'] as $field => $values) {
+                $queryString.=($count>0?",":"")."($id, '$table', '".(array_key_exists('pk',$data)?$data['pk']:'')."', '".(array_key_exists('method',$data)?$data['method']:'')."', '$field', '".$values[0]."', '".$values[1]."')";
                 $count++;
               }
             }
           }
         }
-
         if ($count>0)
           APP::DB_CONNECTION()->Query($queryString, $obj);
       }
