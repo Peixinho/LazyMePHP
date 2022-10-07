@@ -85,5 +85,9 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, GET, DELETE, PUT');
 echo json_encode($obj->$method($query, $data));
 
+/*
+ * Runs logging activity
+ */
+APP::LOG_ACTIVITY();
 
 ?>
