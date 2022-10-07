@@ -466,7 +466,7 @@ class APP
     }
 
     /** @var _logdata */
-    private static $_app_logdata;
+    private static $_app_logdata = array();
     /**
      * APP_LOGDATA
      *
@@ -478,11 +478,8 @@ class APP
      */
     static function APP_LOGDATA($table,$log,$pk=NULL,$method=NULL)
     {
-      APP::$_app_logdata[$table]['log'] = $log;
-      if ($pk!==NULL)
-        APP::$_app_logdata[$table]['pk'] = $pk;
-      if ($method!==NULL)
-        APP::$_app_logdata[$table]['method'] = $method;
+      if (!array_key_exists($table, APP::$_app_logdata)) APP::$_app_logdata[$table] = array();
+      array_push(APP::$_app_logdata[$table], array("log" => $log, "pk" => $pk, "method" => $method));
     }
 
     /**
@@ -557,7 +554,8 @@ class APP
         $count = 0;
         $queryString = "INSERT INTO __LOG_DATA (`id_log_activity`, `table`, `pk`, `method`, `field`, `dataBefore`, `dataAfter`) VALUES ";
         if (is_array(APP::$_app_logdata)) {
-          foreach(APP::$_app_logdata as $table => $data) {
+          foreach(APP::$_app_logdata as $table => $d) 
+          foreach($d as $data) {
             if (is_array($data['log'])) {
               foreach($data['log'] as $field => $values) {
                 $queryString.=($count>0?",":"")."($id, '$table', '".(array_key_exists('pk',$data)?$data['pk']:'')."', '".(array_key_exists('method',$data)?$data['method']:'')."', '$field', '".$values[0]."', '".$values[1]."')";
