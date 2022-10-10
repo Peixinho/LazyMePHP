@@ -171,7 +171,7 @@ APP::DB_CONNECTION()->Query($sql, $rtn);
 
 echo "<form method='POST' action=''>";
 // Filter
-echo "<h3>Level 1</h3>";
+echo "<h3>Log Activity</h3>";
 echo "Initial Date:<br> ";
 echo "<input type='text' name='date1' id='date1' value='".filter_input(INPUT_POST,'date1')."' />";
 echo "<br>";
@@ -187,7 +187,7 @@ echo "<select name='method' id='method'><option value=''>-</option><option value
 
 echo "<br>";
 echo "<br>";
-echo "<h3>Level 2</h3>";
+echo "<h3>Log Activity Options</h3>";
 echo "Arg:<br> ";
 echo "<input type='text' name='arg' id='arg' value='".filter_input(INPUT_POST,'arg')."' />";
 echo "<br>";
@@ -197,7 +197,7 @@ echo "<input type='text' name='value' id='value' value='".filter_input(INPUT_POS
 
 echo "<br>";
 echo "<br>";
-echo "<h3>Level 3</h3>";
+echo "<h3>Log Activity Data</h3>";
 echo "Table:<br> ";
 echo "<input type='text' name='table' id='table' value='".filter_input(INPUT_POST,'table')."' />";
 echo "<br>";
