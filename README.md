@@ -206,7 +206,8 @@ and define whats the user auth to be registered as the owner of the change in th
 $CONFIG['APP_ACTIVITY_LOG']=1;
 $CONFIG['APP_ACTIVITY_AUTH']=$_SESSION['user_logged'];
 ```
-Viewer for the logging is still wip and will be added when ready
+Viewer is under /Logging and shows the list of requests ordered by date desc, and there are some filters that can be used.
+This is not a full featured viewer, you can see it as an example to expand on (but it does work quite well)
 
 # License
 MIT
