@@ -41,7 +41,7 @@ if ($_SESSION && $_SESSION['username'] == APP::DB_USER() && $_SESSION['password'
           `id` int(255) NOT NULL,
           `id_log_activity` int(255) NOT NULL,
           `table` varchar(255) NOT NULL,
-          `pk` int(255) NULL,
+          `pk` varchar(255) NULL,
           `method` varchar(1) NULL,
           `field` varchar(255) NOT NULL,
           `dataBefore` varchar(255) NULL,
