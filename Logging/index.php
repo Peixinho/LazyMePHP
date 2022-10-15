@@ -6,68 +6,80 @@
  * Source File Generated Automatically
  */
 
-namespace LazyMePHP\Forms;
-use \LazyMePHP\Config\Internal\APP;
+namespace FrameWork\Forms;
+use \FrameWork\Config\Internal\APP;
 session_start();
 
 require_once "../src/php/Configurations/Configurations.php";
 require_once "../src/php/Classes/includes.php";
 
-if ((!array_key_exists('username', $_SESSION) || !array_key_exists('password', $_SESSION)) && ($_POST && $_POST['username'] && $_POST['password'] && $_POST['username'] == APP::DB_USER() && $_POST['password'] == APP::DB_PASSWORD()))
+function appendUrl($key, $value) 
 {
-    $_SESSION['username'] = $_POST['username'];
-    $_SESSION['password'] = $_POST['password'];
+  // Get GET vars
+  $get = "";
+  foreach($_GET as $k => $g) if ($g && $k!=$key) $get.=(strlen($get)==0?"?":"&")."$k=$g";
+  return $get.(strlen($get)==0?"?":"&")."$key=$value";
+}
+
+// $_GET to $_GET
+foreach($_POST as $k => $p) $_GET[$k]=$p;
+var_dump($_GET);
+
+if ((!array_key_exists('username', $_SESSION) || !array_key_exists('password', $_SESSION)) && ($_GET && $_GET['username'] && $_GET['password'] && $_GET['username'] == APP::DB_USER() && $_GET['password'] == APP::DB_PASSWORD()))
+{
+    $_SESSION['username'] = $_GET['username'];
+    $_SESSION['password'] = $_GET['password'];
 }
 
 // If user is logged with database credentials
 if ($_SESSION && $_SESSION['username'] == APP::DB_USER() && $_SESSION['password'] == APP::DB_PASSWORD()) {
 
 $sqlFilter="";
-if (filter_input(INPUT_POST,'date1') && filter_input(INPUT_POST,'date2')) {
+if ($_GET['date1'] && $_GET['date2']) {
   $level1 = true;
-  $sqlFilter = "(LA.date BETWEEN '".filter_input(INPUT_POST,'date1')."' AND '".filter_input(INPUT_POST,'date2')."')";
+  $sqlFilter = "(LA.date BETWEEN '".$_GET['date1']."' AND '".$_GET['date2']."')";
 }
-if (filter_input(INPUT_POST,'user')) {
+if ($_GET['user']) {
   $level1 = true;
-  $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LA.user='".filter_input(INPUT_POST,'user')."'";
+  $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LA.user='".$_GET['user']."'";
 }
-if (filter_input(INPUT_POST,'method')) {
+if ($_GET['method']) {
   $level1 = true;
-  $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LA.method='".filter_input(INPUT_POST,'method')."'";
+  $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LA.method='".$_GET['method']."'";
 }
 $level2 = false;
-if (filter_input(INPUT_POST,'arg')) {
+if ($_GET['arg']) {
   $level2 = true;
-  $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LAO.subOption='".filter_input(INPUT_POST,'arg')."'";
+  $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LAO.subOption='".$_GET['arg']."'";
 }
-if (filter_input(INPUT_POST,'value')) {
+if ($_GET['value']) {
   $level2 = true;
-  $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LAO.value='".filter_input(INPUT_POST,'value')."'";
+  $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LAO.value='".$_GET['value']."'";
 }
 $level3 = false;
-if (filter_input(INPUT_POST,'table')) {
+if ($_GET['table']) {
   $level3 = true;
-  $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LD.table='".filter_input(INPUT_POST,'table')."'";
+  $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LD.table='".$_GET['table']."'";
 }
-if (filter_input(INPUT_POST,'pk')) {
+if ($_GET['pk']) {
   $level3 = true;
-  $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LD.pk='".filter_input(INPUT_POST,'pk')."'";
+  $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LD.pk='".$_GET['pk']."'";
 }
-if (filter_input(INPUT_POST,'method2')) {
+if ($_GET['method2']) {
   $level3 = true;
-  $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LD.method='".filter_input(INPUT_POST,'method2')."'";
+  $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LD.method='".$_GET['method2']."'";
 }
-if (filter_input(INPUT_POST,'field')) {
+if ($_GET['field']) {
   $level3 = true;
-  $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LD.field='".filter_input(INPUT_POST,'field')."'";
+  $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LD.field='".$_GET['field']."'";
 }
-if (filter_input(INPUT_POST,'initialValue')) {
+if ($_GET['initialValue']) {
   $level3 = true;
-  $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LD.dataBefore='".filter_input(INPUT_POST,'initialValue')."'";
+  $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LD.dataBefore='".$_GET['initialValue']."'";
 }
-if (filter_input(INPUT_POST,'changedTo')) {
+if ($_GET['changedTo']) {
   $level3 = true;
-  $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LD.dataAfter='".filter_input(INPUT_POST,'initialValue')."'";
+  $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LD.dataAfter='".$_GET['initialValue']."'";
 }
 
 echo "<h3>Logging</h3>";
@@ -173,48 +185,48 @@ echo "<form method='POST' action=''>";
 // Filter
 echo "<h3>Log Activity</h3>";
 echo "Initial Date:<br> ";
-echo "<input type='text' name='date1' id='date1' value='".filter_input(INPUT_POST,'date1')."' />";
+echo "<input type='text' name='date1' id='date1' value='".$_GET['date1']."' />";
 echo "<br>";
 echo "Ending Date:<br> ";
-echo "<input type='text' name='date2' id='date2' value='".filter_input(INPUT_POST,'date2')."' />";
+echo "<input type='text' name='date2' id='date2' value='".$_GET['date2']."' />";
 echo "<br>";
 echo "User:<br> ";
-echo "<input type='text' name='user' id='user' value='".filter_input(INPUT_POST,'user')."' />";
+echo "<input type='text' name='user' id='user' value='".$_GET['user']."' />";
 echo "<br>";
 echo "Request:<br> ";
-echo "<select name='method' id='method'><option value=''>-</option><option value='GET' ".(filter_input(INPUT_POST,'method')=='GET'?'selected':'').">GET</option><option value='POST' ".(filter_input(INPUT_POST,'method')=='POST'?'selected':'').">POST</option><option value='PUT' ".(filter_input(INPUT_POST,'method')=='PUT'?'selected':'').">PUT</option><option value='PATCH' ".(filter_input(INPUT_POST,'method')=='PATCH'?'selected':'').">PATCH</option><option value='DELETE' ".(filter_input(INPUT_POST,'method')=='DELETE'?'selected':'').">DELETE</option></select>";
+echo "<select name='method' id='method'><option value=''>-</option><option value='GET' ".($_GET['method']=='GET'?'selected':'').">GET</option><option value='POST' ".($_GET['method']=='POST'?'selected':'').">POST</option><option value='PUT' ".($_GET['method']=='PUT'?'selected':'').">PUT</option><option value='PATCH' ".($_GET['method']=='PATCH'?'selected':'').">PATCH</option><option value='DELETE' ".($_GET['method']=='DELETE'?'selected':'').">DELETE</option></select>";
 
 
 echo "<br>";
 echo "<br>";
 echo "<h3>Log Activity Options</h3>";
 echo "Arg:<br> ";
-echo "<input type='text' name='arg' id='arg' value='".filter_input(INPUT_POST,'arg')."' />";
+echo "<input type='text' name='arg' id='arg' value='".$_GET['arg']."' />";
 echo "<br>";
 echo "Value:<br> ";
-echo "<input type='text' name='value' id='value' value='".filter_input(INPUT_POST,'value')."' />";
+echo "<input type='text' name='value' id='value' value='".$_GET['value']."' />";
 
 
 echo "<br>";
 echo "<br>";
 echo "<h3>Log Activity Data</h3>";
 echo "Table:<br> ";
-echo "<input type='text' name='table' id='table' value='".filter_input(INPUT_POST,'table')."' />";
+echo "<input type='text' name='table' id='table' value='".$_GET['table']."' />";
 echo "<br>";
 echo "PK:<br> ";
-echo "<input type='text' name='pk' id='pk' value='".filter_input(INPUT_POST,'pk')."' />";
+echo "<input type='text' name='pk' id='pk' value='".$_GET['pk']."' />";
 echo "<br>";
 echo "Method:<br> ";
-echo "<select name='method2' id='method2'><option value=''>-</option><option value='I' ".(filter_input(INPUT_POST,'method')=='I'?'selected':'').">Insert</option><option value='U' ".(filter_input(INPUT_POST,'method2')=='U'?'selected':'').">Update</option><option value='D' ".(filter_input(INPUT_POST,'method2')=='D'?'selected':'').">Delete</option></select>";
+echo "<select name='method2' id='method2'><option value=''>-</option><option value='I' ".($_GET['method']=='I'?'selected':'').">Insert</option><option value='U' ".($_GET['method2']=='U'?'selected':'').">Update</option><option value='D' ".($_GET['method2']=='D'?'selected':'').">Delete</option></select>";
 echo "<br>";
 echo "Field:<br> ";
-echo "<input type='text' name='field' id='field' value='".filter_input(INPUT_POST,'field')."' />";
+echo "<input type='text' name='field' id='field' value='".$_GET['field']."' />";
 echo "<br>";
 echo "initialValue:<br> ";
-echo "<input type='text' name='initialValue' id='initialValue' value='".filter_input(INPUT_POST,'initialValue')."' />";
+echo "<input type='text' name='initialValue' id='initialValue' value='".$_GET['initialValue']."' />";
 echo "<br>";
 echo "changedTo:<br> ";
-echo "<input type='text' name='changedTo' id='changedTo' value='".filter_input(INPUT_POST,'changedTo')."' />";
+echo "<input type='text' name='changedTo' id='changedTo' value='".$_GET['changedTo']."' />";
 echo "<br>";
 echo "<input type='submit' value='Submit' />";
 echo "</form>";
@@ -282,18 +294,20 @@ echo "</td>";
 echo "</tr>";
 echo "</table>";
 
-if ($page > 1) echo "<a href='".APP::URLENCODEAPPEND("page=".($page-1))."'>&lt;&lt;</a>";
-for ($i=1;$i<=$countPage;$i++) {
-  if ($i!=$page)
-    echo " <a href='".APP::URLENCODEAPPEND("page=$i")."'>". $i ."</a> ";
-  else
-    echo " [".$i."] ";
-}
-if (($page+1) <= $countPage) $pagination.="<a  href='".APP::URLENCODEAPPEND("page=".($page+1))."'>&gt;&gt;</a>";
+		if ($page > 1) $pagination.="<a  href='".appendUrl("page",($page-1))."'>&lt;&lt;</a>";
+		for ($i=1;$i<=$countPage;$i++) {
+			if ($i!=$page)
+				$pagination.=" <a  href='".appendUrl("page",$i)."'>". $i ."</a> ";
+			else
+				$pagination.=" [".$i."] ";
+		}
+
+		if (($page+1) <= $countPage) $pagination.="<a  href='".appendUrl("page",($page+1))."'>&gt;&gt;</a>";
+  echo $pagination;
 } else {
   session_destroy();
   // Show login if user not logged
-  echo "<img src='../src/img/logo.png'/>";
+  echo "<img src='../src/img/logo.png' width='100' height='100' />";
   echo "<br>";
   echo "<br>";
   echo "<b>Login in with database credentials to continue</b>";
@@ -321,4 +335,3 @@ function showId(id){
   document.getElementById("log_details_"+id).style.visibility="visible";
 };
 </script>
-

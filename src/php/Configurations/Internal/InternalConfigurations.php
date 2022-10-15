@@ -537,8 +537,8 @@ class APP
      */
     static function LOG_ACTIVITY() {
       if (APP::APP_ACTIVITY_LOG()) {
-        $queryString = "INSERT INTO __LOG_ACTIVITY (`date`,`user`,`method`) VALUES ('".date("Y-m-d H:i")."','".APP::$_app_activity_auth."','".$_SERVER['REQUEST_METHOD']."')";
-        APP::DB_CONNECTION()->Query($queryString, $obj);
+        $queryString = "INSERT INTO __LOG_ACTIVITY (`date`,`user`,`method`) VALUES (?,?,?)";
+        APP::DB_CONNECTION()->Query($queryString, $obj, array(date("Y-m-d H:i"),APP::$_app_activity_auth,$_SERVER['REQUEST_METHOD']));
         $id = APP::DB_CONNECTION()->GetLastInsertedID('__LOG_ACTIVITY');
         $queryString = "INSERT INTO __LOG_ACTIVITY_OPTIONS (`id_log_activity`, `subOption`, `value`) VALUES ";
         $count = 0;
@@ -553,19 +553,21 @@ class APP
 
         $count = 0;
         $queryString = "INSERT INTO __LOG_DATA (`id_log_activity`, `table`, `pk`, `method`, `field`, `dataBefore`, `dataAfter`) VALUES ";
+        $queryStringData = array();
         if (is_array(APP::$_app_logdata)) {
           foreach(APP::$_app_logdata as $table => $d) 
           foreach($d as $data) {
             if (is_array($data['log'])) {
               foreach($data['log'] as $field => $values) {
-                $queryString.=($count>0?",":"")."($id, '$table', '".(array_key_exists('pk',$data)?$data['pk']:'')."', '".(array_key_exists('method',$data)?$data['method']:'')."', '$field', '".$values[0]."', '".$values[1]."')";
+                $queryString.=($count>0?",":"")."(?,?,?,?,?,?,?)";
+                array_push($queryStringData,$id,'$table',(array_key_exists('pk',$data)?$data['pk']:''), (array_key_exists('method',$data)?$data['method']:''), $field, $values[0], $values[1]);
                 $count++;
               }
             }
           }
         }
         if ($count>0)
-          APP::DB_CONNECTION()->Query($queryString, $obj);
+          APP::DB_CONNECTION()->Query($queryString, $obj,$queryStringData);
       }
     }
 }
