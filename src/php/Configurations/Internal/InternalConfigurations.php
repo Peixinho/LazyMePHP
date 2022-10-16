@@ -1,14 +1,14 @@
 <?php
 
 /**
- * LazyMePHP
-* @copyright This file is part of the LazyMePHP developed by Duarte Peixinho
+ * FrameWork
+* @copyright This file is part of the FrameWork developed by Duarte Peixinho
 * @author Duarte Peixinho
 */
 
-namespace LazyMePHP\Config\Internal;
-use \LazyMePHP\DB\MYSQL;
-use \LazyMePHP\DB\MSSQL;
+namespace FrameWork\Config\Internal;
+use \FrameWork\DB\MYSQL;
+use \FrameWork\DB\MSSQL;
 
 function str_rot47($str)
 {
@@ -47,11 +47,21 @@ function ErrorHandler($errno, $errstr, $errfile, $errline)
                     </div>";
 
         $to_mail=APP::APP_SUPPORT_EMAIL();
-        $from_mail=APP::APP_SUPPORT_EMAIL();
+        $from_mail="noreply@chalgarve.min-saude.pt";
         $subject="Application ".APP::APP_NAME()." thrown an error.";
         $message=$errorMsg;
-        echo $message;
+
+        $message.="<br>";
+        $message.="<br><b>Data</b>";
+        $message.="<br>".json_encode($_SESSION);
+        $message.="<br>".json_encode($_POST);
+        $message.="<br>".json_encode($_GET);
         @Sendmail($from_mail, $to_mail, $subject, $message);
+        $errorMsg =
+                    "<div style=\"margin:5px;z-index:10000;position:absolute;background-color:#A31919;padding:10px;color:#FFFF66;font-family:sans-serif;font-size:8pt;\">
+                        An email with this message was sent to the developer.
+                    </div>";
+		    echo $errorMsg;
         die();
     }
 }
@@ -521,9 +531,9 @@ class APP
         // Set Timezone
         date_default_timezone_set(APP::$_app_timezone);
         // Registers User Error Function Replacement
-        @set_error_handler('\LazyMePHP\Config\Internal\ErrorHandler');
+        @set_error_handler('\FrameWork\Config\Internal\ErrorHandler');
         // Registers Fatal Error Function Replacement */
-        @register_shutdown_function('\LazyMePHP\Config\Internal\FatalErrorShutdownHandler');
+        @register_shutdown_function('\FrameWork\Config\Internal\FatalErrorShutdownHandler');
     }
 
     /**
@@ -542,14 +552,16 @@ class APP
         $id = APP::DB_CONNECTION()->GetLastInsertedID('__LOG_ACTIVITY');
         $queryString = "INSERT INTO __LOG_ACTIVITY_OPTIONS (`id_log_activity`, `subOption`, `value`) VALUES ";
         $count = 0;
+        $queryStringData = array();
         foreach($_GET as $kArg => $arg) {
           if ($arg) {
-            $queryString.=($count>0?",":"")."($id, '".$kArg."', '".$arg."')";
+            $queryString.=($count>0?",":"")."(?,?,?)";
+            array_push($queryStringData,$id, $kArg, $arg);
             $count++;
           }
         }
         if ($count>0)
-          APP::DB_CONNECTION()->Query($queryString, $obj);
+          APP::DB_CONNECTION()->Query($queryString, $obj, $queryStringData);
 
         $count = 0;
         $queryString = "INSERT INTO __LOG_DATA (`id_log_activity`, `table`, `pk`, `method`, `field`, `dataBefore`, `dataAfter`) VALUES ";
@@ -560,7 +572,7 @@ class APP
             if (is_array($data['log'])) {
               foreach($data['log'] as $field => $values) {
                 $queryString.=($count>0?",":"")."(?,?,?,?,?,?,?)";
-                array_push($queryStringData,$id,'$table',(array_key_exists('pk',$data)?$data['pk']:''), (array_key_exists('method',$data)?$data['method']:''), $field, $values[0], $values[1]);
+                array_push($queryStringData,$id,$table,(array_key_exists('pk',$data)?$data['pk']:''), (array_key_exists('method',$data)?$data['method']:''), $field, $values[0], $values[1]);
                 $count++;
               }
             }
