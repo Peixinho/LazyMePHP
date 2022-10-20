@@ -90,7 +90,7 @@ SUM(LOG_ACTIVITY_NR) AS LOG_ACTIVITY_NR,
 SUM(LOG_ACTIVITY_OPTIONS_NR) AS LOG_ACTIVITY_OPTIONS_NR,
 SUM(LOG_ACTIVITY_DATA_NR) AS LOG_ACTIVITY_DATA_NR
 FROM (
-	SELECT COUNT(LA.id) AS LOG_ACTIVITY_NR, 0 AS LOG_ACTIVITY_OPTIONS_NR, 0 as LOG_ACTIVITY_DATA_NR
+	SELECT COUNT(DISTINCT LA.id) AS LOG_ACTIVITY_NR, 0 AS LOG_ACTIVITY_OPTIONS_NR, 0 as LOG_ACTIVITY_DATA_NR
 	FROM __LOG_ACTIVITY LA ".
   ($level2?" RIGHT JOIN __LOG_ACTIVITY_OPTIONS LAO ON LA.id=LAO.id_log_activity":"").
   ($level3?" RIGHT JOIN __LOG_DATA LD ON LA.id=LD.id_log_activity":"").
@@ -116,14 +116,15 @@ while($o = $rtn->FetchObject()) {
   $countLogActivityData = $o->LOG_ACTIVITY_DATA_NR;
 }
 
-$count = max($countLogActivity, $countLogActivityData);
-$page = (\array_key_exists('page', $_GET)?$_GET['page']:1);
+$count = $countLogActivity;
+$page = (\array_key_exists('page', $_GET)&&$_GET['page']?$_GET['page']:1);
 $limit = 1000;
 $countPage = ($count / $limit);
 $countPage+=(($count % $limit) != 0 ? 1:0);
+if ($page>$countPage) $page = $_GET['page'] = 1;
 
 $sql = "
-SELECT
+SELECT DISTINCT
   LA.id AS LA_ID,
   LA.date AS LA_DATE,
   LA.user AS LA_USER,
@@ -150,7 +151,7 @@ FROM
   ($level3?" RIGHT JOIN __LOG_DATA LD ON LA.id=LD.id_log_activity":"").
   (strlen($sqlFilter)>0?" WHERE $sqlFilter ":"")
   ." UNION ALL
-  SELECT
+  SELECT DISTINCT 
   LA.id AS LA_ID,
   LA.date AS LA_DATE,
   LA.user AS LA_USER,
@@ -216,7 +217,7 @@ echo "PK:<br> ";
 echo "<input type='text' name='pk' id='pk' value='".$_GET['pk']."' />";
 echo "<br>";
 echo "Method:<br> ";
-echo "<select name='method2' id='method2'><option value=''>-</option><option value='I' ".($_GET['method']=='I'?'selected':'').">Insert</option><option value='U' ".($_GET['method2']=='U'?'selected':'').">Update</option><option value='D' ".($_GET['method2']=='D'?'selected':'').">Delete</option></select>";
+echo "<select name='method2' id='method2'><option value=''>-</option><option value='I' ".($_GET['method2']=='I'?'selected':'').">Insert</option><option value='U' ".($_GET['method2']=='U'?'selected':'').">Update</option><option value='D' ".($_GET['method2']=='D'?'selected':'').">Delete</option></select>";
 echo "<br>";
 echo "Field:<br> ";
 echo "<input type='text' name='field' id='field' value='".$_GET['field']."' />";
@@ -285,12 +286,18 @@ while($o = $rtn->FetchObject()) {
   }
 
 }
-echo "<tr style='visibility:collapse;font-size:9pt;background: ".($count++%2==0?$color1:$color2)."' class='log_details' id='log_details_$lastActivityID'>";
-echo "<td colspan='3'>";
-echo "<ul>".$activityOptions."</ul>";
-echo "<ul>".$activityData."</ul>";
-echo "</td>";
-echo "</tr>";
+echo "<tr ".((strlen($activityData)>0 || strlen($activityOptions)>0)?"onclick='showId(".$lastActivityID.")' style='cursor:pointer;background: ".($count%2==0?$color1:$color2).";'": "")."'>";
+echo $activityLog;
+if (strlen($activityData)>0 || strlen($activityOptions)>0) {
+  echo "<tr style='visibility:collapse;font-size:9pt;background: ".($count++%2==0?$color1:$color2)."' class='log_details' id='log_details_$lastActivityID'>";
+  echo "<td colspan='3'>";
+  if (strlen($activityOptions)>0)
+    echo "<b>Activity Options (URL):</b><ul>".$activityOptions."</ul>";
+  if (strlen($activityData)>0)
+    echo "<b>Activity Data:</b><ul>".$activityData."</ul>";
+  echo "</td>";
+  echo "</tr>";
+}
 echo "</table>";
 
 		if ($page > 1) $pagination.="<a  href='".appendUrl("page",($page-1))."'>&lt;&lt;</a>";
