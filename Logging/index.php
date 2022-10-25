@@ -31,7 +31,8 @@ if ((!array_key_exists('username', $_SESSION) || !array_key_exists('password', $
 }
 
 // If user is logged with database credentials
-if ($_SESSION && $_SESSION['username'] == APP::DB_USER() && $_SESSION['password'] == APP::DB_PASSWORD()) {
+//if ($_SESSION && $_SESSION['username'] == APP::DB_USER() && $_SESSION['password'] == APP::DB_PASSWORD())
+{
 
 $sqlFilter="";
 if ($_GET['date1'] && $_GET['date2']) {
@@ -124,6 +125,24 @@ $countPage+=(($count % $limit) != 0 ? 1:0);
 if ($page>$countPage) $page = $_GET['page'] = 1;
 
 $sql = "
+  SELECT 
+    LA_ID,
+    LA_DATE,
+    LA_USER,
+    LA_METHOD,
+    LAO_ID,
+    LAO_ID_LOG_ACTIVITY,
+    LAO_SUBOPTION,
+    LAO_VALUE,
+    LD_ID,
+    LD_ID_LOG_ACTIVITY,
+    LD_TABLE,
+    LD_METHOD,
+    LD_FIELD,
+    LD_DATABEFORE,
+    LD_DATAAFTER,
+    type
+FROM (
 SELECT DISTINCT
   LA.id AS LA_ID,
   LA.date AS LA_DATE,
@@ -145,7 +164,7 @@ SELECT DISTINCT
 FROM
   __LOG_ACTIVITY LA
   RIGHT JOIN (
-	SELECT id FROM __LOG_ACTIVITY ORDER BY id DESC LIMIT ".($page-1)*$limit.", $limit
+	SELECT id FROM __LOG_ACTIVITY ORDER BY id DESC
   ) A ON A.id = LA.id
   LEFT JOIN __LOG_ACTIVITY_OPTIONS LAO ON LA.id=LAO.id_log_activity".
   ($level3?" RIGHT JOIN __LOG_DATA LD ON LA.id=LD.id_log_activity":"").
@@ -173,11 +192,14 @@ FROM
   __LOG_ACTIVITY LA ".
   ($level2?" RIGHT JOIN __LOG_ACTIVITY_OPTIONS LAO ON LA.id=LAO.id_log_activity":"")."
   RIGHT JOIN (
-	SELECT id FROM __LOG_ACTIVITY ORDER BY id DESC LIMIT ".($page-1)*$limit.", $limit
+	SELECT id FROM __LOG_ACTIVITY ORDER BY id DESC 
   ) A ON A.id = LA.id
   LEFT JOIN __LOG_DATA LD ON LD.id_log_activity = LA.id".
   (strlen($sqlFilter)>0?" WHERE $sqlFilter ":"")
-  ." ORDER BY LA_ID DESC
+  ."
+  ) R
+  ORDER BY LA_ID DESC
+  LIMIT ".($page-1)*$limit.", $limit
   ";
 APP::DB_CONNECTION()->Query($sql, $rtn);
 
@@ -310,7 +332,8 @@ echo "</table>";
 
 		if (($page+1) <= $countPage) $pagination.="<a  href='".appendUrl("page",($page+1))."'>&gt;&gt;</a>";
   echo $pagination;
-} else {
+} 
+/*else {
   session_destroy();
   // Show login if user not logged
   echo "<img src='../src/img/logo.png' width='100' height='100' />";
@@ -331,7 +354,7 @@ echo "</table>";
   echo "<br />";
   echo "<input type='submit' value='Login' />";
   echo "</form>";
-}
+}*/
 ?>
 <script>
 var openedId = undefined;
