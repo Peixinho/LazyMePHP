@@ -31,7 +31,7 @@ if ((!array_key_exists('username', $_SESSION) || !array_key_exists('password', $
 }
 
 // If user is logged with database credentials
-//if ($_SESSION && $_SESSION['username'] == APP::DB_USER() && $_SESSION['password'] == APP::DB_PASSWORD())
+if ($_SESSION && $_SESSION['username'] == APP::DB_USER() && $_SESSION['password'] == APP::DB_PASSWORD())
 {
 
 $sqlFilter="";
@@ -333,7 +333,7 @@ echo "</table>";
 		if (($page+1) <= $countPage) $pagination.="<a  href='".appendUrl("page",($page+1))."'>&gt;&gt;</a>";
   echo $pagination;
 } 
-/*else {
+else {
   session_destroy();
   // Show login if user not logged
   echo "<img src='../src/img/logo.png' width='100' height='100' />";
@@ -354,7 +354,7 @@ echo "</table>";
   echo "<br />";
   echo "<input type='submit' value='Login' />";
   echo "</form>";
-}*/
+}
 ?>
 <script>
 var openedId = undefined;
