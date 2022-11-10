@@ -1,13 +1,13 @@
 <?php
 /**
- * @copyright This file is part of the LazyMePHP Framework developed by Duarte Peixinho
+ * @copyright This file is part of the LazyMePHP LazyMePHP developed by Duarte Peixinho
  * @author Duarte Peixinho
  *
  * Source File Generated Automatically
  */
 
-namespace FrameWork\Forms;
-use \FrameWork\Config\Internal\APP;
+namespace LazyMePHP\Forms;
+use \LazyMePHP\Config\Internal\APP;
 session_start();
 
 require_once "../src/php/Configurations/Configurations.php";
