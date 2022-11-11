@@ -145,7 +145,6 @@ class BuildTableForms
 				fwrite($viewFile, "\n");
 				fwrite($viewFile, "namespace LazyMePHP\Forms;\n");
 				fwrite($viewFile, "use \LazyMePHP\Config\Internal\APP;\n");
-				fwrite($viewFile, "use \LazyMePHP\Classes;\n");
 				fwrite($viewFile, "\n");
 				fwrite($viewFile, "require_once __DIR__.\"/../Configurations/Configurations.php\";");
 				fwrite($viewFile, "\n");
