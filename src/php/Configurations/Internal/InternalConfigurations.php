@@ -6,9 +6,9 @@
 * @author Duarte Peixinho
 */
 
-namespace FrameWork\Config\Internal;
-use \FrameWork\DB\MYSQL;
-use \FrameWork\DB\MSSQL;
+namespace LazyMePHP\Config\Internal;
+use \LazyMePHP\DB\MYSQL;
+use \LazyMePHP\DB\MSSQL;
 
 function str_rot47($str)
 {
