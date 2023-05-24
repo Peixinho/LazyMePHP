@@ -22,14 +22,9 @@ $urlFiles = filter_input(INPUT_SERVER, "SERVER_NAME");
 require_once "Configurations/Configurations.php";
 
 /*
- * Process Post data
- */
-require_once "Core/Request/Request.php";
-
-/*
  * Enum
  */
-require_once "Core/Enum/Enum.class.php";
+require_once "Enum/Enum.class.php";
 
 /*
  * Helper Functions to Aliviate Stress :P
@@ -39,7 +34,7 @@ require_once "Helpers/Helper.php";
 /*
  * Validations
  */
-require_once "Core/Validations/Validations.php";
+require_once "Validations/Validations.php";
 
 /*
  * Error and Success Messages
@@ -54,7 +49,7 @@ require_once APP::ROOT_PATH()."/src/php/Values/Values.php";
 /*
  * Router
  */
-require_once APP::ROOT_PATH()."/src/php/Core/Router/Router.php";
+require_once APP::ROOT_PATH()."/src/php/Router/Router.php";
 
 /*
  * Include Generated Class Files
@@ -66,7 +61,7 @@ if(file_exists(APP::ROOT_PATH()."/src/php/Classes/includes.php"))
  * Default Controller Routes
  * when routing is not found
  */
-use LazyMePHP\Core\Router\Router;
+use LazyMePHP\Router\Router;
 Router::SetDefaultRouting("Default", APP::ROOT_PATH()."/src/php/Controllers/Default_controller.php");
 
 /*

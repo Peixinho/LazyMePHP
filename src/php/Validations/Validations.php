@@ -6,9 +6,9 @@
 * @author Duarte Peixinho
 */
 
-namespace LazyMePHP\Core\Validations;
+namespace LazyMePHP\Validations;
 
-use  \LazyMePHP\Core\Enum\Enum;
+use  \LazyMePHP\Enum\Enum;
 
 $ValidationsMethod = new Enum();
 $ValidationsMethod->Add("STRING",0);

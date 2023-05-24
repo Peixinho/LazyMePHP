@@ -7,7 +7,7 @@
 */
 
 namespace LazyMePHP\ValuesList;
-use \LazyMePHP\Core\Enum\Enum;
+use \LazyMePHP\Enum\Enum;
 
 
 class VALUESLIST {

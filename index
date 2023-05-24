@@ -28,7 +28,7 @@
         <div>
           <ul>
             <?php
-            foreach(\LazyMePHP\Core\Router\Router::GetRoutes()['controller'] as $controller => $route)
+            foreach(\LazyMePHP\Router\Router::GetRoutes()['controller'] as $controller => $route)
             {
               echo "<li><a href=\"".APP::URLENCODE("?controller=$controller")."\">$controller</a></li>";
             }

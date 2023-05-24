@@ -57,6 +57,10 @@ function ErrorHandler($errno, $errstr, $errfile, $errline)
         $message.="<br>".json_encode($_POST);
         $message.="<br>".json_encode($_GET);
         @Sendmail($from_mail, $to_mail, $subject, $message);
+        $errorMsg =
+                    "<div style=\"margin:5px;z-index:10000;position:absolute;background-color:#A31919;padding:10px;color:#FFFF66;font-family:sans-serif;font-size:8pt;\">
+                        An email with this message was sent to the developer.
+                    </div>";
 		    echo $errorMsg;
         die();
     }

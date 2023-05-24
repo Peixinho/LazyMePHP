@@ -6,8 +6,8 @@
 * @author Duarte Peixinho
 */
 
-namespace LazyMePHP\Core\Enum;
-use LazyMePHP\Core\Enum\EnumProperty;
+namespace LazyMePHP\Enum;
+use LazyMePHP\Enum\EnumProperty;
 
 // Required
 require_once 'EnumProperty.class.php';

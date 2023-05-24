@@ -6,7 +6,7 @@
 * @author Duarte Peixinho
 */
 
-namespace LazyMePHP\Core\Router;
+namespace LazyMePHP\Router;
 use LazyMePHP\Config\Internal\APP;
 
 class Route {

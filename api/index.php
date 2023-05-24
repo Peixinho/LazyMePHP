@@ -29,7 +29,7 @@ use \LazyMePHP\Config\Internal\APP;
 /*
  * Router
  */
-require_once "../src/php/Core/Router/Router.php";
+require_once "../src/php/Router/Router.php";
 
 /*
  * Include Generated Class Files
@@ -40,7 +40,7 @@ if(file_exists(APP::ROOT_PATH()."/src/php/Classes/includes.php"))
 /*
  * Routes
  */
-use \LazyMePHP\Core\Router\Router;
+use \LazyMePHP\Router\Router;
 Router::SetDefaultRouting("APIRequest", "./APIRequest.php");
 
 if(file_exists("src/RouteAPI.php"))

@@ -67,7 +67,7 @@ class BuildTableAPI
 					fwrite($routerFile," */");
 					fwrite($routerFile, "\n");
 					fwrite($routerFile, "\n");
-					fwrite($routerFile, "use \LazyMePHP\Core\Router\Router;");
+					fwrite($routerFile, "use \LazyMePHP\Router\Router;");
 					fwrite($routerFile, "\n");
 					fwrite($routerFile, "\n");
 

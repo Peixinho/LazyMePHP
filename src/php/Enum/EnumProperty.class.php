@@ -6,7 +6,7 @@
 * @author Duarte Peixinho
 */
 
-namespace LazyMePHP\Core\Enum;
+namespace LazyMePHP\Enum;
 
 /**
  *
