@@ -59,10 +59,10 @@ class BuildTableForms
 					fwrite($routerFile, "\n");
 					fwrite($routerFile, "use LazyMePHP\Config\Internal\APP;");
 					fwrite($routerFile, "\n");
-					fwrite($routerFile, "use LazyMePHP\Router\Router;");
+					fwrite($routerFile, "use LazyMePHP\Core\Router\Router;");
 					fwrite($routerFile, "\n");
 					fwrite($routerFile, "\n");
-					fwrite($routerFile,"require_once APP::ROOT_PATH().\"/src/php/Router/Router.php\";");
+					fwrite($routerFile,"require_once APP::ROOT_PATH().\"/src/php/Core/Router/Router.php\";");
 					fwrite($routerFile, "\n");
 					fwrite($routerFile, "\n");
         }
@@ -458,7 +458,7 @@ class BuildTableForms
 				fwrite($controllerFile, "\n");
 				fwrite($controllerFile, "namespace LazyMePHP\Forms;\n");
 				fwrite($controllerFile, "use \LazyMePHP\Config\Internal\APP;\n");
-				fwrite($controllerFile, "use \LazyMePHP\Classes;\n");
+				fwrite($controllerFile, "use \LazyMePHP\Core\Request\Request;\n");
 				fwrite($controllerFile, "\n");
 				fwrite($controllerFile, "require_once __DIR__.\"/../Configurations/Configurations.php\";");
 				fwrite($controllerFile, "\n");
@@ -504,10 +504,10 @@ class BuildTableForms
 						{
 							if (!$field->AllowNull())
 							{
-								fwrite($controllerFile, "\t\tif (filter_input(INPUT_POST, \"".$field->GetName()."\")===false) \$fieldsNull .= (!is_null(\$fieldsNull)?\",\":\"\").\"".$field->GetName()."\";");
+								fwrite($controllerFile, "\t\tif (!Request::\$request->".$field->GetName().") \$fieldsNull .= (!is_null(\$fieldsNull)?\",\":\"\").\"".$field->GetName()."\";");
 								fwrite($controllerFile, "\n");
 							}
-							fwrite($controllerFile, "\t\t".(!$field->AllowNull()?"else ":"")."\$obj->Set".$field->GetName()."(filter_input(INPUT_POST, \"".$field->GetName()."\"));");
+							fwrite($controllerFile, "\t\t".(!$field->AllowNull()?"else ":"")."\$obj->Set".$field->GetName()."(Request::\$request->".$field->GetName().");");
 							fwrite($controllerFile, "\n");
 						}
 					}

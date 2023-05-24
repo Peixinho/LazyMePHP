@@ -7,7 +7,7 @@
 */
 
 namespace LazyMePHP\Messages;
-use \LazyMePHP\Enum\Enum;
+use \LazyMePHP\Core\Enum\Enum;
 
 function ShowError($err)
 {
