@@ -1,8 +1,8 @@
 <?php
 
 /**
- * FrameWork
-* @copyright This file is part of the FrameWork developed by Duarte Peixinho
+ * LazyMePHP
+* @copyright This file is part of the LazyMePHP Framework developed by Duarte Peixinho
 * @author Duarte Peixinho
 */
 
@@ -57,10 +57,6 @@ function ErrorHandler($errno, $errstr, $errfile, $errline)
         $message.="<br>".json_encode($_POST);
         $message.="<br>".json_encode($_GET);
         @Sendmail($from_mail, $to_mail, $subject, $message);
-        $errorMsg =
-                    "<div style=\"margin:5px;z-index:10000;position:absolute;background-color:#A31919;padding:10px;color:#FFFF66;font-family:sans-serif;font-size:8pt;\">
-                        An email with this message was sent to the developer.
-                    </div>";
 		    echo $errorMsg;
         die();
     }
@@ -531,9 +527,9 @@ class APP
         // Set Timezone
         date_default_timezone_set(APP::$_app_timezone);
         // Registers User Error Function Replacement
-        @set_error_handler('\FrameWork\Config\Internal\ErrorHandler');
+        @set_error_handler('\LazyMePHP\Config\Internal\ErrorHandler');
         // Registers Fatal Error Function Replacement */
-        @register_shutdown_function('\FrameWork\Config\Internal\FatalErrorShutdownHandler');
+        @register_shutdown_function('\LazyMePHP\Config\Internal\FatalErrorShutdownHandler');
     }
 
     /**

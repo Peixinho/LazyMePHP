@@ -13,6 +13,7 @@ class Request {
   static $request;
 
   static function Process() {
+    if ($_POST)
     foreach($_POST as $k => $p)
     {
      Request::$request->{$k} = filter_input(INPUT_POST, $k);
