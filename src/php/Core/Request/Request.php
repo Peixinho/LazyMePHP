@@ -17,6 +17,8 @@ class Request {
     {
      Request::$request->{$k} = filter_input(INPUT_POST, $k);
     }
+    // Clear Post
+    $_POST = array();
   }
 }
 
