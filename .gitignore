@@ -1,5 +1,5 @@
-src/php/Configurations/Configurations.php
-src/php/Classes
-src/php/Controllers
-src/php/Views
-api/src
+src/Configurations/Configurations.php
+src/Classes
+src/Controllers
+src/Views
+src/api
