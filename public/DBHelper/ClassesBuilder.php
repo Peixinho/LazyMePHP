@@ -8,7 +8,6 @@
 
 namespace LazyMePHP\ClassesBuilder;
 use \LazyMePHP\Config\Internal\APP;
-use \LazyMePHP\DatabaseHelper;
 
 require_once 'DatabaseHelper.php';
 
@@ -47,17 +46,17 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
 	function __construct($classesPath, $tablesList, $replaceInclude, $tableDescriptors)
 	{
     // Create Folder if doesn't exist
-    if (!is_dir($classesPath)) \LazyMePHP\Helper\MKDIR($classesPath);
+    if (!is_dir(APP::ROOT_PATH()."/".$classesPath)) \LazyMePHP\Helper\MKDIR(APP::ROOT_PATH()."/".$classesPath);
 
     $failedIncludeFile = false;
 
     // Create Last File to Help on Requires
 		if ($replaceInclude) {
-			if (\LazyMePHP\Helper\UNLINK($classesPath."/includes.php"))
+			if (\LazyMePHP\Helper\UNLINK(APP::ROOT_PATH()."/".$classesPath."/includes.php"))
 			{
-				if (\LazyMePHP\Helper\TOUCH($classesPath."/includes.php"))
+				if (\LazyMePHP\Helper\TOUCH(APP::ROOT_PATH()."/".$classesPath."/includes.php"))
 				{
-          $classFile = fopen($classesPath."/includes.php","w+");
+          $classFile = fopen(APP::ROOT_PATH()."/".$classesPath."/includes.php","w+");
           fwrite($classFile,"<?php");
           fwrite($classFile, "\n");
           fwrite($classFile, "\n");
@@ -72,14 +71,15 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
           fwrite($classFile, "\n");
           fwrite($classFile," */");
           fwrite($classFile, "\n");
+          fwrite($classFile, "use \LazyMePHP\Config\Internal\APP;\n");
         }
         else {
-          echo "ERROR: Check your permissions to write ".$classesPath."/includes.php";
+          echo "ERROR: Check your permissions to write ".APP::ROOT_PATH()."/".$classesPath."/includes.php";
           $failedIncludeFile = true;
         }
       }
       else {
-        echo "ERROR: Check your permissions to write ".$classesPath."/includes.php";
+        echo "ERROR: Check your permissions to write ".APP::ROOT_PATH()."/".$classesPath."/includes.php";
         $failedIncludeFile = true;
       }
     }
@@ -106,7 +106,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
 
       if ($replaceInclude && !$failedIncludeFile) {
         fwrite($classFile, "\n");
-        fwrite($classFile, "require_once __DIR__.'/".$o->Table.".php';");
+        fwrite($classFile, "require_once APP::ROOT_PATH().'/$classesPath/".$o->Table.".php';");
       }
     }
 
@@ -121,11 +121,11 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
 	{
 		$db->GetFieldsFromDB();
 
-    if (\LazyMePHP\Helper\UNLINK($classesPath."/".$db->GetTableName().".php"))
+    if (\LazyMePHP\Helper\UNLINK(APP::ROOT_PATH()."/".$classesPath."/".$db->GetTableName().".php"))
     {
-      if (\LazyMePHP\Helper\TOUCH($classesPath."/".$db->GetTableName().".php"))
+      if (\LazyMePHP\Helper\TOUCH(APP::ROOT_PATH()."/".$classesPath."/".$db->GetTableName().".php"))
       {
-        $classFile = fopen($classesPath."/".$db->GetTableName().".php","w+");
+        $classFile = fopen(APP::ROOT_PATH()."/".$classesPath."/".$db->GetTableName().".php","w+");
         fwrite($classFile,"<?php");
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
@@ -147,7 +147,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "use \LazyMePHP\ClassesBuilder\IDB_CLASS_LIST;\n");
         fwrite($classFile, "use \LazyMePHP\Config\Internal\APP;\n");
         fwrite($classFile, "\n");
-        fwrite($classFile, "require_once APP::ROOT_PATH().\"/src/php/DB/IDB.php\";");
+        fwrite($classFile, "require_once APP::ROOT_PATH().\"/src/DB/IDB.php\";");
         fwrite($classFile, "\n");
         fwrite($classFile, "require_once \"includes.php\";");
         fwrite($classFile, "\n");

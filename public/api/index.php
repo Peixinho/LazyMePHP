@@ -22,20 +22,20 @@ function utf8ize( $mixed ) {
 /*
  * Add LazyMePHP Configuration File
  */
-require_once "../src/php/Configurations/Configurations.php";
+require_once "../../src/Configurations/Configurations.php";
 
 use \LazyMePHP\Config\Internal\APP;
 
 /*
  * Router
  */
-require_once "../src/php/Router/Router.php";
+require_once APP::ROOT_PATH()."/src/Router/Router.php";
 
 /*
  * Include Generated Class Files
  */
-if(file_exists(APP::ROOT_PATH()."/src/php/Classes/includes.php"))
-    require_once APP::ROOT_PATH()."/src/php/Classes/includes.php";
+if(file_exists(APP::ROOT_PATH()."/src/Classes/includes.php"))
+    require_once APP::ROOT_PATH()."/src/Classes/includes.php";
 
 /*
  * Routes

@@ -10,7 +10,7 @@ use \LazyMePHP\Config\Internal\APP;
 session_start();
 
 require_once 'DatabaseHelper.php';
-require_once '../src/php/Configurations/Configurations.php';
+require_once '../../src/Configurations/Configurations.php';
 require_once 'ClassesBuilder.php';
 require_once 'FormsBuilder.php';
 require_once 'APIBuilder.php';
@@ -82,7 +82,7 @@ if ($_SESSION && $_SESSION['username'] == APP::DB_USER() && $_SESSION['password'
     }
 
     if (!filter_input(INPUT_POST, 'step1')) {
-        echo "<img src='../src/img/logo.png'/>";
+        echo "<img src='../img/logo.png'/>";
         echo "<br>";
         echo "<br>";
         echo "<h3>Tables Found in Database</h3>";
@@ -115,13 +115,13 @@ if ($_SESSION && $_SESSION['username'] == APP::DB_USER() && $_SESSION['password'
         $tableText .= "<br>";
         $tableText .= "Path defined in config: ".APP::ROOT_PATH()."/";
         $tableText .= "<br>";
-        $tableText .= "Classes Path: <input name='classes_path' type='text' value='src/php/Classes' readonly />";
+        $tableText .= "Classes Path: <input name='classes_path' type='text' value='src/Classes' readonly />";
         $tableText .= "<br>";
-        $tableText .= "Controllers Path: <input name='forms_controller_path' type='text' value='src/php/Controllers' readonly />";
+        $tableText .= "Controllers Path: <input name='forms_controller_path' type='text' value='src/Controllers' readonly />";
         $tableText .= "<br>";
-        $tableText .= "Views Path: <input name='forms_view_path' type='text' value='src/php/Views' readonly />";
+        $tableText .= "Views Path: <input name='forms_view_path' type='text' value='src/Views' readonly />";
         $tableText .= "<br>";
-        $tableText .= "API Path: <input name='api_path' type='text' value='api/src' readonly />";
+        $tableText .= "API Path: <input name='api_path' type='text' value='public/api/src' readonly />";
         $tableText .= "<br>";
         $tableText .= "<br>";
 
@@ -150,17 +150,17 @@ if ($_SESSION && $_SESSION['username'] == APP::DB_USER() && $_SESSION['password'
         echo $tableText;
     }
     if (filter_input(INPUT_POST, 'step1')) {
-        echo "<img src='../src/img/logo.png'/>";
+        echo "<img src='../img/logo.png'/>";
         echo "<br>";
         echo "<br>";
         if (filter_input(INPUT_POST, 'classes_path') &&
         filter_input(INPUT_POST, 'forms_controller_path') &&
         filter_input(INPUT_POST, 'forms_view_path') &&
         filter_input(INPUT_POST, 'api_path')) {
-            $helper = new \LazyMePHP\ClassesBuilder\BuildTableClasses(APP::ROOT_PATH()."/".filter_input(INPUT_POST, 'classes_path'), $_POST['class'], filter_input(INPUT_POST, 'replace_include'), $_POST['tableDescriptors']);
+            $helper = new \LazyMePHP\ClassesBuilder\BuildTableClasses(filter_input(INPUT_POST, 'classes_path'), $_POST['class'], filter_input(INPUT_POST, 'replace_include'), $_POST['tableDescriptors']);
             echo "Classes Built!<br>";
-            $helper2 = new \LazyMePHP\FormsBuilder\BuildTableForms(APP::ROOT_PATH()."/".filter_input(INPUT_POST, 'forms_controller_path'), APP::ROOT_PATH()."/".filter_input(INPUT_POST, 'forms_view_path'), filter_input(INPUT_POST, 'classes_path'), $_POST['form'], filter_input(INPUT_POST, 'replace_routeforms'), filter_input(INPUT_POST, 'forms_class',FILTER_DEFAULT, FILTER_REQUIRE_ARRAY));
-            $helper3 = new \LazyMePHP\FormsBuilder\BuildTableAPI(APP::ROOT_PATH()."/".filter_input(INPUT_POST, 'api_path'), filter_input(INPUT_POST, "classes_path"), $_POST['api'], filter_input(INPUT_POST, 'replace_routeapi'));
+            $helper2 = new \LazyMePHP\FormsBuilder\BuildTableForms(filter_input(INPUT_POST, 'forms_controller_path'), filter_input(INPUT_POST, 'forms_view_path'), filter_input(INPUT_POST, 'classes_path'), $_POST['form'], filter_input(INPUT_POST, 'replace_routeforms'), filter_input(INPUT_POST, 'forms_class',FILTER_DEFAULT, FILTER_REQUIRE_ARRAY));
+            $helper3 = new \LazyMePHP\FormsBuilder\BuildTableAPI(filter_input(INPUT_POST, 'api_path'), filter_input(INPUT_POST, "classes_path"), $_POST['api'], filter_input(INPUT_POST, 'replace_routeapi'));
             echo "Api Built!<br>";
         } else echo "Paths not available";
         echo "Classes and Forms Built!<br>";
@@ -168,7 +168,7 @@ if ($_SESSION && $_SESSION['username'] == APP::DB_USER() && $_SESSION['password'
 } else {
   session_destroy();
   // Show login if user not logged
-  echo "<img src='../src/img/logo.png'/>";
+  echo "<img src='../img/logo.png'/>";
   echo "<br>";
   echo "<br>";
   echo "<b>Login in with database credentials to continue</b>";

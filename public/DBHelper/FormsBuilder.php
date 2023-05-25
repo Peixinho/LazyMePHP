@@ -8,7 +8,6 @@
 
 namespace LazyMePHP\FormsBuilder;
 use \LazyMePHP\Config\Internal\APP;
-use \LazyMePHP\DatabaseHelper;
 
 require_once 'DatabaseHelper.php';
 require_once 'Helper.php';
@@ -30,17 +29,17 @@ class BuildTableForms
 	function __construct($controllersPath, $viewsPath, $classesPath, $tablesList, $replaceRouteForms, $cssClass)
 	{
     // Create Folder if doesn't exist
-    if (!is_dir($controllersPath)) \LazyMePHP\Helper\MKDIR($controllersPath);
+    if (!is_dir(APP::ROOT_PATH()."/".$controllersPath)) \LazyMePHP\Helper\MKDIR(APP::ROOT_PATH()."/".$controllersPath);
 
     $failedRouterFile = false;
 
     // Create Last File to Help on Requires
 		if ($replaceRouteForms) {
-			if (\LazyMePHP\Helper\UNLINK($controllersPath."/RouteForms.php"))
+			if (\LazyMePHP\Helper\UNLINK(APP::ROOT_PATH()."/".$controllersPath."/RouteForms.php"))
 			{
-				if (\LazyMePHP\Helper\TOUCH($controllersPath."/RouteForms.php"))
+				if (\LazyMePHP\Helper\TOUCH(APP::ROOT_PATH()."/".$controllersPath."/RouteForms.php"))
 				{
-          $routerFile = fopen($controllersPath."/RouteForms.php","w+");
+          $routerFile = fopen(APP::ROOT_PATH()."/".$controllersPath."/RouteForms.php","w+");
 					fwrite($routerFile,"<?php");
 					fwrite($routerFile, "\n");
 					fwrite($routerFile, "\n");
@@ -62,7 +61,7 @@ class BuildTableForms
 					fwrite($routerFile, "use LazyMePHP\Router\Router;");
 					fwrite($routerFile, "\n");
 					fwrite($routerFile, "\n");
-					fwrite($routerFile,"require_once APP::ROOT_PATH().\"/src/php/Router/Router.php\";");
+					fwrite($routerFile,"require_once APP::ROOT_PATH().\"/src/Router/Router.php\";");
 					fwrite($routerFile, "\n");
 					fwrite($routerFile, "\n");
         }
@@ -100,7 +99,7 @@ class BuildTableForms
       }
 
       if ($replaceRouteForms && !$failedRouterFile) {
-        fwrite($routerFile, "Router::Create(\"controller\", \"".$o->Table."\", __DIR__.\"/".$o->Table.".Controller.php\");");
+        fwrite($routerFile, "Router::Create(\"controller\", \"".$o->Table."\", APP::ROOT_PATH().\"/$controllersPath/".$o->Table.".Controller.php\");");
         fwrite($routerFile, "\n");
       }
     }
@@ -115,18 +114,18 @@ class BuildTableForms
 	protected function ConstructForm($controllersPath, $classesPath, $db, $cssClass)
 	{
     // Create Folder if doesn't exist
-    if (!is_dir($controllersPath)) \LazyMePHP\Helper\MKDIR($controllersPath);
+    if (!is_dir(APP::ROOT_PATH()."/".$controllersPath)) \LazyMePHP\Helper\MKDIR(APP::ROOT_PATH()."/".$controllersPath);
 
-		if (\LazyMePHP\Helper\UNLINK($controllersPath."/".$db->GetTableName().".View.php"))
+		if (\LazyMePHP\Helper\UNLINK(APP::ROOT_PATH()."/".$controllersPath."/".$db->GetTableName().".View.php"))
 		{
-			if (\LazyMePHP\Helper\TOUCH($controllersPath."/".$db->GetTableName().".View.php"))
+			if (\LazyMePHP\Helper\TOUCH(APP::ROOT_PATH()."/".$controllersPath."/".$db->GetTableName().".View.php"))
 			{
         $buttonClass = $cssClass['button'];
         $inputClass = $cssClass['input'];
         $anchorClass = $cssClass['anchor'];
         $tableClass = $cssClass['table'];
 
-				$viewFile = fopen($controllersPath."/".$db->GetTableName().".View.php","w+");
+				$viewFile = fopen(APP::ROOT_PATH()."/".$controllersPath."/".$db->GetTableName().".View.php","w+");
 				fwrite($viewFile,"<?php");
 				fwrite($viewFile, "\n");
 				fwrite($viewFile, "\n");
@@ -146,9 +145,9 @@ class BuildTableForms
 				fwrite($viewFile, "namespace LazyMePHP\Forms;\n");
 				fwrite($viewFile, "use \LazyMePHP\Config\Internal\APP;\n");
 				fwrite($viewFile, "\n");
-				fwrite($viewFile, "require_once __DIR__.\"/../Configurations/Configurations.php\";");
+				fwrite($viewFile, "require_once APP::ROOT_PATH().\"/src/Configurations/Configurations.php\";");
 				fwrite($viewFile, "\n");
-				fwrite($viewFile, "require_once \"".$classesPath."/includes.php\";");
+				fwrite($viewFile, "require_once APP::ROOT_PATH().\"/".$classesPath."/includes.php\";");
 				fwrite($viewFile, "\n");
 				fwrite($viewFile, "\n");
 
@@ -433,13 +432,13 @@ class BuildTableForms
 	function ConstructController($controllersPath, $viewsPath, $classesPath, $db)
 	{
     // Create Folder if doesn't exist
-    if (!is_dir($controllersPath)) \LazyMePHP\Helper\MKDIR($controllersPath);
+    if (!is_dir(APP::ROOT_PATH()."/".$controllersPath)) \LazyMePHP\Helper\MKDIR(APP::ROOT_PATH()."/".$controllersPath);
 
-		if (\LazyMePHP\Helper\UNLINK($controllersPath."/".$db->GetTableName().".Controller.php"))
+		if (\LazyMePHP\Helper\UNLINK(APP::ROOT_PATH()."/".$controllersPath."/".$db->GetTableName().".Controller.php"))
 		{
-			if (\LazyMePHP\Helper\TOUCH($controllersPath."/".$db->GetTableName().".Controller.php"))
+			if (\LazyMePHP\Helper\TOUCH(APP::ROOT_PATH()."/".$controllersPath."/".$db->GetTableName().".Controller.php"))
 			{
-				$controllerFile = fopen($controllersPath."/".$db->GetTableName().".Controller.php","w+");
+				$controllerFile = fopen(APP::ROOT_PATH()."/".$controllersPath."/".$db->GetTableName().".Controller.php","w+");
 				fwrite($controllerFile,"<?php");
 				fwrite($controllerFile, "\n");
 				fwrite($controllerFile, "\n");
@@ -458,11 +457,10 @@ class BuildTableForms
 				fwrite($controllerFile, "\n");
 				fwrite($controllerFile, "namespace LazyMePHP\Forms;\n");
 				fwrite($controllerFile, "use \LazyMePHP\Config\Internal\APP;\n");
-				fwrite($controllerFile, "use \LazyMePHP\Classes;\n");
 				fwrite($controllerFile, "\n");
-				fwrite($controllerFile, "require_once __DIR__.\"/../Configurations/Configurations.php\";");
+				fwrite($controllerFile, "require_once APP::ROOT_PATH().\"/src/Configurations/Configurations.php\";");
 				fwrite($controllerFile, "\n");
-				fwrite($controllerFile, "require_once \"".$classesPath."/includes.php\";");
+				fwrite($controllerFile, "require_once APP::ROOT_PATH().\"/".$classesPath."/includes.php\";");
 				fwrite($controllerFile, "\n");
 				fwrite($controllerFile, "\n");
 
@@ -540,7 +538,7 @@ class BuildTableForms
 					fwrite($controllerFile, "\n");
 					fwrite($controllerFile, "\tdefault:");
 					fwrite($controllerFile, "\n");
-					fwrite($controllerFile, "\t\trequire_once __DIR__.\"/../Views/".$db->GetTableName().".View.php\";");
+					fwrite($controllerFile, "\t\trequire_once APP::ROOT_PATH().\"/src/Views/".$db->GetTableName().".View.php\";");
 					fwrite($controllerFile, "\n");
 					fwrite($controllerFile, "\tbreak;");
 					fwrite($controllerFile, "\n");

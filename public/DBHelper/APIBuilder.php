@@ -42,15 +42,15 @@ class BuildTableAPI
     }
 
     // Create Folder if doesn't exist
-    if (!is_dir($apiPath)) \LazyMePHP\Helper\MKDIR($apiPath);
+    if (!is_dir(APP::ROOT_PATH()."/".$apiPath)) \LazyMePHP\Helper\MKDIR(APP::ROOT_PATH()."/".$apiPath);
 
 		// Create Routing Rules
 		if ($replaceRouteApi) {
-			if (\LazyMePHP\Helper\UNLINK($apiPath."/RouteAPI.php"))
+			if (\LazyMePHP\Helper\UNLINK(APP::ROOT_PATH()."/".$apiPath."/RouteAPI.php"))
 			{
-				if (\LazyMePHP\Helper\TOUCH($apiPath."/RouteAPI.php"))
+				if (\LazyMePHP\Helper\TOUCH(APP::ROOT_PATH()."/".$apiPath."/RouteAPI.php"))
 				{
-					$routerFile = fopen($apiPath."/RouteAPI.php","w+");
+					$routerFile = fopen(APP::ROOT_PATH()."/".$apiPath."/RouteAPI.php","w+");
 					fwrite($routerFile,"<?php");
 					fwrite($routerFile, "\n");
 					fwrite($routerFile, "\n");
@@ -127,13 +127,13 @@ class BuildTableAPI
 	protected function ConstructAPI($apiPath, $classesPath, $db)
 	{
     // Create Folder if doesn't exist
-    if (!is_dir($apiPath)) \LazyMePHP\Helper\MKDIR($apiPath);
+    if (!is_dir(APP::ROOT_PATH()."/".$apiPath)) \LazyMePHP\Helper\MKDIR(APP::ROOT_PATH()."/".$apiPath);
 
-		if (\LazyMePHP\Helper\UNLINK($apiPath."/".$db->GetTableName().".API.php"))
+		if (\LazyMePHP\Helper\UNLINK(APP::ROOT_PATH()."/".$apiPath."/".$db->GetTableName().".API.php"))
 		{
-			if (\LazyMePHP\Helper\TOUCH($apiPath."/".$db->GetTableName().".API.php"))
+			if (\LazyMePHP\Helper\TOUCH(APP::ROOT_PATH()."/".$apiPath."/".$db->GetTableName().".API.php"))
 			{
-				$apiFile = fopen($apiPath."/".$db->GetTableName().".API.php","w+");
+				$apiFile = fopen(APP::ROOT_PATH()."/".$apiPath."/".$db->GetTableName().".API.php","w+");
 				fwrite($apiFile,"<?php");
 				fwrite($apiFile, "\n");
 				fwrite($apiFile, "\n");
@@ -155,9 +155,9 @@ class BuildTableAPI
 				fwrite($apiFile, "\n");
 				fwrite($apiFile, "require_once APP::ROOT_PATH().\"/".$classesPath."/includes.php\";");
 				fwrite($apiFile, "\n");
-				fwrite($apiFile, "require_once __DIR__.\"/../APIRequest.php\";");
+				fwrite($apiFile, "require_once APP::ROOT_PATH().\"/public/api/APIRequest.php\";");
 				fwrite($apiFile, "\n");
-				fwrite($apiFile, "require_once __DIR__.\"/RouteAPI.php\";");
+				fwrite($apiFile, "require_once APP::ROOT_PATH().\"/public/api/src/RouteAPI.php\";");
 				fwrite($apiFile, "\n");
 				fwrite($apiFile, "\n");
 				fwrite($apiFile, "class ".$db->GetTableName()." extends APIRequest {");

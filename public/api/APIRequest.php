@@ -7,7 +7,6 @@
 */
 
 namespace LazyMePHP\API;
-use \LazyMePHP\Config\Internal\APP;
 
 class APIRequest {
 
