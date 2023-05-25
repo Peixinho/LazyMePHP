@@ -1,4 +1,4 @@
-![LazyMePHP](https://raw.githubusercontent.com/Peixinho/LazyMePHP/main/src/img/logo.png)
+![LazyMePHP](https://raw.githubusercontent.com/Peixinho/LazyMePHP/main/public/img/logo.png)
 
 LazyMePHP is a small and easy to learn/use PHP framework that I've been using for quite some time, with success, and that has some nice features:
  - MySQL and MSSQL support
