@@ -69,6 +69,8 @@ class BuildTableAPI
 					fwrite($routerFile, "\n");
 					fwrite($routerFile, "use \LazyMePHP\Router\Router;");
 					fwrite($routerFile, "\n");
+					fwrite($routerFile, "use \LazyMePHP\Config\Internal\APP;");
+					fwrite($routerFile, "\n");
 					fwrite($routerFile, "\n");
 
 					// Generate Default Visible Fields
@@ -98,7 +100,7 @@ class BuildTableAPI
 					APP::DB_CONNECTION()->Query($queryString, $sqlObj);
 					while ($o=$sqlObj->FetchObject())
 					{
-            fwrite($routerFile, "Router::Create(\"controller\", \"".$o->Table."\",\"src/".$o->Table.".API.php\");");
+            fwrite($routerFile, "Router::Create(\"controller\", \"".$o->Table."\",APP::ROOT_PATH().\"/$apiPath/".$o->Table.".API.php\");");
             fwrite($routerFile, "\n");
 					}
           fwrite($routerFile, "\n");
@@ -155,9 +157,9 @@ class BuildTableAPI
 				fwrite($apiFile, "\n");
 				fwrite($apiFile, "require_once APP::ROOT_PATH().\"/".$classesPath."/includes.php\";");
 				fwrite($apiFile, "\n");
-				fwrite($apiFile, "require_once APP::ROOT_PATH().\"/public/api/APIRequest.php\";");
+				fwrite($apiFile, "require_once APP::ROOT_PATH().\"/$apiPath/APIRequest.php\";");
 				fwrite($apiFile, "\n");
-				fwrite($apiFile, "require_once APP::ROOT_PATH().\"/public/api/src/RouteAPI.php\";");
+				fwrite($apiFile, "require_once APP::ROOT_PATH().\"/$apiPath/RouteAPI.php\";");
 				fwrite($apiFile, "\n");
 				fwrite($apiFile, "\n");
 				fwrite($apiFile, "class ".$db->GetTableName()." extends APIRequest {");

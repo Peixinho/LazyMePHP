@@ -121,7 +121,7 @@ if ($_SESSION && $_SESSION['username'] == APP::DB_USER() && $_SESSION['password'
         $tableText .= "<br>";
         $tableText .= "Views Path: <input name='forms_view_path' type='text' value='src/Views' readonly />";
         $tableText .= "<br>";
-        $tableText .= "API Path: <input name='api_path' type='text' value='public/api/src' readonly />";
+        $tableText .= "API Path: <input name='api_path' type='text' value='src/api' readonly />";
         $tableText .= "<br>";
         $tableText .= "<br>";
 
