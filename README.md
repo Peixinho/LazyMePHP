@@ -12,6 +12,8 @@ The only limitation is that you **REALLY** need to have a primary key in each ta
 
 If the structure of the database needs to be changed (added/removed columns, whatsoever) you can always regenerate all code (with some precautions).
 
+###Don't forget, you should only expose public folder
+
 # How to use it:
 ### Clone this repository as the base project you will be building:
 
@@ -27,7 +29,7 @@ php -S localhost:8001
 # but I advise you to use a real webserver like apache or whatever...
 ```
 
-Navigate into http://localhost:8001/ and fill out your form about the application you're building and database credentials you will connect, like in this example:
+Navigate into http://localhost:8001/public/ and fill out your form about the application you're building and database credentials you will connect, like in this example:
 
  - **Database Name** (*string*): 'myDatabase'
  - **Database User** (*string*): 'myDatabase_User'
