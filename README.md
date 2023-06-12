@@ -95,7 +95,8 @@ http://localhost:8001
 
 ## Forms and Routes
  Every table generated will have a Form that works as follows:
- - Each Table will have a Controller File by default in /src/phg/Controllers/[Table Name].Controller.php and will have a View File by default in /src/Views/[Table Name].View.php
+ - Each Table will have a Controller File by default in /src/Controllers/[Table Name].Controller.php
+ - Each Table will have 3 template files using BladeOne in /src/Views/[Table Name]/list,edit and template.blade.php
  - The file RoutingForms.php by default in /src/Controllers/RoutingForms.php is the one that defines the Routes to each Controller, and each Controller requires its View file
  - These routes can be defined like this:
  ```
@@ -110,7 +111,7 @@ http://localhost:8001
 ## Classes
 
 Every table generated will have a class that works as follows:
- - Each Table will have a Class File by default in /src/Classes/[Table Name].php and will have a View File by default in /src/phg/Views/[Table Name].View.php
+ - Each Table will have a Class File by default in /src/Classes/[Table Name].php 
  - All Classes will be in namespace \LazyMePHP\Classes
  - All Class columns have getters and setters *Get*[Column Name], *Set*[Column Name]
  - All Classes have Save method, if Id is provided when constructing object:
