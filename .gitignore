@@ -2,4 +2,5 @@ src/Configurations/Configurations.php
 src/Classes
 src/Controllers
 src/Views
+!src/Views/compiled
 src/api
