@@ -106,6 +106,10 @@ function P($name)
 		rename("index.php", "oldIndex");
 		rename("index", "index.php");
 
+    // Create compiled directory for bladeone
+    require_once "../DBHelper/Helper.php";
+    \LazyMePHP\Helper\MKDIR("../src/Views/compiled");
+
 		// Add Javacript File
 		file_put_contents('index.php',str_replace('<script src="/js/app.js"></script>','<script src="/js/'.P("app_name").'.js"></script>',file_get_contents('index.php')));
 		fopen('js/'.P("app_name").'.js', 'w');
