@@ -103,7 +103,9 @@ function P($name)
 		// Require newly created file
 		require_once "../src/Configurations/Configurations.php";
 
-		rename("index.php", "oldIndex");
+		//rename("index.php", "oldIndex");
+    // Remove old index instead of renaming it
+    unlink("index.php");
 		rename("index", "index.php");
 
     // Create compiled directory for bladeone
