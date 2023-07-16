@@ -338,7 +338,7 @@ echo "</table>";
 else {
   session_destroy();
   // Show login if user not logged
-  echo "<img src='../src/img/logo.png' width='100' height='100' />";
+  echo "<img src='../img/logo.png' width='100' height='100' />";
   echo "<br>";
   echo "<br>";
   echo "<b>Login in with database credentials to continue</b>";

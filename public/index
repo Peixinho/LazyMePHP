@@ -55,8 +55,8 @@
       $showMessage_E = (strlen($showMessage_E)>0?$showMessage_E."<br/>".$ErrorMessages->GetName($e):$ErrorMessages->GetName($e));
     }
     ?>
-    <script src="src/js/LazyMePHP.js?cache=<?php echo time(); ?>"></script>
-    <script src="/js/app.js"></script>
+    <script src="./js/LazyMePHP.js?cache=<?php echo time(); ?>"></script>
+    <script src="./js/app.js"></script>
     <script>
     <?php if (strlen($showMessage_E)>0) echo "LazyMePHP.ShowError('$showMessage_E');"; if (strlen($showMessage_S)>0) echo "LazyMePHP.ShowSuccess('$showMessage_S');"; ?>
     </script>
