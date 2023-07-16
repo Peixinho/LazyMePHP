@@ -230,9 +230,13 @@ class BuildTableForms
                 case "bit":
                   fwrite($viewFile, "\t<input type='checkbox' name='".$field->GetName()."' id='".$field->GetName()."' ".($inputClass?"class='".$inputClass."'":"")." value='1' {{\$_".$db->GetTableName()."->Get".$field->GetName()."()==1?\"checked\":\"\"}} />");
                   break;
-                case "float":
                 case "date":
+                  fwrite($viewFile, "\t<input type='date' name='".$field->GetName()."' id='".$field->GetName()."' ".($inputClass?"class='".$inputClass."'":"")." value='{{\$_".$db->GetTableName()."->Get".$field->GetName()."()}}' ".(!$field->AllowNull()?"validation='NOTNULL' validation-fail='".$field->GetName()." cannot be empty'":"")." ".($field->GetDataLength()?"maxlength='".$field->GetDataLength()."'":"")." />");
+                  break;
+                case "float":
                 case "int":
+                  fwrite($viewFile, "\t<input type='number' name='".$field->GetName()."' id='".$field->GetName()."' ".($inputClass?"class='".$inputClass."'":"")." value='{{\$_".$db->GetTableName()."->Get".$field->GetName()."()}}' ".(!$field->AllowNull()?"validation='NOTNULL' validation-fail='".$field->GetName()." cannot be empty'":"")." ".($field->GetDataLength()?"maxlength='".$field->GetDataLength()."'":"")." />");
+                  break;
                 case "varchar":
                   fwrite($viewFile, "\t<input type='text' name='".$field->GetName()."' id='".$field->GetName()."' ".($inputClass?"class='".$inputClass."'":"")." value='{{\$_".$db->GetTableName()."->Get".$field->GetName()."()}}' ".(!$field->AllowNull()?"validation='NOTNULL' validation-fail='".$field->GetName()." cannot be empty'":"")." ".($field->GetDataLength()?"maxlength='".$field->GetDataLength()."'":"")." />");
                   break;
@@ -365,7 +369,7 @@ class BuildTableForms
         fwrite($viewFile, "\n");
         fwrite($viewFile, "</table>");
         fwrite($viewFile, "\n");
-        fwrite($viewFile, "{{\$pagination}}");
+        fwrite($viewFile, "{!!\$pagination!!}");
       }
       else echo "ERROR: Check your permissions to write ".$viewsPath."/".$db->GetTableName().".View.php";
     }
