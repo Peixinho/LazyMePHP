@@ -41,7 +41,7 @@ if(file_exists(APP::ROOT_PATH()."/src/Classes/includes.php"))
  * Routes
  */
 use \LazyMePHP\Router\Router;
-Router::SetDefaultRouting("APIRequest", "./APIRequest.php");
+Router::SetDefaultRouting("APIRequest", APP::ROOT_PATH()."/src/api/APIRequest.php");
 
 if(file_exists(APP::ROOT_PATH()."/src/api/RouteAPI.php"))
 	require_once APP::ROOT_PATH()."/src/api/RouteAPI.php";
