@@ -211,7 +211,7 @@ class BuildTableForms
             if ($field->HasForeignKey() && !is_null($field->GetForeignField()))
             {
               fwrite($viewFile, "\n");
-              fwrite($viewFile, "\t<select name='".$field->GetName()."' ".($inputClass?"class='".$inputClass."'":"")." ".(!$field->AllowNull()?"validation='NOTNULL' validation-fail='".$field->GetName()." cannot be empty'":"")." />");
+              fwrite($viewFile, "\t<select name='".$field->GetName()."' ".($inputClass?"class='".$inputClass."'":"")." ".(!$field->AllowNull()?"validation='NOTNULL' validation-fail='".$field->GetName()." cannot be empty'":"").">");
               fwrite($viewFile, "\n");
               fwrite($viewFile, "\t\t<option value=''>-</option>");
               fwrite($viewFile, "\n");
@@ -303,7 +303,7 @@ class BuildTableForms
             fwrite($viewFile, "\n");
             fwrite($viewFile, "\t<b>".$field->GetName().":</b>");
             fwrite($viewFile, "\n");
-            fwrite($viewFile, "\t<select name='".$field->GetName()."' ".($inputClass?"class='".$inputClass."'":"")." />");
+            fwrite($viewFile, "\t<select name='".$field->GetName()."' ".($inputClass?"class='".$inputClass."'":"").">");
             fwrite($viewFile, "\n");
             fwrite($viewFile, "\t\t<option value=''>-</option>");
             fwrite($viewFile, "\n");
