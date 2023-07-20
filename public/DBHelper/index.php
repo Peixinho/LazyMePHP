@@ -160,7 +160,7 @@ if ($_SESSION && $_SESSION['username'] == APP::DB_USER() && $_SESSION['password'
             $helper = new \LazyMePHP\ClassesBuilder\BuildTableClasses(filter_input(INPUT_POST, 'classes_path'), $_POST['class'], filter_input(INPUT_POST, 'replace_include'), $_POST['tableDescriptors']);
             echo "Classes Built!<br>";
             $helper2 = new \LazyMePHP\FormsBuilder\BuildTableForms(filter_input(INPUT_POST, 'forms_controller_path'), filter_input(INPUT_POST, 'forms_view_path'), filter_input(INPUT_POST, 'classes_path'), $_POST['form'], filter_input(INPUT_POST, 'replace_routeforms'), filter_input(INPUT_POST, 'forms_class',FILTER_DEFAULT, FILTER_REQUIRE_ARRAY));
-            $helper3 = new \LazyMePHP\FormsBuilder\BuildTableAPI(filter_input(INPUT_POST, 'api_path'), filter_input(INPUT_POST, "classes_path"), $_POST['api'], filter_input(INPUT_POST, 'replace_routeapi'));
+            $helper3 = new \LazyMePHP\FormsBuilder\BuildTableAPI(filter_input(INPUT_POST, 'api_path'), filter_input(INPUT_POST, 'replace_routeapi'));
             echo "Api Built!<br>";
         } else echo "Paths not available";
         echo "Classes and Forms Built!<br>";

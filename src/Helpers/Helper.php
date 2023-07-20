@@ -10,11 +10,11 @@ namespace LazyMePHP\Helper;
 
 function TransformDateDDMMYYYtoYYYMMDD($date)
 {
-	return substr($date,6,4)."/".substr($date,3,2)."/".substr($date,0,2);
+  return substr($date,6,4)."/".substr($date,3,2)."/".substr($date,0,2);
 }
 function TransformDateYYYMMDDtoDDMMYYY($date)
 {
-	return substr($date,8,2)."/".substr($date,5,2)."/".substr($date,0,4);
+  return substr($date,8,2)."/".substr($date,5,2)."/".substr($date,0,4);
 }
 
 use Pecee\SimpleRouter\SimpleRouter as Router;
@@ -42,7 +42,7 @@ use Pecee\Http\Request;
  */
 function url(?string $name = null, $parameters = null, ?array $getParams = null): Url
 {
-    return Router::getUrl($name, $parameters, $getParams);
+  return Router::getUrl($name, $parameters, $getParams);
 }
 
 /**
@@ -50,7 +50,7 @@ function url(?string $name = null, $parameters = null, ?array $getParams = null)
  */
 function response(): Response
 {
-    return Router::response();
+  return Router::response();
 }
 
 /**
@@ -58,7 +58,7 @@ function response(): Response
  */
 function request(): Request
 {
-    return Router::request();
+  return Router::request();
 }
 
 /**
@@ -70,11 +70,11 @@ function request(): Request
  */
 function input($index = null, $defaultValue = null, ...$methods)
 {
-    if ($index !== null) {
-        return request()->getInputHandler()->value($index, $defaultValue, ...$methods);
-    }
+  if ($index !== null) {
+    return request()->getInputHandler()->value($index, $defaultValue, ...$methods);
+  }
 
-    return request()->getInputHandler();
+  return request()->getInputHandler();
 }
 
 /**
@@ -83,11 +83,14 @@ function input($index = null, $defaultValue = null, ...$methods)
  */
 function redirect(string $url, ?int $code = null): void
 {
-    if ($code !== null) {
-        response()->httpCode($code);
-    }
+  // Save activity before redirect
+  \LazyMePHP\Config\Internal\APP::LOG_ACTIVITY();
 
-    response()->redirect($url);
+  if ($code !== null) {
+    response()->httpCode($code);
+  }
+
+  response()->redirect($url);
 }
 
 /**
@@ -96,11 +99,11 @@ function redirect(string $url, ?int $code = null): void
  */
 function csrf_token(): ?string
 {
-    $baseVerifier = Router::router()->getCsrfVerifier();
-    if ($baseVerifier !== null) {
-        return $baseVerifier->getTokenProvider()->getToken();
-    }
+  $baseVerifier = Router::router()->getCsrfVerifier();
+  if ($baseVerifier !== null) {
+    return $baseVerifier->getTokenProvider()->getToken();
+  }
 
-    return null;
+  return null;
 }
 ?>

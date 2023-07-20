@@ -45,9 +45,9 @@ function ErrorHandler($errno, $errstr, $errfile, $errline)
 
     $message.="<br>";
     $message.="<br><b>Data</b>";
-    $message.="<br>".json_encode($_SESSION);
-    $message.="<br>".json_encode($_POST);
-    $message.="<br>".json_encode($_GET);
+    if (isset($_SESSION)) $message.="<br>".json_encode($_SESSION);
+    if (isset($_POST)) $message.="<br>".json_encode($_POST);
+    if (isset($_GET)) $message.="<br>".json_encode($_GET);
     @Sendmail($from_mail, $to_mail, $subject, $message);
     echo $errorMsg;
     die();
@@ -456,7 +456,7 @@ class APP
       $queryString = "INSERT INTO __LOG_ACTIVITY_OPTIONS (`id_log_activity`, `subOption`, `value`) VALUES ";
       $count = 0;
       $queryStringData = array();
-      foreach($_GET as $kArg => $arg) {
+      foreach(explode('/',\LazyMePHP\Helper\url()) as $kArg => $arg) {
         if ($arg) {
           $queryString.=($count>0?",":"")."(?,?,?)";
           array_push($queryStringData,$id, $kArg, $arg);
