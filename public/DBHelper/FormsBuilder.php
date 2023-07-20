@@ -56,14 +56,7 @@ class BuildTableForms
           fwrite($routerFile, "\n");
           fwrite($routerFile," */");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\n");
-          fwrite($routerFile, "use LazyMePHP\Config\Internal\APP;");
-          fwrite($routerFile, "\n");
-          fwrite($routerFile, "use LazyMePHP\Router\Router;");
-          fwrite($routerFile, "\n");
-          fwrite($routerFile, "\n");
-          fwrite($routerFile,"require_once APP::ROOT_PATH().\"/src/Router/Router.php\";");
-          fwrite($routerFile, "\n");
+          fwrite($routerFile, "use Pecee\SimpleRouter\SimpleRouter;");
           fwrite($routerFile, "\n");
         }
         else {
@@ -100,17 +93,40 @@ class BuildTableForms
       }
 
       if ($replaceRouteForms && !$failedRouterFile) {
-        fwrite($routerFile, "Router::Create(\"controller\", \"".$o->Table."\", APP::ROOT_PATH().\"/$controllersPath/".$o->Table.".Controller.php\");");
+        fwrite($routerFile, "/*");
+        fwrite($routerFile, "\n");
+        fwrite($routerFile, " * ".$db->GetTableName()." Routing");
+        fwrite($routerFile, "\n");
+        fwrite($routerFile, " */");
+        fwrite($routerFile, "\n");
+        fwrite($routerFile, "use LazyMePHP\Forms\\".$db->GetTableName().";");
+        fwrite($routerFile, "\n");
+        fwrite($routerFile, "require_once __DIR__.\"/../Controllers/".$db->GetTableName().".Controller.php\";");
+        fwrite($routerFile, "\n");
+        fwrite($routerFile, "SimpleRouter::get('/".$db->GetTableName()."', [".$db->GetTableName()."::class, 'Default']);");
+        fwrite($routerFile, "\n");
+        fwrite($routerFile, "SimpleRouter::get('/".$db->GetTableName()."/{".$db->GetPrimaryFieldName()."}/edit', function (\$".$db->GetPrimaryFieldName().") { return ".$db->GetTableName()."::Edit(\$".$db->GetPrimaryFieldName()."); });");
+        fwrite($routerFile, "\n");
+        fwrite($routerFile, "SimpleRouter::get('/".$db->GetTableName()."/new', function () { return ".$db->GetTableName()."::Edit(); });");
+        fwrite($routerFile, "\n");
+        fwrite($routerFile, "SimpleRouter::post('/".$db->GetTableName()."/{id}/save', function (\$".$db->GetPrimaryFieldName().") { return ".$db->GetTableName()."::Save(\$".$db->GetPrimaryFieldName()."); });");
+        fwrite($routerFile, "\n");
+        fwrite($routerFile, "SimpleRouter::post('/".$db->GetTableName()."/save', function () { return ".$db->GetTableName()."::Save(); });");
+        fwrite($routerFile, "\n");
+        fwrite($routerFile, "SimpleRouter::get('/".$db->GetTableName()."/{id}/delete', function (\$".$db->GetPrimaryFieldName().") { return ".$db->GetTableName()."::Delete(\$".$db->GetPrimaryFieldName()."); });");
+        fwrite($routerFile, "\n");
         fwrite($routerFile, "\n");
       }
     }
 
+    /*
     // Close Include file
     if ($replaceRouteForms && !$failedRouterFile) {
       fwrite($routerFile, "\n");
       fwrite($routerFile,"?>");
       fclose($routerFile);
     }
+*/
   }
 
   protected function ConstructForm($viewsPath, $db, $cssClass)
@@ -182,9 +198,6 @@ class BuildTableForms
         fwrite($viewFile, "\n");
         fwrite($viewFile," */");
         fwrite($viewFile, "\n");
-        fwrite($viewFile, "\n");
-        fwrite($viewFile, "use \LazyMePHP\Config\Internal\APP;");
-        fwrite($viewFile, "\n");
         fwrite($viewFile," ?>");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "\n");
@@ -202,8 +215,11 @@ class BuildTableForms
             break;
           } else $primaryKey = NULL;
         }
-        fwrite($viewFile, "<form method='POST' action='{{APP::URLENCODE(\"?controller=\$controller&action=save&".$primaryKey->GetName()."=\".\$_".$db->GetTableName()."->Get".$primaryKey->GetName()."())}}' onsubmit='return LazyMePHP.ValidateForm(this);'>");
+          fwrite($viewFile, "@if (\$_".$db->GetTableName()."->Get".$field->GetName()."()) <form method='POST' action='/".$db->GetTableName()."/{{\$_".$db->GetTableName()."->Get".$field->GetName()."()}}/save' onsubmit='return LazyMePHP.ValidateForm(this);'>");
+          fwrite($viewFile, "\n");
+          fwrite($viewFile, "@else <form method='POST' action='/".$db->GetTableName()."/save' onsubmit='return LazyMePHP.ValidateForm(this);'>");
         fwrite($viewFile, "\n");
+        fwrite($viewFile, "\t@endif");
         foreach ($db->GetTableFields() as $field) {
           if (!$field->IsAutoIncrement() || !$field->IsPrimaryKey())
           {
@@ -211,7 +227,7 @@ class BuildTableForms
             if ($field->HasForeignKey() && !is_null($field->GetForeignField()))
             {
               fwrite($viewFile, "\n");
-              fwrite($viewFile, "\t<select name='".$field->GetName()."' ".($inputClass?"class='".$inputClass."'":"")." ".(!$field->AllowNull()?"validation='NOTNULL' validation-fail='".$field->GetName()." cannot be empty'":"").">");
+              fwrite($viewFile, "\t<select name='".$field->GetName()."' ".($inputClass?"class='".$inputClass."'":"")." ".(!$field->AllowNull()?"validation='NOTNULL' validation-fail='".$field->GetName()." cannot be empty'":"")." />");
               fwrite($viewFile, "\n");
               fwrite($viewFile, "\t\t<option value=''>-</option>");
               fwrite($viewFile, "\n");
@@ -247,10 +263,11 @@ class BuildTableForms
           fwrite($viewFile, "\t<br/>");
           fwrite($viewFile, "\n");
         }
+        fwrite($viewFile, "\t<br/>");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "\t<input type='submit' name='submit' ".($buttonClass?"class='".$buttonClass."'":"")." value='Save' />");
         fwrite($viewFile, "\n");
-        fwrite($viewFile, "\t<input type='button' name='cancel' ".($buttonClass?"class='".$buttonClass."'":"")." value='Cancel' onclick='window.open(\"{{APP::URLENCODE(\"?controller=".$db->GetTableName()."\")}}\",\"_self\");' />");
+        fwrite($viewFile, "\t<input type='button' name='cancel' ".($buttonClass?"class='".$buttonClass."'":"")." value='Cancel' onclick='window.open(\"/".$db->GetTableName()."\",\"_self\");' />");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "</form>");
         fclose($viewFile);
@@ -281,7 +298,7 @@ class BuildTableForms
         fwrite($viewFile, "@include('".$db->GetTableName().".template')");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "\n");
-				fwrite($viewFile, "<a ".($anchorClass?"class='".$anchorClass."'":"")." href='{{APP::URLENCODE(\"?controller=".$db->GetTableName()."&action=new\")}}'>Add New</a>");
+				fwrite($viewFile, "<a ".($anchorClass?"class='".$anchorClass."'":"")." href='/".$db->GetTableName()."/new'>Add New</a>");
         fwrite($viewFile, "\t<br/>");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "\n");
@@ -294,7 +311,7 @@ class BuildTableForms
             // Write form for filter
             if (!$haveForeignMembers)
             {
-              fwrite($viewFile, "<form method='POST' action='{{APP::URLENCODE(\"?controller=\$controller\")}}'>");
+              fwrite($viewFile, "<form method='POST' action='/{{\$controller}}'>");
               fwrite($viewFile, "\n");
               fwrite($viewFile, "\t<input type='hidden' name='controller' value='{{\$controller}}' />");
               fwrite($viewFile, "\n");
@@ -303,7 +320,7 @@ class BuildTableForms
             fwrite($viewFile, "\n");
             fwrite($viewFile, "\t<b>".$field->GetName().":</b>");
             fwrite($viewFile, "\n");
-            fwrite($viewFile, "\t<select name='".$field->GetName()."' ".($inputClass?"class='".$inputClass."'":"").">");
+            fwrite($viewFile, "\t<select name='".$field->GetName()."' ".($inputClass?"class='".$inputClass."'":"")." />");
             fwrite($viewFile, "\n");
             fwrite($viewFile, "\t\t<option value=''>-</option>");
             fwrite($viewFile, "\n");
@@ -351,7 +368,7 @@ class BuildTableForms
         fwrite($viewFile, "\n");
         fwrite($viewFile, "\t<tr>");
         fwrite($viewFile, "\n");
-        if ($primaryKey) fwrite($viewFile, "\t\t<td><a ".($anchorClass?"class='".$anchorClass."'":"")." href='{{APP::URLENCODE(\"?controller=".$db->GetTableName()."&action=edit&".$primaryKey->GetName()."=\".\$member->Get".$primaryKey->GetName()."())}}'>edit</a></td>\n\t\t<td><a ".($anchorClass?"class='".$anchorClass."'":"")." href='{{APP::URLENCODE(\"?controller=".$db->GetTableName()."&action=delete&".$primaryKey->GetName()."=\".\$member->Get".$primaryKey->GetName()."())}}'>delete</a></td>");
+        if ($primaryKey) fwrite($viewFile, "\t\t<td><a ".($anchorClass?"class='".$anchorClass."'":"")." href='/".$db->GetTableName()."\{{\$member->Get".$primaryKey->GetName()."()}}/edit'>edit</a></td>\n\t\t<td><a ".($anchorClass?"class='".$anchorClass."'":"")." href='/".$db->GetTableName()."\{{\$member->Get".$primaryKey->GetName()."()}}/delete'>delete</a></td>");
         fwrite($viewFile, "\n");
         foreach ($db->GetTableFields() as $field) {
           if ($primaryKey) { 
@@ -416,14 +433,12 @@ class BuildTableForms
         fwrite($controllerFile, "\n");
         fwrite($controllerFile, "require_once APP::ROOT_PATH().\"/".$classesPath."/includes.php\";");
         fwrite($controllerFile, "\n");
-        fwrite($controllerFile, "require_once APP::ROOT_PATH().\"/src/Ext/BladeOne/lib/BladeOne.php\";");
-        fwrite($controllerFile, "\n");
 
         // reload page with _get params from filter post
         fwrite($controllerFile, "if (\array_key_exists(\"filter\",\$_POST)) {\n");
         fwrite($controllerFile, "\t\$url=\"\";\n");
         fwrite($controllerFile, "\tforeach(\$_POST as \$k=>\$g) if (\$g) \$url.=(strlen(\$url)>0?\"&\":\"?\").\"\$k=\$g\";\n");
-        fwrite($controllerFile, "\theader(\"location: \".APP::URLENCODE(\$url));\n");
+        fwrite($controllerFile, "\theader(\"location: \".\$url);\n");
         fwrite($controllerFile, "}\n");
 
         // Get Primary Key
@@ -437,24 +452,17 @@ class BuildTableForms
           } else $primaryKey = NULL;
         }
         fwrite($controllerFile, "\n");
-        fwrite($controllerFile, "\$views = __DIR__ . '/../Views/';");
+        fwrite($controllerFile, "class ".$db->GetTableName()." {");
         fwrite($controllerFile, "\n");
-        fwrite($controllerFile, "\$cache = __DIR__ . '/../Views/compiled/';");
+        fwrite($controllerFile, "\tprivate static \$views = __DIR__ . '/../Views/';");
         fwrite($controllerFile, "\n");
-        fwrite($controllerFile, "\$blade = new BladeOne(\$views,\$cache);");
-        fwrite($controllerFile, "\n");
-        fwrite($controllerFile, "\n");
-        fwrite($controllerFile, "switch((array_key_exists('action', \$_GET)?\$_GET['action']:NULL))");
-        fwrite($controllerFile, "\n");
-        fwrite($controllerFile, "{");
+        fwrite($controllerFile, "\tprivate static \$cache = __DIR__ . '/../Views/compiled/';");
         fwrite($controllerFile, "\n");
 
-        fwrite($controllerFile, "\tcase \"new\":");
         fwrite($controllerFile, "\n");
-        fwrite($controllerFile, "\tcase \"edit\":");
+        fwrite($controllerFile, "\tstatic function Edit(\$".$field->GetName()." = null) {");
         fwrite($controllerFile, "\n");
-
-        fwrite($controllerFile, "\t\tif (isset(\$_GET[\"".$field->GetName()."\"])) \$obj = new \LazyMePHP\Classes\\".$db->GetTableName()."(\$_GET[\"".$field->GetName()."\"]);");
+        fwrite($controllerFile, "\t\tif (isset(\$".$field->GetName().")) \$obj = new \LazyMePHP\Classes\\".$db->GetTableName()."(\$".$field->GetName().");");
         fwrite($controllerFile, "\n");
         fwrite($controllerFile, "\t\telse \$obj = new \LazyMePHP\Classes\\".$db->GetTableName()."();");
         fwrite($controllerFile, "\n");
@@ -471,18 +479,20 @@ class BuildTableForms
             fwrite($controllerFile, "\n");
           }
         }
+        fwrite($controllerFile, "\t\t\$blade = new BladeOne(".$db->GetTableName()."::\$views,".$db->GetTableName()."::\$cache);");
+        fwrite($controllerFile, "\n");
         fwrite($controllerFile, "\t\techo \$blade->run(\"".$db->GetTableName().".edit\", ['controller' => '".$db->GetTableName()."', '_".$db->GetTableName()."' => \$obj, $foreignTables]);");
 
         fwrite($controllerFile, "\n");
-        fwrite($controllerFile, "\tbreak;");
+        fwrite($controllerFile, "\t}");
         fwrite($controllerFile, "\n");
 
         if ($primaryKey)
         {
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\tcase \"save\":");
+          fwrite($controllerFile, "\tstatic function Save(\$".$primaryKey->GetName()." = null) {");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\$obj = new \LazyMePHP\Classes\\".$db->GetTableName()."(\$_GET[\"".$primaryKey->GetName()."\"]);");
+          fwrite($controllerFile, "\t\t\$obj = new \LazyMePHP\Classes\\".$db->GetTableName()."(\$".$primaryKey->GetName().");");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\$fieldsNull = NULL;");
           fwrite($controllerFile, "\n");
@@ -507,27 +517,27 @@ class BuildTableForms
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\t\$obj->Save();");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\theader(\"location: \".APP::URLENCODE(\"?controller=".$db->GetTableName()."&success=1\"));");
+          fwrite($controllerFile, "\t\theader(\"location: /".$db->GetTableName()."?success=1\");");
 
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\tbreak;");
+          fwrite($controllerFile, "\t}");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\tcase \"delete\":");
+          fwrite($controllerFile, "\tstatic function Delete(\$".$primaryKey->GetName()." = null) {");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\tif (\$_GET[\"".$primaryKey->GetName()."\"]) {");
+          fwrite($controllerFile, "\t\tif (\$".$primaryKey->GetName().") {");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\t\$obj = new \LazyMePHP\Classes\\".$db->GetTableName()."(\$_GET[\"".$primaryKey->GetName()."\"]);");
+          fwrite($controllerFile, "\t\t\t\$obj = new \LazyMePHP\Classes\\".$db->GetTableName()."(\$".$primaryKey->GetName().");");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\t\$obj->Delete();");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t}");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\theader(\"location: \".APP::URLENCODE(\"?controller=".$db->GetTableName()."&success=2\"));");
+          fwrite($controllerFile, "\t\theader(\"location: /".$db->GetTableName()."?success=2\");");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\tbreak;");
+          fwrite($controllerFile, "\t}");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\tdefault:");
+          fwrite($controllerFile, "\tstatic function Default() {");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\$".$db->GetTableName()." = new \LazyMePHP\Classes\\".$db->GetTableName()."_List();");
           fwrite($controllerFile, "\n");
@@ -575,13 +585,13 @@ class BuildTableForms
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\$pagination=\"\";\n");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\tif (\$page > 1) \$pagination.=\"<a ".($anchorClass?"class='".$anchorClass."'":"")." href='\".APP::URLENCODEAPPEND(\"page=\".(\$page-1)).\"'>&lt;&lt;</a>\";");
+          fwrite($controllerFile, "\t\tif (\$page > 1) \$pagination.=\"<a ".($anchorClass?"class='".$anchorClass."'":"")." href='\".\\LazyMePHP\\Helper\\url(null,null, [\"page\"=>(\$page-1)]).\"'>&lt;&lt;</a>\";");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\tfor (\$i=1;\$i<=\$countPage;\$i++) {");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\tif (\$i!=\$page)");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\t\t\$pagination.=\" <a ".($anchorClass?"class='".$anchorClass."'":"")." href='\".APP::URLENCODEAPPEND(\"page=\$i\").\"'>\". \$i .\"</a> \";");
+          fwrite($controllerFile, "\t\t\t\t\$pagination.=\" <a ".($anchorClass?"class='".$anchorClass."'":"")." href='\".\\LazyMePHP\\Helper\\url(null,null,[\"page\"=>\$i]).\"'>\". \$i .\"</a> \";");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\telse");
           fwrite($controllerFile, "\n");
@@ -590,7 +600,7 @@ class BuildTableForms
           fwrite($controllerFile, "\t\t}");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\tif ((\$page+1) <= \$countPage) \$pagination.=\"<a ".($anchorClass?"class='".$anchorClass."'":"")." href='\".APP::URLENCODEAPPEND(\"page=\".(\$page+1)).\"'>&gt;&gt;</a>\";");
+          fwrite($controllerFile, "\t\tif ((\$page+1) <= \$countPage) \$pagination.=\"<a ".($anchorClass?"class='".$anchorClass."'":"")." href='\".\LazyMePHP\Helper\url(null,null,[\"page\"=>(\$page+1)]).\"'>&gt;&gt;</a>\";");
           fwrite($controllerFile, "\n");
 
           $foreignTables = "";
@@ -605,9 +615,11 @@ class BuildTableForms
               fwrite($controllerFile, "\n");
             }
           }
+          fwrite($controllerFile, "\t\t\$blade = new BladeOne(".$db->GetTableName()."::\$views,".$db->GetTableName()."::\$cache);");
+          fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\techo \$blade->run(\"".$db->GetTableName().".list\", ['controller' => '".$db->GetTableName()."', '".$db->GetTableName()."' => \$".$db->GetTableName()."->GetList() ".(strlen($foreignTables)>0?",$foreignTables":"")." ,'pagination' => \$pagination, 'filters' => \$filters]);");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\tbreak;");
+          fwrite($controllerFile, "\t}");
           fwrite($controllerFile, "\n");
         }
         fwrite($controllerFile, "}");

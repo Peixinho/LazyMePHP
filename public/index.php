@@ -76,8 +76,6 @@ function P($name)
 			fwrite($file, "\$CONFIG['APP_VERSION']\t\t\t=\"".P("app_version")."\";\n");
 			fwrite($file, "\$CONFIG['APP_DESCRIPTION']\t\t=\"".P("app_description")."\";\n");
 			fwrite($file, "\$CONFIG['APP_TIMEZONE']\t\t\t=\"".P("app_timezone")."\";\n");
-			fwrite($file, "\$CONFIG['APP_URL_ENCRYPTION']\t\t\t=\"".(P("url_encryption")==1?true:false)."\";\n");
-			fwrite($file, "\$CONFIG['APP_URL_TOKEN']\t\t\t=\"".P("url_encryption_token")."\";\n");
 			fwrite($file, "\$CONFIG['APP_NRESULTS']\t\t\t=\"".P("app_nresults")."\";\n");
 			fwrite($file, "\n");
 			fwrite($file, "// ACTIVITY LOG\n");
@@ -239,12 +237,6 @@ function P($name)
 				</tr>
 				<tr>
 					<td><b>Application Time Zone:</b></td><td><input type="text" name="app_timezone" id="app_timezone" value="Europe/Lisbon" /></td>
-				</tr>
-				<tr>
-					<td><b>URL Encryption (arguments encryption):</b></td><td><input type="checkbox" name="url_encryption" id="url_encryption" value="1" /></td>
-				</tr>
-				<tr>
-					<td><b>URL Encryption Secret:</b></td><td><input type="text" name="url_encryption_token" id="url_encryption_token" value="Secr3T!" /></td>
 				</tr>
 				<tr>
 					<td><b>Email Support:</b></td><td><input type="text" name="email_support" id="email_support" /></td>

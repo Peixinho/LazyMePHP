@@ -10,14 +10,6 @@ namespace LazyMePHP\Config\Internal;
 use \LazyMePHP\DB\MYSQL;
 use \LazyMePHP\DB\MSSQL;
 
-function str_rot47($str)
-{
-  return strtr($str,
-    '!"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~',
-    'PQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~!"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNO'
-  );
-}
-
 /**
  * ErrorHandler
  *
@@ -312,23 +304,6 @@ class APP
     return APP::$_support_email;
   }
 
-  // URL ENCRYPTION
-
-  /** @var _app_url_encryption */
-  private static $_app_url_encryption;
-  /**
-     * URL ENCRYPTION
-     *
-     * Returns if url is encrypted
-     *
-     * @param (NULL)
-     * @return (bool) (url encrypted)
-     */
-  static function APP_URL_ENCRYPTION()
-  {
-    return APP::$_app_url_encryption;
-  }
-
   // ROOT PATH
 
   /** @var _root_path */
@@ -344,86 +319,6 @@ class APP
   static function ROOT_PATH()
   {
     return APP::$_root_path;
-  }
-
-  /**
-     * URLENCODE
-     *
-     * Returns URL Encoded
-     *
-     * @param (string)
-     * @return (string) (url)
-     */
-  static function URLENCODE($url)
-  {
-    if (APP::APP_URL_ENCRYPTION())
-    {
-      require_once APP::ROOT_PATH()."/src/Ext/jwt_helper.php";
-
-      $_token = array();
-      if (count(parse_url($url))>0)
-      {
-        foreach(parse_url($url) as $key => $arg) {
-          $_token[$key] = $arg;
-        }
-        $token = \JWT::encode($_token,APP::APP_URL_TOKEN());
-        return substr($url, 0, strpos($url, '?'))."?".$token;
-      }
-    }
-    return $url;
-  }
-  /**
-     * URLDECODE
-     *
-     * Returns URL Decoded
-     *
-     * @param (string)
-     * @return (string) (url)
-     */
-  static function URLDECODE($url)
-  {
-    if (APP::APP_URL_ENCRYPTION())
-    {
-      require_once APP::ROOT_PATH()."/src/Ext/jwt_helper.php";
-      $token = \JWT::decode(parse_url($url)['query'],APP::APP_URL_TOKEN());
-      $url="?".($token->query);
-      // Set _GET
-      parse_str($token->query, $query);
-      foreach($query as $key => $arg)
-      $_GET[$key] = $arg;
-    }
-    return $url;
-  }
-  /**
-     * URLENCODEAPPEND
-     *
-     * Returns URL Encoded with
-     * appended var
-     *
-     * @param (string)
-     * @return (string) (url)
-     */
-  static function URLENCODEAPPEND($url)
-  {
-    // Get GET vars
-    $get = "";
-    foreach($_GET as $k => $g) if ($g) $get.=(strlen($get)==0?"?":"&")."$k=$g";
-    return APP::URLENCODE($get.(strlen($get)==0?"?":"&").$url);
-  }
-
-  /** @var _app_url_token */
-  private static $_app_url_token;
-  /**
-     * URL TOKEN SECRET
-     *
-     * Returns Token Secret
-     *
-     * @param (null)
-     * @return (string) (url)
-     */
-  static function APP_URL_TOKEN()
-  {
-    return APP::$_app_url_token;
   }
 
   /** @var _app_nresults */
@@ -488,6 +383,19 @@ class APP
     array_push(APP::$_app_logdata[$table], array("log" => $log, "pk" => $pk, "method" => $method));
   }
 
+  /** @var _modrewrite */
+  private static $_app_modrewrite;
+  /**
+     * APP_LOGDATA
+     *
+     * Sets LOG DATA
+     *
+     * @param (string) table
+     * @param (array) log
+     * @return (null)
+     */
+  static function APP_MOD_REWRITE() { return APP::$_app_modrewrite; }
+
   /**
      * Constructor
      *
@@ -518,11 +426,10 @@ class APP
     APP::$_app_description    = $CONFIG['APP_DESCRIPTION'];
     APP::$_app_timezone       = $CONFIG['APP_TIMEZONE'];
     APP::$_support_email      = $CONFIG['APP_EMAIL_SUPPORT'];
-    APP::$_app_url_encryption = $CONFIG['APP_URL_ENCRYPTION'];
     APP::$_app_activity_log   = $CONFIG['APP_ACTIVITY_LOG'];
     APP::$_app_activity_auth  = $CONFIG['APP_ACTIVITY_AUTH'];
-    APP::$_app_url_token	    = $CONFIG['APP_URL_TOKEN'];
     APP::$_app_nresults 	    = $CONFIG['APP_NRESULTS'];
+    APP::$_app_modrewrite 	  = $CONFIG['APP_MOD_REWRITE'];
 
     // Set Timezone
     date_default_timezone_set(APP::$_app_timezone);
