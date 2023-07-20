@@ -27,6 +27,7 @@ git init
 # run initial config
 php -S localhost:8001
 # but I advise you to use a real webserver like apache or whatever...
+# Since I moved to rewrite using better urls, this option does not work anymore, or at least in an easy way, so apache or nginx is advised
 ```
 
 Navigate into http://localhost:8001/public/ and fill out your form about the application you're building and database credentials you will connect, like in this example:
@@ -97,17 +98,9 @@ http://localhost:8001
  Every table generated will have a Form that works as follows:
  - Each Table will have a Controller File by default in /src/Controllers/[Table Name].Controller.php
  - Each Table will have 3 template files using BladeOne in /src/Views/[Table Name]/list,edit and template.blade.php
- - The file RoutingForms.php by default in /src/Controllers/RoutingForms.php is the one that defines the Routes to each Controller, and each Controller requires its View file
- - These routes can be defined like this:
- ```
- # To the controller by default
- Router::Create("controller", "User", 'src/Controller/User.Controller.php');
- 
- # By action
- Router::Create("controller", "User", 'src/Controller/User.Controller.php', "save"); # will only have access to save, so no delete for you ...
- ```
+ - The file RoutingForms.php is by default in /src/Controllers/RouterForms.php is the one that defines the Routes to each Controller using simple-php-router, and each Controller requires its View file, but this should be considered boilerplate and they should be edited and placed in src/Routes/Routes.php
 
-
+ ```
 ## Classes
 
 Every table generated will have a class that works as follows:
@@ -167,7 +160,7 @@ Every table generated will have a class that works as follows:
  
 
 ## API
- Every table generated will have an API that works as follows:
+ Every table generated will have some routes created in src/api/RouteAPI.php, and they make use of the controllers of each table
  - Accessible from /api/[Table Name]/ (.htaccess for apache, didnt bother with others)
  ```
  # all users
