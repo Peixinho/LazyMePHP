@@ -39,7 +39,7 @@ function ErrorHandler($errno, $errstr, $errfile, $errline)
       </div>";
 
     $to_mail=APP::APP_SUPPORT_EMAIL();
-    $from_mail="noreply@chalgarve.min-saude.pt";
+    $from_mail="noreply@email.com";
     $subject="Application ".APP::APP_NAME()." thrown an error.";
     $message=$errorMsg;
 
