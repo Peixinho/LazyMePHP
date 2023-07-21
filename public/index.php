@@ -31,16 +31,16 @@ function P($name)
 		switch(P("db_db"))
 		{
 			case 1:
-				$db_file = "src/DB/MSSQL.php";
+				$db_file = __DIR__."/../src/DB/MSSQL.php";
 			break;
 			default:
 			case 2:
-				$db_file = "src/DB/MYSQL.php";
+				$db_file = __DIR__."/../src/DB/MYSQL.php";
 			break;
 		}
 
 		// Generate new config file
-		$file = fopen("../src/Configurations/Configurations.php","w+");
+		$file = fopen(__DIR__."/../src/Configurations/Configurations.php","w+");
 			fwrite($file,"<?php ");
 			fwrite($file, "\n");
 			fwrite($file,"/**");
@@ -103,15 +103,15 @@ function P($name)
 
 		//rename("index.php", "oldIndex");
     // Remove old index instead of renaming it
-    unlink("index.php");
-		rename("index", "index.php");
+    unlink(__DIR__."/index.php");
+		rename(__DIR__."/index", __DIR__."/index.php");
 
     // Create compiled directory for bladeone
     require_once "../DBHelper/Helper.php";
-    \LazyMePHP\Helper\MKDIR("../src/Views/compiled");
+    \LazyMePHP\Helper\MKDIR(__DIR__."/../src/Views/compiled");
 
 		// Add Javacript File
-		file_put_contents('index.php',str_replace('<script src="/js/app.js"></script>','<script src="/js/'.P("app_name").'.js"></script>',file_get_contents('index.php')));
+		file_put_contents(__DIR__.'/index.php',str_replace('<script src="/js/app.js"></script>','<script src="/js/'.P("app_name").'.js"></script>',file_get_contents(__DIR__.'/index.php')));
 		fopen('js/'.P("app_name").'.js', 'w');
 
     echo "<img src='/img/logo.png' />";
@@ -237,6 +237,12 @@ function P($name)
 				</tr>
 				<tr>
 					<td><b>Application Time Zone:</b></td><td><input type="text" name="app_timezone" id="app_timezone" value="Europe/Lisbon" /></td>
+				</tr>
+				<tr>
+					<td><b>URL Encryption (arguments encryption):</b></td><td><input type="checkbox" name="url_encryption" id="url_encryption" value="1" /></td>
+				</tr>
+				<tr>
+					<td><b>URL Encryption Secret:</b></td><td><input type="text" name="url_encryption_token" id="url_encryption_token" value="Secr3T!" /></td>
 				</tr>
 				<tr>
 					<td><b>Email Support:</b></td><td><input type="text" name="email_support" id="email_support" /></td>

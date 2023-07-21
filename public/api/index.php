@@ -11,27 +11,27 @@ namespace LazyMePHP\API;
 /*
  * Add LazyMePHP Configuration File
  */
-require_once "../../src/Configurations/Configurations.php";
-require_once "../../src/Configurations/Internal/InternalConfigurations.php";
-require_once "../../src/Helpers/Helper.php";
+require_once __DIR__."/../../src/Configurations/Configurations.php";
+require_once __DIR__."/../../src/Configurations/Internal/InternalConfigurations.php";
+require_once __DIR__."/../../src/Helpers/Helper.php";
 
 use \LazyMePHP\Config\Internal\APP;
 
 /*
  * Include Generated Class Files
  */
-if(file_exists(APP::ROOT_PATH()."/src/Classes/includes.php"))
-    require_once APP::ROOT_PATH()."/src/Classes/includes.php";
+if(file_exists(__DIR__."/../../src/Classes/includes.php"))
+    require_once __DIR__."/../../src/Classes/includes.php";
 
 /*
  * Router
  */
 require_once APP::ROOT_PATH()."/src/Ext/vendor/autoload.php";
 
-if(file_exists(APP::ROOT_PATH()."/src/api/MaskAPI.php"))
-	require_once APP::ROOT_PATH()."/src/api/MaskAPI.php";
-if(file_exists(APP::ROOT_PATH()."/src/api/RouteAPI.php"))
-	require_once APP::ROOT_PATH()."/src/api/RouteAPI.php";
+if(file_exists(__DIR__."/../../src/api/MaskAPI.php"))
+	require_once __DIR__."/../../src/api/MaskAPI.php";
+if(file_exists(__DIR__."/../../src/api/RouteAPI.php"))
+	require_once __DIR__."/../../src/api/RouteAPI.php";
 
 /*
  * Output result

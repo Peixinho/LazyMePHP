@@ -412,7 +412,7 @@ class APP
     // GET DB FILE AND Include IT
     APP::$_db_file            = $CONFIG['DB_FILE'];
 
-    require_once $CONFIG['ROOT']."/".$CONFIG['DB_FILE'];
+    require_once $CONFIG['DB_FILE'];
     // END
 
     APP::$_db_type            = $CONFIG['DB_TYPE'];
@@ -429,7 +429,6 @@ class APP
     APP::$_app_activity_log   = $CONFIG['APP_ACTIVITY_LOG'];
     APP::$_app_activity_auth  = $CONFIG['APP_ACTIVITY_AUTH'];
     APP::$_app_nresults 	    = $CONFIG['APP_NRESULTS'];
-    APP::$_app_modrewrite 	  = $CONFIG['APP_MOD_REWRITE'];
 
     // Set Timezone
     date_default_timezone_set(APP::$_app_timezone);

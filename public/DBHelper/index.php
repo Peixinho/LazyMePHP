@@ -9,11 +9,11 @@
 use \LazyMePHP\Config\Internal\APP;
 session_start();
 
-require_once 'DatabaseHelper.php';
-require_once '../../src/Configurations/Configurations.php';
-require_once 'ClassesBuilder.php';
-require_once 'FormsBuilder.php';
-require_once 'APIBuilder.php';
+require_once __DIR__.'/DatabaseHelper.php';
+require_once __DIR__.'/../../src/Configurations/Configurations.php';
+require_once __DIR__.'/ClassesBuilder.php';
+require_once __DIR__.'/FormsBuilder.php';
+require_once __DIR__.'/APIBuilder.php';
 
 if ((!array_key_exists('username', $_SESSION) || !array_key_exists('password', $_SESSION)) && ($_POST && $_POST['username'] && $_POST['password'] && $_POST['username'] == APP::DB_USER() && $_POST['password'] == APP::DB_PASSWORD()))
 {
