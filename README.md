@@ -25,9 +25,9 @@ cd myAwesomeProject && rm -rf .git
 git init
 
 # run initial config
-php -S localhost:8001
+php -S localhost:8001 serve.php
 # but I advise you to use a real webserver like apache or whatever...
-# Since I moved to rewrite using better urls, this option does not work anymore, or at least in an easy way, so apache or nginx is advised
+
 ```
 
 Navigate into http://localhost:8001/public/ and fill out your form about the application you're building and database credentials you will connect, like in this example:
