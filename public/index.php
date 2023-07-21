@@ -99,7 +99,7 @@ function P($name)
 		fclose($file);
 
 		// Require newly created file
-		require_once "../src/Configurations/Configurations.php";
+		require_once __DIR__."/../src/Configurations/Configurations.php";
 
 		//rename("index.php", "oldIndex");
     // Remove old index instead of renaming it
