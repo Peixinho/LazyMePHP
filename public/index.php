@@ -239,12 +239,6 @@ function P($name)
 					<td><b>Application Time Zone:</b></td><td><input type="text" name="app_timezone" id="app_timezone" value="Europe/Lisbon" /></td>
 				</tr>
 				<tr>
-					<td><b>URL Encryption (arguments encryption):</b></td><td><input type="checkbox" name="url_encryption" id="url_encryption" value="1" /></td>
-				</tr>
-				<tr>
-					<td><b>URL Encryption Secret:</b></td><td><input type="text" name="url_encryption_token" id="url_encryption_token" value="Secr3T!" /></td>
-				</tr>
-				<tr>
 					<td><b>Email Support:</b></td><td><input type="text" name="email_support" id="email_support" /></td>
 				</tr>
 				<tr>
