@@ -6,6 +6,22 @@
  * @author Duarte Peixinho
  */
 
+$cmdline = file_get_contents('/proc/self/cmdline');
+$argv = str_getcsv($cmdline, "\0");
+while (true) {
+    $arg = array_shift($argv);
+    if ($arg === null || $arg === '--') {
+        // Stick whatever on the start to align with normal $argv
+        array_unshift($argv, __FILE__);
+        if ($arg !== null) {
+            // Remove extra empty arg at the end
+            array_pop($argv);
+        }
+        break;
+    }
+}
+$argc = count($argv);
+
 chdir(__DIR__);
 $filePath = realpath(ltrim($_SERVER["REQUEST_URI"], '/'));
 if ($filePath && is_dir($filePath)){
@@ -38,6 +54,13 @@ if ($filePath && is_file($filePath)) {
     }
 } else {
     // rewrite to our index file
-    include __DIR__ . DIRECTORY_SEPARATOR . 'public/index.php';
+    switch($argv[1]) {
+      case "api":
+        include __DIR__ . DIRECTORY_SEPARATOR . 'public/api/index.php';
+      break;
+      default:
+        include __DIR__ . DIRECTORY_SEPARATOR . 'public/index.php';
+      break;
+    }
 }
 ?>
