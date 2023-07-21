@@ -162,6 +162,10 @@ Every table generated will have a class that works as follows:
 ## API
  Every table generated will have some routes created in src/api/RouteAPI.php, and they make use of the controllers of each table
  - Accessible from /api/[Table Name]/ (.htaccess for apache, didnt bother with others)
+
+# run api
+php -S localhost:8001 serve.php --api
+# but I advise you to use a real webserver like apache or whatever...
  ```
  # all users
  http://localhost:8001/api/user/ # will output all users information in json format
@@ -173,15 +177,6 @@ Every table generated will have a class that works as follows:
  http://localhost:8001/api/User/123 # will output user 123 information in json format
  
  # Same example but in other webserver, php built in for example:
-
- # All users
- http://localhost:8001/api/?controller=User/ # will output all users information in json format
- 
- # Search specific users based on column filters
- http://localhost:8001/api/?controller=User&FindByNameLike=John&Limit=10 # will output all users information in json format that matches criteria and Limits to 10
- 
- http://localhost:8001/api/?controller=User&pk=123 #this pk is really important when trying to get specific id
- ```
 
 ### ohh but this way you expose all data, like passwords and other stuff
  yeap, thats true! However, you can configure it to expose only the columns you want (all by default) by editing the file
