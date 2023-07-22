@@ -107,7 +107,7 @@ function P($name)
 		rename(__DIR__."/index", __DIR__."/index.php");
 
     // Create compiled directory for bladeone
-    require_once "../DBHelper/Helper.php";
+    require_once __DIR__."/DBHelper/Helper.php";
     \LazyMePHP\Helper\MKDIR(__DIR__."/../src/Views/compiled");
 
 		// Add Javacript File
