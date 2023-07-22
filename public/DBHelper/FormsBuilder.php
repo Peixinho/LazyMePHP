@@ -105,65 +105,54 @@ class BuildTableForms
         fwrite($routerFile, "\n");
         fwrite($routerFile, "SimpleRouter::get('/".$db->GetTableName()."', function() {");
         fwrite($routerFile, "\n");
-        fwrite($routerFile, "\t\$obj = ".$db->GetTableName()."::Default();");
+        fwrite($routerFile, "\t\$data = ".$db->GetTableName()."::Default();");
         fwrite($routerFile, "\n");
-        $foreignTables = "";
+        fwrite($routerFile, "\tglobal \$blade;");
+        fwrite($routerFile, "\n");
+        fwrite($routerFile, "\techo \$blade->run(\"".$db->GetTableName().".list\", ['controller' => '".$db->GetTableName()."', '".$db->GetTableName()."' => \$data['".$db->GetTableName()."']");
         foreach ($db->GetTableFields() as $field)
         {
           if ($field->GetForeignField()) {
-            fwrite($routerFile, "\n");
-            fwrite($routerFile, "\t\$".$field->GetForeignTable()." = new \LazyMePHP\Classes\\".$field->GetForeignTable()."_List();");
-            fwrite($routerFile, "\n");
-            fwrite($routerFile, "\t\$".$field->GetForeignTable()."->FindAll();");
-            fwrite($routerFile, "\n");
-            $foreignTables .= (strlen($foreignTables)>0?",":"")."'".$field->GetForeignTable()."' => \$".$field->GetForeignTable();
+            fwrite($routerFile, ", '".$field->GetForeignTable()."' => \$data['".$field->GetForeignTable()."']");
           }
         }
-        fwrite($routerFile, "\tglobal \$blade;");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "\techo \$blade->run(\"".$db->GetTableName().".list\", ['controller' => '".$db->GetTableName()."', '".$db->GetTableName()."' => \$obj, $foreignTables ]);");
+        fwrite($routerFile, ", 'filters' => \$data['filters']]);");
         fwrite($routerFile, "\n");
         fwrite($routerFile, "});");
         fwrite($routerFile, "\n");
         fwrite($routerFile, "SimpleRouter::get('/".$db->GetTableName()."/{".$db->GetPrimaryFieldName()."}/edit', function (\$".$db->GetPrimaryFieldName().") {");
         fwrite($routerFile, "\n");
-        fwrite($routerFile, "\t\$obj = ".$db->GetTableName()."::Edit(\$".$db->GetPrimaryFieldName().");");
-        $foreignTables = "";
+        fwrite($routerFile, "\t\$data = ".$db->GetTableName()."::Edit(\$".$db->GetPrimaryFieldName().");");
+        fwrite($routerFile, "\n");
+        fwrite($routerFile, "\tglobal \$blade;");
+        fwrite($routerFile, "\n");
+        fwrite($routerFile, "\techo \$blade->run(\"".$db->GetTableName().".edit\", ['controller' => '".$db->GetTableName()."', '".$db->GetTableName()."' => \$data['".$db->GetTableName()."']");
         foreach ($db->GetTableFields() as $field)
         {
           if ($field->GetForeignField()) {
             fwrite($routerFile, "\n");
-            fwrite($routerFile, "\t\$".$field->GetForeignTable()." = new \LazyMePHP\Classes\\".$field->GetForeignTable()."_List();");
-            fwrite($routerFile, "\n");
-            fwrite($routerFile, "\t\$".$field->GetForeignTable()."->FindAll();");
-            fwrite($routerFile, "\n");
-            $foreignTables .= (strlen($foreignTables)>0?",":"")."'".$field->GetForeignTable()."' => \$".$field->GetForeignTable();
+            fwrite($routerFile, ", '".$field->GetForeignTable()."' => \$data['".$field->GetForeignTable()."']");
           }
         }
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "\tglobal \$blade;");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "\techo \$blade->run(\"".$db->GetTableName().".edit\", ['controller' => '".$db->GetTableName()."', '_".$db->GetTableName()."' => \$obj, $foreignTables]);");
+        fwrite($routerFile, "]);");
         fwrite($routerFile, "\n");
         fwrite($routerFile, "});");
         fwrite($routerFile, "\n");
         fwrite($routerFile, "SimpleRouter::get('/".$db->GetTableName()."/new', function () {");
-        $foreignTables = "";
+        fwrite($routerFile, "\n");
+        fwrite($routerFile, "\t\$data = ".$db->GetTableName()."::Edit();");
+        fwrite($routerFile, "\n");
+        fwrite($routerFile, "\tglobal \$blade;");
+        fwrite($routerFile, "\n");
+        fwrite($routerFile, "\techo \$blade->run(\"".$db->GetTableName().".edit\", ['controller' => '".$db->GetTableName()."', '".$db->GetTableName()."' => \$data['".$db->GetTableName()."']");
         foreach ($db->GetTableFields() as $field)
         {
           if ($field->GetForeignField()) {
             fwrite($routerFile, "\n");
-            fwrite($routerFile, "\t\$".$field->GetForeignTable()." = new \LazyMePHP\Classes\\".$field->GetForeignTable()."_List();");
-            fwrite($routerFile, "\n");
-            fwrite($routerFile, "\t\$".$field->GetForeignTable()."->FindAll();");
-            fwrite($routerFile, "\n");
-            $foreignTables .= (strlen($foreignTables)>0?",":"")."'".$field->GetForeignTable()."' => \$".$field->GetForeignTable();
+            fwrite($routerFile, ", '".$field->GetForeignTable()."' => \$data['".$field->GetForeignTable()."']");
           }
         }
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "\tglobal \$blade;");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "\techo \$blade->run(\"".$db->GetTableName().".edit\", ['controller' => '".$db->GetTableName()."', '_".$db->GetTableName()."' => new \\LazyMePHP\\Classes\\".$db->GetTableName()."(), $foreignTables]);");
+        fwrite($routerFile, "]);");
         fwrite($routerFile, "\n");
         fwrite($routerFile, "});");
         fwrite($routerFile, "\n");
@@ -291,9 +280,9 @@ class BuildTableForms
             break;
           } else $primaryKey = NULL;
         }
-          fwrite($viewFile, "@if (\$_".$db->GetTableName()."->Get".$field->GetName()."()) <form method='POST' action='/".$db->GetTableName()."/{{\$_".$db->GetTableName()."->Get".$field->GetName()."()}}/save' onsubmit='return LazyMePHP.ValidateForm(this);'>");
-          fwrite($viewFile, "\n");
-          fwrite($viewFile, "@else <form method='POST' action='/".$db->GetTableName()."/save' onsubmit='return LazyMePHP.ValidateForm(this);'>");
+        fwrite($viewFile, "@if (\$".$db->GetTableName()."->Get".$field->GetName()."()) <form method='POST' action='/".$db->GetTableName()."/{{\$".$db->GetTableName()."->Get".$field->GetName()."()}}/save' onsubmit='return LazyMePHP.ValidateForm(this);'>");
+        fwrite($viewFile, "\n");
+        fwrite($viewFile, "@else <form method='POST' action='/".$db->GetTableName()."/save' onsubmit='return LazyMePHP.ValidateForm(this);'>");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "\t@endif");
         foreach ($db->GetTableFields() as $field) {
@@ -309,7 +298,7 @@ class BuildTableForms
               fwrite($viewFile, "\n");
               fwrite($viewFile, "\t\t@foreach(\$".$field->GetForeignTable()."->GetList() as \$v)");
               fwrite($viewFile, "\n");
-              fwrite($viewFile, "\t\t<option value='{{\$v->Get".$field->GetForeignField()."()}}' {{\$_".$db->GetTableName()."->Get".$field->GetName()."()==\$v->Get".$field->GetForeignField()."()?\"selected\":\"\"}}>{{\$v->GetDescriptor()}}</option>");
+              fwrite($viewFile, "\t\t<option value='{{\$v->Get".$field->GetForeignField()."()}}' {{\$".$db->GetTableName()."->Get".$field->GetName()."()==\$v->Get".$field->GetForeignField()."()?\"selected\":\"\"}}>{{\$v->GetDescriptor()}}</option>");
               fwrite($viewFile, "\n");
               fwrite($viewFile, "\t\t@endforeach");
               fwrite($viewFile, "\n");
@@ -320,17 +309,17 @@ class BuildTableForms
               switch ($field->GetDataType())
               {
                 case "bit":
-                  fwrite($viewFile, "\t<input type='checkbox' name='".$field->GetName()."' id='".$field->GetName()."' ".($inputClass?"class='".$inputClass."'":"")." value='1' {{\$_".$db->GetTableName()."->Get".$field->GetName()."()==1?\"checked\":\"\"}} />");
+                  fwrite($viewFile, "\t<input type='checkbox' name='".$field->GetName()."' id='".$field->GetName()."' ".($inputClass?"class='".$inputClass."'":"")." value='1' {{\$".$db->GetTableName()."->Get".$field->GetName()."()==1?\"checked\":\"\"}} />");
                   break;
                 case "date":
-                  fwrite($viewFile, "\t<input type='date' name='".$field->GetName()."' id='".$field->GetName()."' ".($inputClass?"class='".$inputClass."'":"")." value='{{\$_".$db->GetTableName()."->Get".$field->GetName()."()}}' ".(!$field->AllowNull()?"validation='NOTNULL' validation-fail='".$field->GetName()." cannot be empty'":"")." ".($field->GetDataLength()?"maxlength='".$field->GetDataLength()."'":"")." />");
+                  fwrite($viewFile, "\t<input type='date' name='".$field->GetName()."' id='".$field->GetName()."' ".($inputClass?"class='".$inputClass."'":"")." value='{{\$".$db->GetTableName()."->Get".$field->GetName()."()}}' ".(!$field->AllowNull()?"validation='NOTNULL' validation-fail='".$field->GetName()." cannot be empty'":"")." ".($field->GetDataLength()?"maxlength='".$field->GetDataLength()."'":"")." />");
                   break;
                 case "float":
                 case "int":
-                  fwrite($viewFile, "\t<input type='number' name='".$field->GetName()."' id='".$field->GetName()."' ".($inputClass?"class='".$inputClass."'":"")." value='{{\$_".$db->GetTableName()."->Get".$field->GetName()."()}}' ".(!$field->AllowNull()?"validation='NOTNULL' validation-fail='".$field->GetName()." cannot be empty'":"")." ".($field->GetDataLength()?"maxlength='".$field->GetDataLength()."'":"")." />");
+                  fwrite($viewFile, "\t<input type='number' name='".$field->GetName()."' id='".$field->GetName()."' ".($inputClass?"class='".$inputClass."'":"")." value='{{\$".$db->GetTableName()."->Get".$field->GetName()."()}}' ".(!$field->AllowNull()?"validation='NOTNULL' validation-fail='".$field->GetName()." cannot be empty'":"")." ".($field->GetDataLength()?"maxlength='".$field->GetDataLength()."'":"")." />");
                   break;
                 case "varchar":
-                  fwrite($viewFile, "\t<input type='text' name='".$field->GetName()."' id='".$field->GetName()."' ".($inputClass?"class='".$inputClass."'":"")." value='{{\$_".$db->GetTableName()."->Get".$field->GetName()."()}}' ".(!$field->AllowNull()?"validation='NOTNULL' validation-fail='".$field->GetName()." cannot be empty'":"")." ".($field->GetDataLength()?"maxlength='".$field->GetDataLength()."'":"")." />");
+                  fwrite($viewFile, "\t<input type='text' name='".$field->GetName()."' id='".$field->GetName()."' ".($inputClass?"class='".$inputClass."'":"")." value='{{\$".$db->GetTableName()."->Get".$field->GetName()."()}}' ".(!$field->AllowNull()?"validation='NOTNULL' validation-fail='".$field->GetName()." cannot be empty'":"")." ".($field->GetDataLength()?"maxlength='".$field->GetDataLength()."'":"")." />");
                   break;
               }
               fwrite($viewFile, "\n");
@@ -374,7 +363,7 @@ class BuildTableForms
         fwrite($viewFile, "@include('".$db->GetTableName().".template')");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "\n");
-				fwrite($viewFile, "<a ".($anchorClass?"class='".$anchorClass."'":"")." href='/".$db->GetTableName()."/new'>Add New</a>");
+        fwrite($viewFile, "<a ".($anchorClass?"class='".$anchorClass."'":"")." href='/".$db->GetTableName()."/new'>Add New</a>");
         fwrite($viewFile, "\t<br/>");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "\n");
@@ -387,22 +376,20 @@ class BuildTableForms
             // Write form for filter
             if (!$haveForeignMembers)
             {
-              fwrite($viewFile, "<form method='POST' action='/{{\$controller}}'>");
-              fwrite($viewFile, "\n");
-              fwrite($viewFile, "\t<input type='hidden' name='controller' value='{{\$controller}}' />");
+              fwrite($viewFile, "<form method='GET' action='/{{\$controller}}'>");
               fwrite($viewFile, "\n");
             }
             fwrite($viewFile, "\t<br/>");
             fwrite($viewFile, "\n");
             fwrite($viewFile, "\t<b>".$field->GetName().":</b>");
             fwrite($viewFile, "\n");
-            fwrite($viewFile, "\t<select name='".$field->GetName()."' ".($inputClass?"class='".$inputClass."'":"")." />");
+            fwrite($viewFile, "\t<select name='FindBy".$field->GetName()."' ".($inputClass?"class='".$inputClass."'":"")." />");
             fwrite($viewFile, "\n");
             fwrite($viewFile, "\t\t<option value=''>-</option>");
             fwrite($viewFile, "\n");
             fwrite($viewFile, "\t\t@foreach(\$".$field->GetForeignTable()."->GetList() as \$v)");
             fwrite($viewFile, "\n");
-            fwrite($viewFile, "\t\t<option value='{{\$v->Get".$field->GetForeignField()."()}}' {{isset(\$filters['".$field->GetName()."']) && \$filters['".$field->GetName()."']==\$v->Get".$field->GetForeignField()."()?\"selected\":\"\"}}>{{\$v->GetDescriptor()}}</option>");
+            fwrite($viewFile, "\t\t<option value='{{\$v->Get".$field->GetForeignField()."()}}' {{isset(\$filters['FindBy".$field->GetName()."']) && \$filters['FindBy".$field->GetName()."']==\$v->Get".$field->GetForeignField()."()?\"selected\":\"\"}}>{{\$v->GetDescriptor()}}</option>");
             fwrite($viewFile, "\n");
             fwrite($viewFile, "\t\t@endforeach");
             fwrite($viewFile, "\n");
@@ -417,7 +404,7 @@ class BuildTableForms
         {
           fwrite($viewFile, "\t<br/>");
           fwrite($viewFile, "\n");
-          fwrite($viewFile, "\t<input type='submit' ".($buttonClass?"class='".$buttonClass."'":"")." name='filter' value='Filter'/>");
+          fwrite($viewFile, "\t<input type='submit' ".($buttonClass?"class='".$buttonClass."'":"")." />");
           fwrite($viewFile, "\n");
           fwrite($viewFile, "</form>");
           fwrite($viewFile, "\n");
@@ -540,9 +527,10 @@ class BuildTableForms
         fwrite($controllerFile, "\n");
         fwrite($controllerFile, "\tstatic function Edit(\$".$field->GetName()." = null) {");
         fwrite($controllerFile, "\n");
-        fwrite($controllerFile, "\t\tif (isset(\$".$field->GetName().")) \$obj = new \LazyMePHP\Classes\\".$db->GetTableName()."(\$".$field->GetName().");");
+        fwrite($controllerFile, "\t\tif (isset(\$".$field->GetName().")) \$".$db->GetTableName()." = new \LazyMePHP\Classes\\".$db->GetTableName()."(\$".$field->GetName().");");
         fwrite($controllerFile, "\n");
-        fwrite($controllerFile, "\t\telse \$obj = new \LazyMePHP\Classes\\".$db->GetTableName()."();");
+        fwrite($controllerFile, "\t\telse \$".$db->GetTableName()." = new \LazyMePHP\Classes\\".$db->GetTableName()."();");
+        fwrite($controllerFile, "\n");
         fwrite($controllerFile, "\n");
 
         $foreignTables = "";
@@ -557,7 +545,14 @@ class BuildTableForms
             fwrite($controllerFile, "\n");
           }
         }
-        fwrite($controllerFile, "\t\treturn \$obj;");
+        fwrite($controllerFile, "\t\treturn ['".$db->GetTableName()."' => \$".$db->GetTableName());
+        foreach ($db->GetTableFields() as $field)
+        {
+          if ($field->GetForeignField()) {
+            fwrite($controllerFile, ", '".$field->GetForeignTable()."' => \$".$field->GetForeignTable());
+          }
+        }
+        fwrite($controllerFile, "];");
 
         fwrite($controllerFile, "\n");
         fwrite($controllerFile, "\t}");
@@ -595,6 +590,7 @@ class BuildTableForms
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t}");
           fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\tstatic function Delete(\$".$primaryKey->GetName()." = null) {");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\tif (\$".$primaryKey->GetName().") {");
@@ -608,74 +604,87 @@ class BuildTableForms
           fwrite($controllerFile, "\t}");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\tstatic function Default() {");
+          fwrite($controllerFile, "\tstatic function Default(\$foreignTables = true) {");
+          fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\$".$db->GetTableName()." = new \LazyMePHP\Classes\\".$db->GetTableName()."_List();");
           fwrite($controllerFile, "\n");
-
+          fwrite($controllerFile, "\t\t\$filters = array();");
+          #fwrite($controllerFile, "\n");
+          #// Check if there are filters
+          #foreach ($db->GetTableFields() as $field)
+          #{
+          #  if ($field->GetForeignField()) {
+          #    fwrite($controllerFile, "\n");
+          #    if ($field->HasForeignKey() && !is_null($field->GetForeignField()))
+          #    {
+          #      fwrite($controllerFile, "\t\tif (array_key_exists('".$field->GetName()."', \$_GET) && \$_GET[\"".$field->GetName()."\"])");
+          #      fwrite($controllerFile, "\n");
+          #      fwrite($controllerFile, "\t\t{");
+          #      fwrite($controllerFile, "\n");
+          #      fwrite($controllerFile, "\t\t\t\$filter.= (strlen(\$filter)>0?\" AND \":\"\").\"".$db->GetTableName().".".$field->GetName()." = '\".\$_GET[\"".$field->GetName()."\"].\"'\";"); 
+          #      fwrite($controllerFile, "\n");
+          #      fwrite($controllerFile, "\t\t\t\$haveFilter = true;");
+          #      fwrite($controllerFile, "\n");
+          #      fwrite($controllerFile, "\t\t\t\$filters['".$field->GetName()."'] = \$_GET['".$field->GetName()."'];");
+          #      fwrite($controllerFile, "\n");
+          #      fwrite($controllerFile, "\t\t}");
+          #      fwrite($controllerFile, "\n");
+          #    }
+          #  }
+          #}
+          #fwrite($controllerFile, "\t\tif (\$haveFilter) {");
+          #fwrite($controllerFile, "\n");
+          #fwrite($controllerFile, "\t\t\t\$".$db->GetTableName()."->CustomFind(\$filter);");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\tif (count(\$_GET)>0) {");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\t\tforeach(\$_GET as \$method => \$val)");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\t\t{");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\t\t\tif (\$method && \$val && method_exists(\$".$db->GetTableName().", \$method))");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\t\t\tcall_user_func_array(array(\$".$db->GetTableName().",\$method), explode(',', \$val));");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\t\t\t\$filters[\$method] = \$val;");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\t\t}");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\t}");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\telse \$".$db->GetTableName()."->FindAll();");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\t\tif (\$foreignTables) {");
+          $foreignTables = "";
+          foreach ($db->GetTableFields() as $field)
           {
-            fwrite($controllerFile, "\t\t\$haveFilter = false;");
-            fwrite($controllerFile, "\n");
-            fwrite($controllerFile, "\t\t\$filter = \"\";");
-            fwrite($controllerFile, "\n");
-            fwrite($controllerFile, "\t\t\$filters = array();");
-            fwrite($controllerFile, "\n");
-            foreach ($db->GetTableFields() as $field)
-            {
-              if ($field->HasForeignKey() && !is_null($field->GetForeignField()))
-              {
-                fwrite($controllerFile, "\t\tif (array_key_exists('".$field->GetName()."', \$_GET) && \$_GET[\"".$field->GetName()."\"]) { \n\t\t\t\$filter.= (strlen(\$filter)>0?\" AND \":\"\").\"".$db->GetTableName().".".$field->GetName()." = '\".\$_GET[\"".$field->GetName()."\"].\"'\"; \n\t\t\t\$haveFilter = true; \n\t\t\t\$filters['".$field->GetName()."'] = \$_GET['".$field->GetName()."'];\n\t\t}");
-                fwrite($controllerFile, "\n");
-              }
+            if ($field->GetForeignField()) {
+              fwrite($controllerFile, "\n");
+              fwrite($controllerFile, "\t\t\t\$".$field->GetForeignTable()." = new \LazyMePHP\Classes\\".$field->GetForeignTable()."_List();");
+              fwrite($controllerFile, "\n");
+              fwrite($controllerFile, "\t\t\t\$".$field->GetForeignTable()."->FindAll();");
+              fwrite($controllerFile, "\n");
+              $foreignTables .= (strlen($foreignTables)>0?",":"")."'".$field->GetForeignTable()."' => \$".$field->GetForeignTable()."->GetList()";
             }
-
-            fwrite($controllerFile, "\n");
-            fwrite($controllerFile, "\t\tif (\$haveFilter) {");
-            fwrite($controllerFile, "\n");
-            fwrite($controllerFile, "\t\t\t\$".$db->GetTableName()."->CustomFind(\$filter);");
-            fwrite($controllerFile, "\n");
-            fwrite($controllerFile, "\t\t} else {");
-            fwrite($controllerFile, "\n");
-            fwrite($controllerFile, "\t\t\t\$".$db->GetTableName()."->FindAll();");
-            fwrite($controllerFile, "\n");
-            fwrite($controllerFile, "\t\t}");
           }
-          #fwrite($controllerFile, "\n");
-          #fwrite($controllerFile, "\t\t\$page = (\array_key_exists('page', \$_GET)?\$_GET['page']:1);");
-          #fwrite($controllerFile, "\n");
-          #fwrite($controllerFile, "\t\t\$limit = APP::APP_NRESULTS();");
-          #fwrite($controllerFile, "\n");
-          #fwrite($controllerFile, "\n");
-          #fwrite($controllerFile, "\t\t\$count = \$".$db->GetTableName()."->GetCount();");
-          #fwrite($controllerFile, "\n");
-          #fwrite($controllerFile, "\t\t\$countPage = (\$count / \$limit);");
-          #fwrite($controllerFile, "\n");
-          #fwrite($controllerFile, "\t\t\$countPage+=((\$count % \$limit) != 0 ? 1:0);");
-          #fwrite($controllerFile, "\n");
-          #fwrite($controllerFile, "\t\t\$".$db->GetTableName()."->Limit(\$limit,(\$page-1)*\$limit);");
-          #fwrite($controllerFile, "\n");
-          #fwrite($controllerFile, "\t\t\$pagination=\"\";\n");
-          #fwrite($controllerFile, "\n");
-          #fwrite($controllerFile, "\t\tif (\$page > 1) \$pagination.=\"<a ".($anchorClass?"class='".$anchorClass."'":"")." href='\".\\LazyMePHP\\Helper\\url(null,null, [\"page\"=>(\$page-1)]).\"'>&lt;&lt;</a>\";");
-          #fwrite($controllerFile, "\n");
-          #fwrite($controllerFile, "\t\tfor (\$i=1;\$i<=\$countPage;\$i++) {");
-          #fwrite($controllerFile, "\n");
-          #fwrite($controllerFile, "\t\t\tif (\$i!=\$page)");
-          #fwrite($controllerFile, "\n");
-          #fwrite($controllerFile, "\t\t\t\t\$pagination.=\" <a ".($anchorClass?"class='".$anchorClass."'":"")." href='\".\\LazyMePHP\\Helper\\url(null,null,[\"page\"=>\$i]).\"'>\". \$i .\"</a> \";");
-          #fwrite($controllerFile, "\n");
-          #fwrite($controllerFile, "\t\t\telse");
-          #fwrite($controllerFile, "\n");
-          #fwrite($controllerFile, "\t\t\t\t\$pagination.=\" [\".\$i.\"] \";");
-          #fwrite($controllerFile, "\n");
-          #fwrite($controllerFile, "\t\t}");
-          #fwrite($controllerFile, "\n");
-          #fwrite($controllerFile, "\n");
-          #fwrite($controllerFile, "\t\tif ((\$page+1) <= \$countPage) \$pagination.=\"<a ".($anchorClass?"class='".$anchorClass."'":"")." href='\".\LazyMePHP\Helper\url(null,null,[\"page\"=>(\$page+1)]).\"'>&gt;&gt;</a>\";");
-          #fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\t\treturn ['".$db->GetTableName()."' => \$".$db->GetTableName());
+          foreach ($db->GetTableFields() as $field)
+          {
+            if ($field->GetForeignField()) {
+              fwrite($controllerFile, ", '".$field->GetForeignTable()."' => \$".$field->GetForeignTable());
+            }
+          }
+          fwrite($controllerFile, ", 'filters' => \$filters];");
 
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\treturn \$".$db->GetTableName().";");
+          fwrite($controllerFile, "\t\t} else {");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\t\treturn ['".$db->GetTableName()."' => \$".$db->GetTableName().", 'filters' => \$filters];");
+
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\t}");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t}");
           fwrite($controllerFile, "\n");
