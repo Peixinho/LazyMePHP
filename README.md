@@ -25,7 +25,7 @@ cd myAwesomeProject && rm -rf .git
 git init
 
 # run initial config
-php -S localhost:8001 serve.php
+php -S localhost:8001 serve
 # but I advise you to use a real webserver like apache or whatever...
 
 ```
@@ -164,7 +164,7 @@ Every table generated will have a class that works as follows:
  - Accessible from /api/[Table Name]/ (.htaccess for apache, didnt bother with others)
 
 # run api
-php -S localhost:8001 serve.php --api
+php serve --api
 # but I advise you to use a real webserver like apache or whatever...
  ```
  # all users
