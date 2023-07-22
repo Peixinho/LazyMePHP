@@ -1,6 +1,3 @@
 <?php 
-
-echo (isset($argv) && count($argv)>1?$argv[1]:"");
-exec("php -S localhost:8080 -t ./public dev/webserver.php ".(isset($argv) && count($argv)>1?"--".$argv[1]:""));
-
+  @exec("php -S localhost:8080 -t ./public dev/webserver.php ".(isset($argv) && count($argv)>1?$argv[1]:""));
 ?>

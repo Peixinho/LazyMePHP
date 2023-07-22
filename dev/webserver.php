@@ -14,6 +14,8 @@ if (file_exists(getcwd() . '/public/' . $_SERVER['REQUEST_URI'])) {
 
 $cmdline = file_get_contents('/proc/self/cmdline');
 $argv = str_getcsv($cmdline, "\0");
+$argvo = $argv;
+
 while (true) {
   $arg = array_shift($argv);
   if ($arg === null || $arg === '--') {
@@ -59,9 +61,9 @@ if ($filePath && is_file($filePath)) {
   }
 } else {
   // rewrite to our index file
-  if (isset($argv) && count($argv)>1)
-  switch($argv[1]) {
-    case "api":
+  if (isset($argvo) && count($argvo)>1)
+  switch($argvo[6]) {
+    case "--api":
       include getcwd() . DIRECTORY_SEPARATOR . 'public/api/index.php';
       break;
     default:
