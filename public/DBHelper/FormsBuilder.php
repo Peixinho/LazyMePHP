@@ -608,32 +608,24 @@ class BuildTableForms
           fwrite($controllerFile, "\t\t\$".$db->GetTableName()." = new \LazyMePHP\Classes\\".$db->GetTableName()."_List();");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\$filters = array();");
-          #fwrite($controllerFile, "\n");
-          #// Check if there are filters
-          #foreach ($db->GetTableFields() as $field)
-          #{
-          #  if ($field->GetForeignField()) {
-          #    fwrite($controllerFile, "\n");
-          #    if ($field->HasForeignKey() && !is_null($field->GetForeignField()))
-          #    {
-          #      fwrite($controllerFile, "\t\tif (array_key_exists('".$field->GetName()."', \$_GET) && \$_GET[\"".$field->GetName()."\"])");
-          #      fwrite($controllerFile, "\n");
-          #      fwrite($controllerFile, "\t\t{");
-          #      fwrite($controllerFile, "\n");
-          #      fwrite($controllerFile, "\t\t\t\$filter.= (strlen(\$filter)>0?\" AND \":\"\").\"".$db->GetTableName().".".$field->GetName()." = '\".\$_GET[\"".$field->GetName()."\"].\"'\";"); 
-          #      fwrite($controllerFile, "\n");
-          #      fwrite($controllerFile, "\t\t\t\$haveFilter = true;");
-          #      fwrite($controllerFile, "\n");
-          #      fwrite($controllerFile, "\t\t\t\$filters['".$field->GetName()."'] = \$_GET['".$field->GetName()."'];");
-          #      fwrite($controllerFile, "\n");
-          #      fwrite($controllerFile, "\t\t}");
-          #      fwrite($controllerFile, "\n");
-          #    }
-          #  }
-          #}
-          #fwrite($controllerFile, "\t\tif (\$haveFilter) {");
-          #fwrite($controllerFile, "\n");
-          #fwrite($controllerFile, "\t\t\t\$".$db->GetTableName()."->CustomFind(\$filter);");
+          
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\t\$allowedMethods = array(");
+          // Check if there are filters
+          $c = 0;
+          foreach ($db->GetTableFields() as $field)
+          {
+            if ($field->GetForeignField()) {
+              if ($field->HasForeignKey() && !is_null($field->GetForeignField()))
+              {
+                fwrite($controllerFile, ($c++>0?", ":"")."'FindBy".$field->GetName()."'");
+              }
+            }
+          }
+          fwrite($controllerFile, ");");
+          fwrite($controllerFile, "\n");
+
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\tif (count(\$_GET)>0) {");
           fwrite($controllerFile, "\n");
@@ -641,7 +633,7 @@ class BuildTableForms
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\t{");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\t\tif (\$method && \$val && method_exists(\$".$db->GetTableName().", \$method)) {");
+          fwrite($controllerFile, "\t\t\t\tif (\$method && \$val && is_int(array_search(\$method, \$allowedMethods)) && method_exists(\$".$db->GetTableName().", \$method)) {");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\t\t\tcall_user_func_array(array(\$".$db->GetTableName().",\$method), explode(',', \$val));");
           fwrite($controllerFile, "\n");
