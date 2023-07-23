@@ -641,11 +641,13 @@ class BuildTableForms
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\t{");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\t\tif (\$method && \$val && method_exists(\$".$db->GetTableName().", \$method))");
+          fwrite($controllerFile, "\t\t\t\tif (\$method && \$val && method_exists(\$".$db->GetTableName().", \$method)) {");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\t\tcall_user_func_array(array(\$".$db->GetTableName().",\$method), explode(',', \$val));");
+          fwrite($controllerFile, "\t\t\t\t\tcall_user_func_array(array(\$".$db->GetTableName().",\$method), explode(',', \$val));");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\t\t\$filters[\$method] = \$val;");
+          fwrite($controllerFile, "\t\t\t\t\t\$filters[\$method] = \$val;");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\t\t\t}");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\t}");
           fwrite($controllerFile, "\n");
