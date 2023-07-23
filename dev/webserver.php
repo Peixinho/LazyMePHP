@@ -6,7 +6,9 @@
  * @author Duarte Peixinho
  */
 
-chdir(__DIR__."/../");
+if (substr($_SERVER["REQUEST_URI"],0,4) == "/api") {
+  chdir(__DIR__."/../api");
+}
 
 if (file_exists(getcwd() . '/public/' . $_SERVER['REQUEST_URI'])) {
   return false; // serve the requested resource as-is.
@@ -61,15 +63,9 @@ if ($filePath && is_file($filePath)) {
   }
 } else {
   // rewrite to our index file
-  if (isset($argvo) && count($argvo)>1)
-  switch($argvo[6]) {
-    case "--api":
-      include getcwd() . DIRECTORY_SEPARATOR . 'public/api/index.php';
-      break;
-    default:
+  if (substr($_SERVER["REQUEST_URI"],0,4) == "/api")
+    include getcwd() . DIRECTORY_SEPARATOR . 'public/api/index.php';
+  else
     include getcwd() . DIRECTORY_SEPARATOR . 'public/index.php';
-    break;
-  }
-  else include getcwd() . DIRECTORY_SEPARATOR . 'public/index.php';
 }
 ?>
