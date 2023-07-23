@@ -4,7 +4,6 @@ echo "What port do you want to use for web server?";
 while(!$port) {
   echo "\n8080:?";
   $port = trim(fgets(STDIN));
-  echo strlen($port);
   if (strlen($port)>0 && !intval($port)) {
     echo "invalid port, please try again";
     $port = false;
