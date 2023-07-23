@@ -58,6 +58,7 @@ class BuildTableForms
           fwrite($routerFile, "\n");
           fwrite($routerFile, "use Pecee\SimpleRouter\SimpleRouter;");
           fwrite($routerFile, "\n");
+          fwrite($routerFile, "use \LazyMePHP\Config\Internal\APP;");
         }
         else {
           echo "ERROR: Check your permissions to write the router file on $controllersPath/RouteForms.php";
@@ -105,7 +106,7 @@ class BuildTableForms
         fwrite($routerFile, "\n");
         fwrite($routerFile, "SimpleRouter::get('/".$db->GetTableName()."', function() {");
         fwrite($routerFile, "\n");
-        fwrite($routerFile, "\t\$data = ".$db->GetTableName()."::Default();");
+        fwrite($routerFile, "\t\$data = ".$db->GetTableName()."::Default(true, \$_GET['page']??1, APP::APP_NRESULTS());");
         fwrite($routerFile, "\n");
         fwrite($routerFile, "\tglobal \$blade;");
         fwrite($routerFile, "\n");
@@ -116,7 +117,7 @@ class BuildTableForms
             fwrite($routerFile, ", '".$field->GetForeignTable()."' => \$data['".$field->GetForeignTable()."']");
           }
         }
-        fwrite($routerFile, ", 'filters' => \$data['filters']]);");
+        fwrite($routerFile, ", 'filters' => \$data['filters'], 'length' => \$data['length'], 'current' => \$_GET['page']??1, 'limit' => APP::APP_NRESULTS()]);");
         fwrite($routerFile, "\n");
         fwrite($routerFile, "});");
         fwrite($routerFile, "\n");
@@ -447,7 +448,12 @@ class BuildTableForms
         fwrite($viewFile, "\n");
         fwrite($viewFile, "</table>");
         fwrite($viewFile, "\n");
-        #fwrite($viewFile, "{!!\$pagination!!}");
+        fwrite($viewFile, "@component('_Components.Pagination',array('total'=> \$length, 'current' => \$current, 'limit' => \$limit))");
+        fwrite($viewFile, "\n");
+        fwrite($viewFile, "\t<strong>Failed to load pagination component!</strong>");
+        fwrite($viewFile, "\n");
+        fwrite($viewFile, "@endcomponent");
+        fwrite($viewFile, "\n");
       }
       else echo "ERROR: Check your permissions to write ".$viewsPath."/".$db->GetTableName().".View.php";
     }
@@ -602,7 +608,7 @@ class BuildTableForms
           fwrite($controllerFile, "\t}");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\tstatic function Default(\$foreignTables = true) {");
+          fwrite($controllerFile, "\tstatic function Default(\$foreignTables = true, \$page = 1, \$limit = 100) {");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\$".$db->GetTableName()." = new \LazyMePHP\Classes\\".$db->GetTableName()."_List();");
@@ -647,21 +653,25 @@ class BuildTableForms
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\telse \$".$db->GetTableName()."->FindAll();");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\tif (\$foreignTables) {");
+          fwrite($controllerFile, "\t\t\$length = \$".$db->GetTableName()."->GetCount();");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\t\$".$db->GetTableName()."->Limit(\$limit,(\$page-1)*\$limit);");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\tif (\$foreignTables) {");
           $foreignTables = "";
           foreach ($db->GetTableFields() as $field)
           {
             if ($field->GetForeignField()) {
               fwrite($controllerFile, "\n");
-              fwrite($controllerFile, "\t\t\t\t\$".$field->GetForeignTable()." = new \LazyMePHP\Classes\\".$field->GetForeignTable()."_List();");
+              fwrite($controllerFile, "\t\t\t\$".$field->GetForeignTable()." = new \LazyMePHP\Classes\\".$field->GetForeignTable()."_List();");
               fwrite($controllerFile, "\n");
-              fwrite($controllerFile, "\t\t\t\t\$".$field->GetForeignTable()."->FindAll();");
+              fwrite($controllerFile, "\t\t\t\$".$field->GetForeignTable()."->FindAll();");
               fwrite($controllerFile, "\n");
               $foreignTables .= (strlen($foreignTables)>0?",":"")."'".$field->GetForeignTable()."' => \$".$field->GetForeignTable()."->GetList(false)";
             }
           }
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\t\treturn ['".$db->GetTableName()."' => \$".$db->GetTableName());
+          fwrite($controllerFile, "\t\t\treturn ['".$db->GetTableName()."' => \$".$db->GetTableName().", 'length' => \$length");
           foreach ($db->GetTableFields() as $field)
           {
             if ($field->GetForeignField()) {

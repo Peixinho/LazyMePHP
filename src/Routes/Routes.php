@@ -8,7 +8,7 @@
 namespace LazyMePHP\Forms;
 use Pecee\SimpleRouter\SimpleRouter;
 
-require_once __DIR__."/../Controllers/Default.Controller.php";
+require_once __DIR__."/../Controllers/_Default.Controller.php";
 SimpleRouter::get('/', [DefaultController::class, 'default']); 
 
 ?>
