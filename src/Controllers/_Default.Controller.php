@@ -16,7 +16,7 @@ class DefaultController {
 
 	static function Default() {
 		$blade = new BladeOne(DefaultController::$views,DefaultController::$cache);
-		echo $blade->run("Default.view");
+		echo $blade->run("_Default.view");
 	}
 }
 

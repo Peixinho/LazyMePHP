@@ -6,10 +6,6 @@
  * @author Duarte Peixinho
  */
 
-if (substr($_SERVER["REQUEST_URI"],0,4) == "/api") {
-  chdir(__DIR__."/../api");
-}
-
 if (file_exists(getcwd() . '/public/' . $_SERVER['REQUEST_URI'])) {
   return false; // serve the requested resource as-is.
 } 
