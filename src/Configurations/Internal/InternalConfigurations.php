@@ -410,9 +410,9 @@ class APP
     APP::$_root_path          = $CONFIG['ROOT'];
 
     // GET DB FILE AND Include IT
-    APP::$_db_file            = $CONFIG['DB_FILE'];
+    APP::$_db_file            = __DIR__."/../../DB/".$CONFIG['DB_FILE'];
 
-    require_once $CONFIG['DB_FILE'];
+    require_once APP::$_db_file;
     // END
 
     APP::$_db_type            = $CONFIG['DB_TYPE'];

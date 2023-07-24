@@ -106,7 +106,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
 
       if ($replaceInclude && !$failedIncludeFile) {
         fwrite($classFile, "\n");
-        fwrite($classFile, "require_once APP::ROOT_PATH().'/$classesPath/".$o->Table.".php';");
+        fwrite($classFile, "require_once __DIR__.'/".$o->Table.".php';");
       }
     }
 
@@ -147,7 +147,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "use \LazyMePHP\ClassesBuilder\IDB_CLASS_LIST;\n");
         fwrite($classFile, "use \LazyMePHP\Config\Internal\APP;\n");
         fwrite($classFile, "\n");
-        fwrite($classFile, "require_once APP::ROOT_PATH().\"/src/DB/IDB.php\";");
+        fwrite($classFile, "require_once __DIR__.\"/../DB/IDB.php\";");
         fwrite($classFile, "\n");
         fwrite($classFile, "require_once \"includes.php\";");
         fwrite($classFile, "\n");

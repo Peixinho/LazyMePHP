@@ -509,9 +509,9 @@ class BuildTableForms
         fwrite($controllerFile, "\$blade = new BladeOne(\$views,\$cache);");
         fwrite($controllerFile, "\n");
         fwrite($controllerFile, "\n");
-        fwrite($controllerFile, "require_once APP::ROOT_PATH().\"/src/Configurations/Configurations.php\";");
+        fwrite($controllerFile, "require_once __DIR__.\"/../Configurations/Configurations.php\";");
         fwrite($controllerFile, "\n");
-        fwrite($controllerFile, "require_once APP::ROOT_PATH().\"/".$classesPath."/includes.php\";");
+        fwrite($controllerFile, "require_once __DIR__.\"/../Classes/includes.php\";");
         fwrite($controllerFile, "\n");
 
         // reload page with _get params from filter post

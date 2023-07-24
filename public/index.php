@@ -31,11 +31,11 @@ function P($name)
 		switch(P("db_db"))
 		{
 			case 1:
-				$db_file = __DIR__."/../src/DB/MSSQL.php";
+				$db_file = __DIR__."MSSQL.php";
 			break;
 			default:
 			case 2:
-				$db_file = __DIR__."/../src/DB/MYSQL.php";
+				$db_file = __DIR__."MYSQL.php";
 			break;
 		}
 

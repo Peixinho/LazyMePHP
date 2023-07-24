@@ -26,7 +26,7 @@ if(file_exists(__DIR__."/../../src/Classes/includes.php"))
 /*
  * Router
  */
-require_once APP::ROOT_PATH()."/src/Ext/vendor/autoload.php";
+require_once __DIR__."/../../src/Ext/vendor/autoload.php";
 
 if(file_exists(__DIR__."/../../src/api/MaskAPI.php"))
 	require_once __DIR__."/../../src/api/MaskAPI.php";
