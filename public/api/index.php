@@ -2,80 +2,36 @@
 
 /**
  * LazyMePHP
-* @copyright This file is part of the LazyMePHP developed by Duarte Peixinho
-* @author Duarte Peixinho
-*/
+ * @copyright This file is part of the LazyMePHP developed by Duarte Peixinho
+ * @author Duarte Peixinho
+ */
 
 namespace LazyMePHP\API;
-
-function utf8ize( $mixed ) {
-    if (is_array($mixed)) {
-        foreach ($mixed as $key => $value) {
-            $mixed[$key] = utf8ize($value);
-        }
-    } elseif (is_string($mixed)) {
-        return mb_convert_encoding($mixed, "UTF-8", "UTF-8");
-    }
-    return $mixed;
-}
 
 /*
  * Add LazyMePHP Configuration File
  */
-require_once "../../src/Configurations/Configurations.php";
+require_once __DIR__."/../../src/Configurations/Configurations.php";
+require_once __DIR__."/../../src/Configurations/Internal/InternalConfigurations.php";
+require_once __DIR__."/../../src/Helpers/Helper.php";
 
 use \LazyMePHP\Config\Internal\APP;
 
 /*
- * Router
- */
-require_once APP::ROOT_PATH()."/src/Router/Router.php";
-
-/*
  * Include Generated Class Files
  */
-if(file_exists(APP::ROOT_PATH()."/src/Classes/includes.php"))
-    require_once APP::ROOT_PATH()."/src/Classes/includes.php";
+if(file_exists(__DIR__."/../../src/Classes/includes.php"))
+    require_once __DIR__."/../../src/Classes/includes.php";
 
 /*
- * Routes
+ * Router
  */
-use \LazyMePHP\Router\Router;
-Router::SetDefaultRouting("APIRequest", "./APIRequest.php");
+require_once __DIR__."/../../src/Ext/vendor/autoload.php";
 
-if(file_exists(APP::ROOT_PATH()."/src/api/RouteAPI.php"))
-	require_once APP::ROOT_PATH()."/src/api/RouteAPI.php";
-
-/*
- * Request Method
- */
-$method =$_SERVER['REQUEST_METHOD'];
-
-/*
- * Dispatch based on URL
- * basically it requires the API file
- */
-$param = "\LazyMePHP\API\\".Router::Dispatch($_GET, $method);
-
-/*
- * Parse the query (if used)
- */
-$query = $_GET;
-
-/*
- * Remove controller from query
- */
-unset($query['controller']);
-
-/*
- * Instantiate Table's API
- */
-$obj = new $param();
-
-/*
- * Parse input
- */
-$data = file_get_contents('php://input');
+if(file_exists(__DIR__."/../../src/api/MaskAPI.php"))
+	require_once __DIR__."/../../src/api/MaskAPI.php";
+if(file_exists(__DIR__."/../../src/api/RouteAPI.php"))
+	require_once __DIR__."/../../src/api/RouteAPI.php";
 
 /*
  * Output result
@@ -83,7 +39,8 @@ $data = file_get_contents('php://input');
 header('Content-type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, GET, DELETE, PUT');
-echo json_encode($obj->$method($query, $data));
+
+\Pecee\SimpleRouter\SimpleRouter::start();
 
 /*
  * Runs logging activity

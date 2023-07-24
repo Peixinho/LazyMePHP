@@ -106,7 +106,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
 
       if ($replaceInclude && !$failedIncludeFile) {
         fwrite($classFile, "\n");
-        fwrite($classFile, "require_once APP::ROOT_PATH().'/$classesPath/".$o->Table.".php';");
+        fwrite($classFile, "require_once __DIR__.'/".$o->Table.".php';");
       }
     }
 
@@ -147,7 +147,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "use \LazyMePHP\ClassesBuilder\IDB_CLASS_LIST;\n");
         fwrite($classFile, "use \LazyMePHP\Config\Internal\APP;\n");
         fwrite($classFile, "\n");
-        fwrite($classFile, "require_once APP::ROOT_PATH().\"/src/DB/IDB.php\";");
+        fwrite($classFile, "require_once __DIR__.\"/../DB/IDB.php\";");
         fwrite($classFile, "\n");
         fwrite($classFile, "require_once \"includes.php\";");
         fwrite($classFile, "\n");
@@ -224,7 +224,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             fwrite($classFile, "\t\tif (APP::APP_ACTIVITY_LOG() && \$this->".$field->GetName()."!=\$".$field->GetName().")\n\t\t\t\$this->__log['".$field->GetName()."']=array((\$this->".$field->GetName()."?substr(\$this->".$field->GetName().",0,255):''), (\$".$field->GetName()."?substr(\$".$field->GetName().",0,255):''));");
             fwrite($classFile, "\n");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\$this->".$field->GetName()."=(\$".$field->GetName()."!=NULL?\$".$field->GetName().":NULL);");
+            fwrite($classFile, "\t\t\$this->".$field->GetName()."=(\$".$field->GetName()."!=NULL?".($field->GetDataLength()>0?"substr(\$".$field->GetName().",0,".$field->GetDataLength().")":"\$".$field->GetName()).":NULL);");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t}");
           }

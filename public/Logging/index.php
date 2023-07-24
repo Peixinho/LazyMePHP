@@ -35,49 +35,49 @@ if ($_SESSION && $_SESSION['username'] == APP::DB_USER() && $_SESSION['password'
 {
 
 $sqlFilter="";
-if ($_GET['date1'] && $_GET['date2']) {
+if ($_GET['date1'] ?? null && $_GET['date2'] ?? null) {
   $level1 = true;
   $sqlFilter = "(LA.date BETWEEN '".$_GET['date1']."' AND '".$_GET['date2']."')";
 }
-if ($_GET['user']) {
+if ($_GET['user'] ?? null) {
   $level1 = true;
   $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LA.user='".$_GET['user']."'";
 }
-if ($_GET['method']) {
+if ($_GET['method'] ?? null) {
   $level1 = true;
   $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LA.method='".$_GET['method']."'";
 }
 $level2 = false;
-if ($_GET['arg']) {
+if ($_GET['arg'] ?? null) {
   $level2 = true;
   $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LAO.subOption='".$_GET['arg']."'";
 }
-if ($_GET['value']) {
+if ($_GET['value'] ?? null) {
   $level2 = true;
   $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LAO.value='".$_GET['value']."'";
 }
 $level3 = false;
-if ($_GET['table']) {
+if ($_GET['table'] ?? null) {
   $level3 = true;
   $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LD.table='".$_GET['table']."'";
 }
-if ($_GET['pk']) {
+if ($_GET['pk'] ?? null) {
   $level3 = true;
   $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LD.pk='".$_GET['pk']."'";
 }
-if ($_GET['method2']) {
+if ($_GET['method2'] ?? null) {
   $level3 = true;
   $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LD.method='".$_GET['method2']."'";
 }
-if ($_GET['field']) {
+if ($_GET['field'] ?? null) {
   $level3 = true;
   $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LD.field='".$_GET['field']."'";
 }
-if ($_GET['initialValue']) {
+if ($_GET['initialValue'] ?? null) {
   $level3 = true;
   $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LD.dataBefore='".$_GET['initialValue']."'";
 }
-if ($_GET['changedTo']) {
+if ($_GET['changedTo'] ?? null) {
   $level3 = true;
   $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LD.dataAfter='".$_GET['initialValue']."'";
 }
@@ -135,6 +135,7 @@ $sql = "
     LAO_SUBOPTION,
     LAO_VALUE,
     LD_ID,
+    LD_PK,
     LD_ID_LOG_ACTIVITY,
     LD_TABLE,
     LD_METHOD,
@@ -207,48 +208,48 @@ echo "<form method='POST' action=''>";
 // Filter
 echo "<h3>Log Activity</h3>";
 echo "Initial Date:<br> ";
-echo "<input type='text' name='date1' id='date1' value='".$_GET['date1']."' />";
+echo "<input type='text' name='date1' id='date1' value='".(isset($_GET['date1'])?$_GET['date1']:"")."' />";
 echo "<br>";
 echo "Ending Date:<br> ";
-echo "<input type='text' name='date2' id='date2' value='".$_GET['date2']."' />";
+echo "<input type='text' name='date2' id='date2' value='".(isset($_GET['date2'])?$_GET['date2']:"")."' />";
 echo "<br>";
 echo "User:<br> ";
-echo "<input type='text' name='user' id='user' value='".$_GET['user']."' />";
+echo "<input type='text' name='user' id='user' value='".(isset($_GET['user'])?$_GET['user']:"")."' />";
 echo "<br>";
 echo "Request:<br> ";
-echo "<select name='method' id='method'><option value=''>-</option><option value='GET' ".($_GET['method']=='GET'?'selected':'').">GET</option><option value='POST' ".($_GET['method']=='POST'?'selected':'').">POST</option><option value='PUT' ".($_GET['method']=='PUT'?'selected':'').">PUT</option><option value='PATCH' ".($_GET['method']=='PATCH'?'selected':'').">PATCH</option><option value='DELETE' ".($_GET['method']=='DELETE'?'selected':'').">DELETE</option></select>";
+echo "<select name='method' id='method'><option value=''>-</option><option value='GET' ".(isset($_GET['method'])?($_GET['method']=='GET'?'selected':''):'').">GET</option><option value='POST' ".(isset($_GET['method'])?($_GET['method']=='POST'?'selected':''):'').">POST</option><option value='PUT' ".(isset($_GET['method'])?($_GET['method']=='PUT'?'selected':''):'').">PUT</option><option value='PATCH' ".(isset($_GET['method'])?($_GET['method']=='PATCH'?'selected':''):'').">PATCH</option><option value='DELETE' ".(isset($_GET['method'])?($_GET['method']=='DELETE'?'selected':''):'').">DELETE</option></select>";
 
 
 echo "<br>";
 echo "<br>";
 echo "<h3>Log Activity Options</h3>";
 echo "Arg:<br> ";
-echo "<input type='text' name='arg' id='arg' value='".$_GET['arg']."' />";
+echo "<input type='text' name='arg' id='arg' value='".(isset($_GET['arg'])?$_GET['arg']:"")."' />";
 echo "<br>";
 echo "Value:<br> ";
-echo "<input type='text' name='value' id='value' value='".$_GET['value']."' />";
+echo "<input type='text' name='value' id='value' value='".(isset($_GET['value'])?$_GET['value']:"")."' />";
 
 
 echo "<br>";
 echo "<br>";
 echo "<h3>Log Activity Data</h3>";
 echo "Table:<br> ";
-echo "<input type='text' name='table' id='table' value='".$_GET['table']."' />";
+echo "<input type='text' name='table' id='table' value='".(isset($_GET['table'])?$_GET['table']:"")."' />";
 echo "<br>";
 echo "PK:<br> ";
-echo "<input type='text' name='pk' id='pk' value='".$_GET['pk']."' />";
+echo "<input type='text' name='pk' id='pk' value='".(isset($_GET['pk'])?$_GET['pk']:"")."' />";
 echo "<br>";
 echo "Method:<br> ";
-echo "<select name='method2' id='method2'><option value=''>-</option><option value='I' ".($_GET['method2']=='I'?'selected':'').">Insert</option><option value='U' ".($_GET['method2']=='U'?'selected':'').">Update</option><option value='D' ".($_GET['method2']=='D'?'selected':'').">Delete</option></select>";
+echo "<select name='method2' id='method2'><option value=''>-</option><option value='I' ".(isset($_GET['method2'])?($_GET['method2']=='I'?'selected':''):'').">Insert</option><option value='U' ".(isset($_GET['method2'])?($_GET['method2']=='U'?'selected':''):'').">Update</option><option value='D' ".(isset($_GET['method2'])?($_GET['method2']=='D'?'selected':''):'').">Delete</option></select>";
 echo "<br>";
 echo "Field:<br> ";
-echo "<input type='text' name='field' id='field' value='".$_GET['field']."' />";
+echo "<input type='text' name='field' id='field' value='".(isset($_GET['field'])?$_GET['field']:"")."' />";
 echo "<br>";
 echo "initialValue:<br> ";
-echo "<input type='text' name='initialValue' id='initialValue' value='".$_GET['initialValue']."' />";
+echo "<input type='text' name='initialValue' id='initialValue' value='".(isset($_GET['initialValue'])?$_GET['initialValue']:"")."' />";
 echo "<br>";
 echo "changedTo:<br> ";
-echo "<input type='text' name='changedTo' id='changedTo' value='".$_GET['changedTo']."' />";
+echo "<input type='text' name='changedTo' id='changedTo' value='".(isset($_GET['changedTo'])?$_GET['changedTo']:"")."' />";
 echo "<br>";
 echo "<input type='submit' value='Submit' />";
 echo "</form>";
@@ -322,6 +323,7 @@ if (strlen($activityData)>0 || strlen($activityOptions)>0) {
 }
 echo "</table>";
 
+    $pagination = "";
 		if ($page > 1) $pagination.="<a  href='".appendUrl("page",($page-1))."'>&lt;&lt;</a>";
 		for ($i=1;$i<=$countPage;$i++) {
 			if ($i!=$page)
@@ -336,7 +338,7 @@ echo "</table>";
 else {
   session_destroy();
   // Show login if user not logged
-  echo "<img src='../src/img/logo.png' width='100' height='100' />";
+  echo "<img src='../img/logo.png' width='100' height='100' />";
   echo "<br>";
   echo "<br>";
   echo "<b>Login in with database credentials to continue</b>";

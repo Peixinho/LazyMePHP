@@ -9,11 +9,11 @@
 use \LazyMePHP\Config\Internal\APP;
 session_start();
 
-require_once 'DatabaseHelper.php';
-require_once '../../src/Configurations/Configurations.php';
-require_once 'ClassesBuilder.php';
-require_once 'FormsBuilder.php';
-require_once 'APIBuilder.php';
+require_once __DIR__.'/DatabaseHelper.php';
+require_once __DIR__.'/../../src/Configurations/Configurations.php';
+require_once __DIR__.'/ClassesBuilder.php';
+require_once __DIR__.'/FormsBuilder.php';
+require_once __DIR__.'/APIBuilder.php';
 
 if ((!array_key_exists('username', $_SESSION) || !array_key_exists('password', $_SESSION)) && ($_POST && $_POST['username'] && $_POST['password'] && $_POST['username'] == APP::DB_USER() && $_POST['password'] == APP::DB_PASSWORD()))
 {
@@ -115,16 +115,7 @@ if ($_SESSION && $_SESSION['username'] == APP::DB_USER() && $_SESSION['password'
         $tableText .= "<br>";
         $tableText .= "Path defined in config: ".APP::ROOT_PATH()."/";
         $tableText .= "<br>";
-        $tableText .= "Classes Path: <input name='classes_path' type='text' value='src/Classes' readonly />";
         $tableText .= "<br>";
-        $tableText .= "Controllers Path: <input name='forms_controller_path' type='text' value='src/Controllers' readonly />";
-        $tableText .= "<br>";
-        $tableText .= "Views Path: <input name='forms_view_path' type='text' value='src/Views' readonly />";
-        $tableText .= "<br>";
-        $tableText .= "API Path: <input name='api_path' type='text' value='src/api' readonly />";
-        $tableText .= "<br>";
-        $tableText .= "<br>";
-
         $tableText .="<b>Form classes</b>";
         $tableText .= "<br>";
         $tableText .= "Button CSS Classes: <input name='forms_class[button]' type='text' value='' />";
@@ -153,16 +144,11 @@ if ($_SESSION && $_SESSION['username'] == APP::DB_USER() && $_SESSION['password'
         echo "<img src='../img/logo.png'/>";
         echo "<br>";
         echo "<br>";
-        if (filter_input(INPUT_POST, 'classes_path') &&
-        filter_input(INPUT_POST, 'forms_controller_path') &&
-        filter_input(INPUT_POST, 'forms_view_path') &&
-        filter_input(INPUT_POST, 'api_path')) {
-            $helper = new \LazyMePHP\ClassesBuilder\BuildTableClasses(filter_input(INPUT_POST, 'classes_path'), $_POST['class'], filter_input(INPUT_POST, 'replace_include'), $_POST['tableDescriptors']);
-            echo "Classes Built!<br>";
-            $helper2 = new \LazyMePHP\FormsBuilder\BuildTableForms(filter_input(INPUT_POST, 'forms_controller_path'), filter_input(INPUT_POST, 'forms_view_path'), filter_input(INPUT_POST, 'classes_path'), $_POST['form'], filter_input(INPUT_POST, 'replace_routeforms'), filter_input(INPUT_POST, 'forms_class',FILTER_DEFAULT, FILTER_REQUIRE_ARRAY));
-            $helper3 = new \LazyMePHP\FormsBuilder\BuildTableAPI(filter_input(INPUT_POST, 'api_path'), filter_input(INPUT_POST, "classes_path"), $_POST['api'], filter_input(INPUT_POST, 'replace_routeapi'));
-            echo "Api Built!<br>";
-        } else echo "Paths not available";
+        $helper = new \LazyMePHP\ClassesBuilder\BuildTableClasses('src/Classes', $_POST['class'], filter_input(INPUT_POST, 'replace_include'), $_POST['tableDescriptors']);
+        echo "Classes Built!<br>";
+        $helper2 = new \LazyMePHP\FormsBuilder\BuildTableForms('src/Controllers', 'src/Views', 'src/Classes', $_POST['form'], filter_input(INPUT_POST, 'replace_routeforms'), filter_input(INPUT_POST, 'forms_class',FILTER_DEFAULT, FILTER_REQUIRE_ARRAY));
+        $helper3 = new \LazyMePHP\FormsBuilder\BuildTableAPI('src/api', filter_input(INPUT_POST, 'replace_routeapi'));
+        echo "Api Built!<br>";
         echo "Classes and Forms Built!<br>";
     }
 } else {

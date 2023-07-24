@@ -25,11 +25,12 @@ cd myAwesomeProject && rm -rf .git
 git init
 
 # run initial config
-php -S localhost:8001
+php -S localhost:8080 serve
 # but I advise you to use a real webserver like apache or whatever...
+
 ```
 
-Navigate into http://localhost:8001/public/ and fill out your form about the application you're building and database credentials you will connect, like in this example:
+Navigate into http://localhost:8080/public/ and fill out your form about the application you're building and database credentials you will connect, like in this example:
 
  - **Database Name** (*string*): 'myDatabase'
  - **Database User** (*string*): 'myDatabase_User'
@@ -53,7 +54,7 @@ filling the form again .. so, to be lazy in the end)
 # LazyMePHP Auto Generation Tools
 If you selected **Run DB Class Builder Helper** option from the last form, or if you access to:
 ```
-http://localhost:8001/DBHelper/
+http://localhost:8080/DBHelper/
 ```
 and insert your database credentials to log in.
 
@@ -73,7 +74,7 @@ After this, you will have a list of your database tables, where you can select w
 # Success
 If everything went well, you will have a working index with some basic functionality.
 ```
-http://localhost:8001
+http://localhost:8080
 ```
 
 # Basic Usage
@@ -95,22 +96,15 @@ http://localhost:8001
 
 ## Forms and Routes
  Every table generated will have a Form that works as follows:
- - Each Table will have a Controller File by default in /src/phg/Controllers/[Table Name].Controller.php and will have a View File by default in /src/Views/[Table Name].View.php
- - The file RoutingForms.php by default in /src/Controllers/RoutingForms.php is the one that defines the Routes to each Controller, and each Controller requires its View file
- - These routes can be defined like this:
- ```
- # To the controller by default
- Router::Create("controller", "User", 'src/Controller/User.Controller.php');
- 
- # By action
- Router::Create("controller", "User", 'src/Controller/User.Controller.php', "save"); # will only have access to save, so no delete for you ...
- ```
+ - Each Table will have a Controller File by default in /src/Controllers/[Table Name].Controller.php
+ - Each Table will have 3 template files using BladeOne in /src/Views/[Table Name]/list,edit and template.blade.php
+ - The file RoutingForms.php is by default in /src/Controllers/RouterForms.php is the one that defines the Routes to each Controller using simple-php-router, and each Controller requires its View file, but this should be considered boilerplate and they should be edited and placed in src/Routes/Routes.php
 
-
+ ```
 ## Classes
 
 Every table generated will have a class that works as follows:
- - Each Table will have a Class File by default in /src/Classes/[Table Name].php and will have a View File by default in /src/phg/Views/[Table Name].View.php
+ - Each Table will have a Class File by default in /src/Classes/[Table Name].php 
  - All Classes will be in namespace \LazyMePHP\Classes
  - All Class columns have getters and setters *Get*[Column Name], *Set*[Column Name]
  - All Classes have Save method, if Id is provided when constructing object:
@@ -151,7 +145,7 @@ Every table generated will have a class that works as follows:
 
     ```
  - Every class will have a *table*_list class, that allows you to select a list of that class type
- - Every List have a *FindBy*[Column Name], *FindBy*[Column Name]*Like*, *OrderBy*[Column name], *GroupBy*[Column], *Limit*
+ - Every List have a *FindBy*[Foreign Column Name], *FindBy*[Foreign Column Name]*Like*, *OrderBy*[Foreign Column name], *GroupBy*[Foreign Column], *Limit*
     ```
     $users = new \LazyMePHP\Classes\User_List();
     $users->FindByNameLike('John');
@@ -166,28 +160,20 @@ Every table generated will have a class that works as follows:
  
 
 ## API
- Every table generated will have an API that works as follows:
+ Every table generated will have some routes created in src/api/RouteAPI.php, and they make use of the controllers of each table
  - Accessible from /api/[Table Name]/ (.htaccess for apache, didnt bother with others)
+
  ```
  # all users
- http://localhost:8001/api/user/ # will output all users information in json format
+ http://localhost:8080/api/user/ # will output all users information in json format
  
  # Search specific users based on column filters
- http://localhost:8001/api/User/?FindByNameLike=John&Limit=10 # will output all users information in json format that matches criteria and Limits to 10
+ http://localhost:8080/api/User/?FindByNameLike=John&Limit=10 # will output all users information in json format that matches criteria and Limits to 10
  
  # Specific user
- http://localhost:8001/api/User/123 # will output user 123 information in json format
+ http://localhost:8080/api/User/123 # will output user 123 information in json format
  
  # Same example but in other webserver, php built in for example:
-
- # All users
- http://localhost:8001/api/?controller=User/ # will output all users information in json format
- 
- # Search specific users based on column filters
- http://localhost:8001/api/?controller=User&FindByNameLike=John&Limit=10 # will output all users information in json format that matches criteria and Limits to 10
- 
- http://localhost:8001/api/?controller=User&pk=123 #this pk is really important when trying to get specific id
- ```
 
 ### ohh but this way you expose all data, like passwords and other stuff
  yeap, thats true! However, you can configure it to expose only the columns you want (all by default) by editing the file

@@ -23,7 +23,9 @@ $SuccessMessages = new Enum();
 $ErrorMessages = new Enum();
 
 // Add Messages
-$SuccessMessages->Add("...", 1);
-$ErrorMessages->Add("...", 1);
+$SuccessMessages->Add("Success Message 1", 1);
+$SuccessMessages->Add("Success Message 2", 2);
+$ErrorMessages->Add("Error Message 1", 1);
+$ErrorMessages->Add("Error Message 2", 2);
 
 ?>

@@ -1,5 +1,8 @@
 src/Configurations/Configurations.php
 src/Classes
 src/Controllers
-src/Views
+!src/Controllers/Default.Controller.php
 src/api
+!src/Views/compiled
+!src/Views/Default
+src/Views

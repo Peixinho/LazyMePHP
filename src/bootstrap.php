@@ -19,57 +19,53 @@ $urlFiles = filter_input(INPUT_SERVER, "SERVER_NAME");
 /*
  * Add LazyMePHP Configuration File
  */
-require_once "Configurations/Configurations.php";
+require_once __DIR__."/Configurations/Configurations.php";
 
 /*
  * Enum
  */
-require_once "Enum/Enum.class.php";
+require_once __DIR__."/Enum/Enum.class.php";
 
 /*
  * Helper Functions to Aliviate Stress :P
  */
-require_once "Helpers/Helper.php";
+require_once __DIR__."/Helpers/Helper.php";
 
 /*
  * Validations
  */
-require_once "Validations/Validations.php";
+require_once __DIR__."/Validations/Validations.php";
 
 /*
  * Error and Success Messages
  */
-require_once "Messages/Messages.php";
+require_once __DIR__."/Messages/Messages.php";
 
 /*
  * Values
  */
-require_once APP::ROOT_PATH()."/src/Values/Values.php";
+require_once __DIR__."/Values/Values.php";
 
 /*
  * Router
  */
-require_once APP::ROOT_PATH()."/src/Router/Router.php";
+require_once __DIR__."/Ext/vendor/autoload.php";
+
+/* Load external routes file */
+require_once __DIR__."/Routes/Routes.php";
+require_once __DIR__."/Controllers/RouteForms.php";
+
+// Start the routing
 
 /*
  * Include Generated Class Files
  */
-if(file_exists(APP::ROOT_PATH()."/src/Classes/includes.php"))
-    require_once APP::ROOT_PATH()."/src/Classes/includes.php";
-
-/*
- * Default Controller Routes
- * when routing is not found
- */
-use LazyMePHP\Router\Router;
-Router::SetDefaultRouting("Default", APP::ROOT_PATH()."/src/Controllers/Default_controller.php");
+if(file_exists(__DIR__."/Classes/includes.php"))
+    require_once __DIR__."/Classes/includes.php";
 
 /*
  * App Files if Needed
  */
-// require_once ...
-require_once APP::ROOT_PATH()."/src/Controllers/RouteForms.php";
-
 
 
 
@@ -83,22 +79,6 @@ require_once APP::ROOT_PATH()."/src/Controllers/RouteForms.php";
 
 
 
-
-
-/*
- * END Commands to Execute if needed
- */
-
-/*
- * !LAST COMAND TO BE EXECUTED!
- * Dispatch based on URL
- */
-if (APP::APP_URL_ENCRYPTION() && key_exists('query', parse_url($_SERVER['REQUEST_URI'])))
-	$url = parse_url($_SERVER['REQUEST_URI'])['path'].APP::URLDECODE($_SERVER['REQUEST_URI']);
-else
-	$url = $_SERVER['REQUEST_URI'];
-
-Router::Dispatch($url);
 
 /*
  * Runs logging activity

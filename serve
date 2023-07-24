@@ -1,0 +1,16 @@
+<?php 
+$port = false;
+echo "What port do you want to use for web server?";
+while(!$port) {
+  echo "\n8080:?";
+  $port = trim(fgets(STDIN));
+  if (strlen($port)>0 && !intval($port)) {
+    echo "invalid port, please try again";
+    $port = false;
+  }
+  else if (strlen($port)==0) $port = 8080;
+  else $port = intval($port);
+}
+if (!$port || !is_int($port)) $port = 8080;
+  @exec("php -S localhost:".$port." -t ./public dev/webserver.php");
+?>

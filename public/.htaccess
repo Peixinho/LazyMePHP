@@ -1,5 +1,6 @@
-RewriteEngine On
-RewriteRule ([^/]*)/([0-9]+)$ index.php?controller=$1&id=$2%{QUERY_STRING} [NC,L]
-RewriteRule ([^/]*)/([^/]*)$ index.php?controller=$1&action=$2%{QUERY_STRING} [NC,L]
-RewriteRule ([^/]*)/([^/]*)/([0-9]+)$ index.php?controller=$1&action=$2&id=$3%{QUERY_STRING} [NC,L]
-RewriteRule ([^/]*)$ index.php?controller=$1%{QUERY_STRING} [NC,L]
+RewriteEngine on
+RewriteCond $1 !^(css|js|img)/
+RewriteCond %{SCRIPT_FILENAME} !-f
+RewriteCond %{SCRIPT_FILENAME} !-d
+RewriteCond %{SCRIPT_FILENAME} !-l
+RewriteRule ^(.*)$ index.php/$1
