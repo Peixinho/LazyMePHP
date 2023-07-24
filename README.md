@@ -25,12 +25,12 @@ cd myAwesomeProject && rm -rf .git
 git init
 
 # run initial config
-php -S localhost:8001 serve
+php -S localhost:8080 serve
 # but I advise you to use a real webserver like apache or whatever...
 
 ```
 
-Navigate into http://localhost:8001/public/ and fill out your form about the application you're building and database credentials you will connect, like in this example:
+Navigate into http://localhost:8080/public/ and fill out your form about the application you're building and database credentials you will connect, like in this example:
 
  - **Database Name** (*string*): 'myDatabase'
  - **Database User** (*string*): 'myDatabase_User'
@@ -54,7 +54,7 @@ filling the form again .. so, to be lazy in the end)
 # LazyMePHP Auto Generation Tools
 If you selected **Run DB Class Builder Helper** option from the last form, or if you access to:
 ```
-http://localhost:8001/DBHelper/
+http://localhost:8080/DBHelper/
 ```
 and insert your database credentials to log in.
 
@@ -74,7 +74,7 @@ After this, you will have a list of your database tables, where you can select w
 # Success
 If everything went well, you will have a working index with some basic functionality.
 ```
-http://localhost:8001
+http://localhost:8080
 ```
 
 # Basic Usage
@@ -145,7 +145,7 @@ Every table generated will have a class that works as follows:
 
     ```
  - Every class will have a *table*_list class, that allows you to select a list of that class type
- - Every List have a *FindBy*[Column Name], *FindBy*[Column Name]*Like*, *OrderBy*[Column name], *GroupBy*[Column], *Limit*
+ - Every List have a *FindBy*[Foreign Column Name], *FindBy*[Foreign Column Name]*Like*, *OrderBy*[Foreign Column name], *GroupBy*[Foreign Column], *Limit*
     ```
     $users = new \LazyMePHP\Classes\User_List();
     $users->FindByNameLike('John');
@@ -163,18 +163,15 @@ Every table generated will have a class that works as follows:
  Every table generated will have some routes created in src/api/RouteAPI.php, and they make use of the controllers of each table
  - Accessible from /api/[Table Name]/ (.htaccess for apache, didnt bother with others)
 
-# run api
-php serve --api
-# but I advise you to use a real webserver like apache or whatever...
  ```
  # all users
- http://localhost:8001/api/user/ # will output all users information in json format
+ http://localhost:8080/api/user/ # will output all users information in json format
  
  # Search specific users based on column filters
- http://localhost:8001/api/User/?FindByNameLike=John&Limit=10 # will output all users information in json format that matches criteria and Limits to 10
+ http://localhost:8080/api/User/?FindByNameLike=John&Limit=10 # will output all users information in json format that matches criteria and Limits to 10
  
  # Specific user
- http://localhost:8001/api/User/123 # will output user 123 information in json format
+ http://localhost:8080/api/User/123 # will output user 123 information in json format
  
  # Same example but in other webserver, php built in for example:
 
