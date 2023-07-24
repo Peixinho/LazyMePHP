@@ -120,6 +120,8 @@ class BuildTableAPI
 					fwrite($routerFile, "\n");
 					fwrite($routerFile, "\n");
           fwrite($routerFile, "use Pecee\SimpleRouter\SimpleRouter;");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "use \LazyMePHP\Config\Internal\APP;");
 					fwrite($routerFile, "\n");
 					fwrite($routerFile, "\n");
 
@@ -140,7 +142,7 @@ class BuildTableAPI
             fwrite($routerFile, "\n");
             fwrite($routerFile, "SimpleRouter::get('/api/".$o->Table."', function() {");
             fwrite($routerFile, "\n");
-            fwrite($routerFile, "\t\$data = ".$o->Table."::Default(false);");
+            fwrite($routerFile, "\t\$data = ".$o->Table."::Default(false, \$_GET['page']??1, APP::APP_NRESULTS());");
             fwrite($routerFile, "\n");
             fwrite($routerFile, "\techo json_encode(\$data['".$o->Table."']->Serialize(true, \$GLOBALS['API_FIELDS_AVAILABLE']));");
             fwrite($routerFile, "\n");

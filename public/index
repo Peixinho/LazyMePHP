@@ -21,6 +21,7 @@
       <title><?php echo APP::APP_TITLE(); ?></title>
     </head>
     <body onload="LazyMePHP.Init()">
+      <ul> <?php foreach($routes as $r) { echo "<li><a href=\"/".$r."\">$r</a>"; } ?> </ul>
       <div>
         <div>
         <!-- Main Content -->

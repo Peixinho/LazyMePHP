@@ -59,6 +59,8 @@ class BuildTableForms
           fwrite($routerFile, "use Pecee\SimpleRouter\SimpleRouter;");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "use \LazyMePHP\Config\Internal\APP;");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\n");
         }
         else {
           echo "ERROR: Check your permissions to write the router file on $controllersPath/RouteForms.php";
@@ -84,6 +86,7 @@ class BuildTableForms
     }
 
     APP::DB_CONNECTION()->Query($queryString, $sqlObj);
+    $routes = array();
     while ($o=$sqlObj->FetchObject())
     {
       if (is_array($tablesList) && array_search($o->Table, $tablesList)>=0) {
@@ -94,6 +97,7 @@ class BuildTableForms
       }
 
       if ($replaceRouteForms && !$failedRouterFile) {
+        $routes[] = $db->GetTableName();
         fwrite($routerFile, "/*");
         fwrite($routerFile, "\n");
         fwrite($routerFile, " * ".$db->GetTableName()." Routing");
@@ -185,14 +189,17 @@ class BuildTableForms
       }
     }
 
-    /*
+    fwrite($routerFile, "\$routes = array(");
+    foreach($routes as $r) fwrite($routerFile, "'$r',");
+    fwrite($routerFile, ")");
+
+
     // Close Include file
     if ($replaceRouteForms && !$failedRouterFile) {
       fwrite($routerFile, "\n");
       fwrite($routerFile,"?>");
       fclose($routerFile);
     }
-*/
   }
 
   protected function ConstructForm($viewsPath, $db, $cssClass)
