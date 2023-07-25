@@ -25,7 +25,7 @@ cd myAwesomeProject && rm -rf .git
 git init
 
 # run initial config
-php -S localhost:8080 serve
+php serve
 # but I advise you to use a real webserver like apache or whatever...
 
 ```
