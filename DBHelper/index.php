@@ -10,7 +10,7 @@ use \LazyMePHP\Config\Internal\APP;
 session_start();
 
 require_once __DIR__.'/DatabaseHelper.php';
-require_once __DIR__.'/../../src/Configurations/Configurations.php';
+require_once __DIR__.'/../src/Configurations/Configurations.php';
 require_once __DIR__.'/ClassesBuilder.php';
 require_once __DIR__.'/FormsBuilder.php';
 require_once __DIR__.'/APIBuilder.php';

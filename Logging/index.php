@@ -10,8 +10,8 @@ namespace LazyMePHP\Forms;
 use \LazyMePHP\Config\Internal\APP;
 session_start();
 
-require_once "../../src/Configurations/Configurations.php";
-require_once "../../src/Classes/includes.php";
+require_once __DIR__."/../src/Configurations/Configurations.php";
+require_once __DIR__."/../src/Classes/includes.php";
 
 function appendUrl($key, $value) 
 {
