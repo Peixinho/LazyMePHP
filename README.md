@@ -54,7 +54,7 @@ filling the form again .. so, to be lazy in the end)
 # LazyMePHP Auto Generation Tools
 If you selected **Run DB Class Builder Helper** option from the last form, or if you access to:
 ```
-http://localhost:8080/DBHelper/
+http://localhost:8080/dbhelper/
 ```
 and insert your database credentials to log in.
 
@@ -194,7 +194,7 @@ and define whats the user auth to be registered as the owner of the change in th
 $CONFIG['APP_ACTIVITY_LOG']=1;
 $CONFIG['APP_ACTIVITY_AUTH']=$_SESSION['user_logged'];
 ```
-Viewer is under /Logging and shows the list of requests ordered by date desc, and there are some filters that can be used.
+Viewer is under /logging and shows the list of requests ordered by date desc, and there are some filters that can be used.
 This is not a full featured viewer, you can see it as an example to expand on (but it does work quite well)
 
 # License
