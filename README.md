@@ -44,8 +44,6 @@ filling the form again .. so, to be lazy in the end)
  - **Application Version** (*string*): '1.0'
  - **Application Description** (*string*): 'My application is gonna be awesome'
  - **Application Time Zone** (*string*): 'Europe/Lisbon'
- - **URL Encryption (arguments encryption)** (*bit*): 'check or uncheck' (this will obfuscate the url parameters, I advise to use it)
- - **URL Encryption Secret** (*string*): 'blabla' (string to be used to generate URL Encryption, just some random word)
  - **Email Support** (*string*): 'myemail@myawesomeproject.com'
  - **Nr Results In Each Collection** (*int*): 100 (All generated forms will have a paginated list, in here you define a default list count for each page)
  - **Enable Activity Log:** (*bit*): 'check or uncheck' (this will enable logging for all database changes)
