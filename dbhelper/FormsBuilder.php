@@ -615,7 +615,7 @@ class BuildTableForms
           fwrite($controllerFile, "\t}");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\tstatic function Default(\$foreignTables = true, \$page = 1, \$limit = 100) {");
+          fwrite($controllerFile, "\tstatic function Default(\$foreignTables = true, \$page = null, \$limit = null) {");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\$".$db->GetTableName()." = new \LazyMePHP\Classes\\".$db->GetTableName()."_List();");
@@ -662,7 +662,7 @@ class BuildTableForms
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\$length = \$".$db->GetTableName()."->GetCount();");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\$".$db->GetTableName()."->Limit(\$limit,(\$page-1)*\$limit);");
+          fwrite($controllerFile, "\t\tif (\$page && \$limit) \$".$db->GetTableName()."->Limit(\$limit,(\$page-1)*\$limit);");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\tif (\$foreignTables) {");
           $foreignTables = "";
