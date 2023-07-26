@@ -71,6 +71,12 @@ After this, you will have a list of your database tables, where you can select w
  
 # Success
 If everything went well, you will have a working index with some basic functionality.
+
+You can now use the command line utility to do the same:
+```
+php dbhelper/helper.php
+```
+
 ```
 http://localhost:8080
 ```
