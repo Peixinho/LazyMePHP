@@ -6,3 +6,5 @@ src/api
 !src/Views/compiled
 !src/Views/Default
 src/Views
+src/Ext/vendor
+src/Ext/composer.lock
