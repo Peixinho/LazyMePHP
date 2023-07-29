@@ -20,7 +20,7 @@ function insert($message, $notnull = true) {
     echo $message;
     $data = \LazyMePHP\Helper\read();
     if ($notnull && strlen($data)==0) continue;
-    $proceed = \LazyMePHP\Helper\promptYesNo("Database name: ".$data."\nis this correct");
+    $proceed = \LazyMePHP\Helper\promptYesNo("Inserted: ".$data."\nis this correct");
   }
   return $data;
 
