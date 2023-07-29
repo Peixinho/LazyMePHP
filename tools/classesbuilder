@@ -9,7 +9,7 @@
 namespace LazyMePHP\ClassesBuilder;
 use \LazyMePHP\Config\Internal\APP;
 
-require_once 'DatabaseHelper.php';
+require_once 'databasehelper';
 
 /**
  * Interface for Automatic DB Classes
@@ -74,12 +74,12 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
           fwrite($classFile, "use \LazyMePHP\Config\Internal\APP;\n");
         }
         else {
-          echo "ERROR: Check your permissions to write ".APP::ROOT_PATH()."/".$classesPath."/includes.php";
+          echo "ERROR: Check your permissions to write ".APP::ROOT_PATH()."/".$classesPath."/includes.php\n";
           $failedIncludeFile = true;
         }
       }
       else {
-        echo "ERROR: Check your permissions to write ".APP::ROOT_PATH()."/".$classesPath."/includes.php";
+        echo "ERROR: Check your permissions to write ".APP::ROOT_PATH()."/".$classesPath."/includes.php\n";
         $failedIncludeFile = true;
       }
     }
@@ -99,7 +99,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
     APP::DB_CONNECTION()->Query($queryString, $sqlObj);
     while ($o=$sqlObj->FetchObject())
     {
-      if (is_array($tablesList) && array_search($o->Table, $tablesList)>=0) {
+      if (is_array($tablesList) && array_search($o->Table, $tablesList)!==false) {
         $db = new \LazyMePHP\DatabaseHelper\_DB_TABLE($o->Table);
         $this->ConstructClass($classesPath,$db,$tableDescriptors);
       }
@@ -1247,9 +1247,9 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile,"?>");
         fclose($classFile);
       }
-			else echo "ERROR: Check your permissions to write ".$classesPath."/includes.php";
+			else echo "ERROR: Check your permissions to write ".$classesPath."/includes.php\n";
 		}
-		else echo "ERROR: Check your permissions to remove ".$classesPath."/includes.php";
+		else echo "ERROR: Check your permissions to remove ".$classesPath."/includes.php\n";
 	}
 }
 ?>

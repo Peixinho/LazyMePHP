@@ -9,8 +9,8 @@
 namespace LazyMePHP\FormsBuilder;
 use \LazyMePHP\Config\Internal\APP;
 
-require_once 'DatabaseHelper.php';
-require_once 'Helper.php';
+require_once 'databasehelper';
+require_once 'helper';
 
 /**
  * Build class tables
@@ -63,12 +63,12 @@ class BuildTableForms
           fwrite($routerFile, "\n");
         }
         else {
-          echo "ERROR: Check your permissions to write the router file on $controllersPath/RouteForms.php";
+          echo "ERROR: Check your permissions to write the router file on $controllersPath/RouteForms.php\n";
           $failedRouterFile = true;
         }
       }
       else {
-        echo "ERROR: Check your permissions to remove the router file on $controllersPath/RouteForms.php";
+        echo "ERROR: Check your permissions to remove the router file on $controllersPath/RouteForms.php\n";
         $failedRouterFile = true;
       }
     }
@@ -89,113 +89,113 @@ class BuildTableForms
     $routes = array();
     while ($o=$sqlObj->FetchObject())
     {
-      if (is_array($tablesList) && array_search($o->Table, $tablesList)>=0) {
+      if (is_array($tablesList) && array_search($o->Table, $tablesList)!==false) {
         $db = new \LazyMePHP\DatabaseHelper\_DB_TABLE($o->Table);
         $db->GetFieldsFromDB();
         $this->ConstructForm($viewsPath, $db, $cssClass);
         $this->ConstructController($controllersPath, $classesPath, $db, $cssClass);
-      }
 
-      if ($replaceRouteForms && !$failedRouterFile) {
-        $routes[] = $db->GetTableName();
-        fwrite($routerFile, "/*");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, " * ".$db->GetTableName()." Routing");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, " */");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "use LazyMePHP\Forms\\".$db->GetTableName().";");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "require_once __DIR__.\"/../Controllers/".$db->GetTableName().".Controller.php\";");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "SimpleRouter::get('/".$db->GetTableName()."', function() {");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "\t\$data = ".$db->GetTableName()."::Default(true, \$_GET['page']??1, APP::APP_NRESULTS());");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "\tglobal \$blade;");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "\techo \$blade->run(\"".$db->GetTableName().".list\", ['controller' => '".$db->GetTableName()."', '".$db->GetTableName()."' => \$data['".$db->GetTableName()."']");
-        foreach ($db->GetTableFields() as $field)
-        {
-          if ($field->GetForeignField()) {
-            fwrite($routerFile, ", '".$field->GetForeignTable()."' => \$data['".$field->GetForeignTable()."']");
+        if ($replaceRouteForms && !$failedRouterFile) {
+          $routes[] = $db->GetTableName();
+          fwrite($routerFile, "/*");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, " * ".$db->GetTableName()." Routing");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, " */");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "use LazyMePHP\Forms\\".$db->GetTableName().";");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "require_once __DIR__.\"/../Controllers/".$db->GetTableName().".Controller.php\";");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "SimpleRouter::get('/".$db->GetTableName()."', function() {");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\t\$data = ".$db->GetTableName()."::Default(true, \$_GET['page']??1, APP::APP_NRESULTS());");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\tglobal \$blade;");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\techo \$blade->run(\"".$db->GetTableName().".list\", ['controller' => '".$db->GetTableName()."', '".$db->GetTableName()."' => \$data['".$db->GetTableName()."']");
+          foreach ($db->GetTableFields() as $field)
+          {
+            if ($field->GetForeignField()) {
+              fwrite($routerFile, ", '".$field->GetForeignTable()."' => \$data['".$field->GetForeignTable()."']");
+            }
           }
-        }
-        fwrite($routerFile, ", 'filters' => \$data['filters'], 'length' => \$data['length'], 'current' => \$_GET['page']??1, 'limit' => APP::APP_NRESULTS()]);");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "});");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "SimpleRouter::get('/".$db->GetTableName()."/{".$db->GetPrimaryFieldName()."}/edit', function (\$".$db->GetPrimaryFieldName().") {");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "\t\$data = ".$db->GetTableName()."::Edit(\$".$db->GetPrimaryFieldName().");");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "\tglobal \$blade;");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "\techo \$blade->run(\"".$db->GetTableName().".edit\", ['controller' => '".$db->GetTableName()."', '".$db->GetTableName()."' => \$data['".$db->GetTableName()."']");
-        foreach ($db->GetTableFields() as $field)
-        {
-          if ($field->GetForeignField()) {
-            fwrite($routerFile, "\n");
-            fwrite($routerFile, ", '".$field->GetForeignTable()."' => \$data['".$field->GetForeignTable()."']");
+          fwrite($routerFile, ", 'filters' => \$data['filters'], 'length' => \$data['length'], 'current' => \$_GET['page']??1, 'limit' => APP::APP_NRESULTS()]);");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "});");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "SimpleRouter::get('/".$db->GetTableName()."/{".$db->GetPrimaryFieldName()."}/edit', function (\$".$db->GetPrimaryFieldName().") {");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\t\$data = ".$db->GetTableName()."::Edit(\$".$db->GetPrimaryFieldName().");");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\tglobal \$blade;");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\techo \$blade->run(\"".$db->GetTableName().".edit\", ['controller' => '".$db->GetTableName()."', '".$db->GetTableName()."' => \$data['".$db->GetTableName()."']");
+          foreach ($db->GetTableFields() as $field)
+          {
+            if ($field->GetForeignField()) {
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, ", '".$field->GetForeignTable()."' => \$data['".$field->GetForeignTable()."']");
+            }
           }
-        }
-        fwrite($routerFile, "]);");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "});");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "SimpleRouter::get('/".$db->GetTableName()."/new', function () {");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "\t\$data = ".$db->GetTableName()."::Edit();");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "\tglobal \$blade;");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "\techo \$blade->run(\"".$db->GetTableName().".edit\", ['controller' => '".$db->GetTableName()."', '".$db->GetTableName()."' => \$data['".$db->GetTableName()."']");
-        foreach ($db->GetTableFields() as $field)
-        {
-          if ($field->GetForeignField()) {
-            fwrite($routerFile, "\n");
-            fwrite($routerFile, ", '".$field->GetForeignTable()."' => \$data['".$field->GetForeignTable()."']");
+          fwrite($routerFile, "]);");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "});");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "SimpleRouter::get('/".$db->GetTableName()."/new', function () {");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\t\$data = ".$db->GetTableName()."::Edit();");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\tglobal \$blade;");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\techo \$blade->run(\"".$db->GetTableName().".edit\", ['controller' => '".$db->GetTableName()."', '".$db->GetTableName()."' => \$data['".$db->GetTableName()."']");
+          foreach ($db->GetTableFields() as $field)
+          {
+            if ($field->GetForeignField()) {
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, ", '".$field->GetForeignTable()."' => \$data['".$field->GetForeignTable()."']");
+            }
           }
+          fwrite($routerFile, "]);");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "});");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "SimpleRouter::post('/".$db->GetTableName()."/{id}/save', function (\$".$db->GetPrimaryFieldName().") {");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\t".$db->GetTableName()."::Save(\$".$db->GetPrimaryFieldName().");");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\t\\LazyMePHP\\Helper\\redirect('/".$db->GetTableName()."?success=1');");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "});");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "SimpleRouter::post('/".$db->GetTableName()."/save', function () {");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\t".$db->GetTableName()."::Save();");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\t\\LazyMePHP\\Helper\\redirect('/".$db->GetTableName()."?success=1');");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "});");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "SimpleRouter::get('/".$db->GetTableName()."/{id}/delete', function (\$".$db->GetPrimaryFieldName().") {");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\t".$db->GetTableName()."::Delete(\$".$db->GetPrimaryFieldName().");");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\t\\LazyMePHP\\Helper\\redirect('/".$db->GetTableName()."?success=2');");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "});");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\n");
         }
-        fwrite($routerFile, "]);");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "});");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "SimpleRouter::post('/".$db->GetTableName()."/{id}/save', function (\$".$db->GetPrimaryFieldName().") {");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "\t".$db->GetTableName()."::Save(\$".$db->GetPrimaryFieldName().");");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "\t\\LazyMePHP\\Helper\\redirect('/".$db->GetTableName()."?success=1');");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "});");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "SimpleRouter::post('/".$db->GetTableName()."/save', function () {");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "\t".$db->GetTableName()."::Save();");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "\t\\LazyMePHP\\Helper\\redirect('/".$db->GetTableName()."?success=1');");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "});");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "SimpleRouter::get('/".$db->GetTableName()."/{id}/delete', function (\$".$db->GetPrimaryFieldName().") {");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "\t".$db->GetTableName()."::Delete(\$".$db->GetPrimaryFieldName().");");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "\t\\LazyMePHP\\Helper\\redirect('/".$db->GetTableName()."?success=2');");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "});");
-        fwrite($routerFile, "\n");
-        fwrite($routerFile, "\n");
       }
     }
 
-    fwrite($routerFile, "\$routes = array(");
-    foreach($routes as $r) fwrite($routerFile, "'$r',");
-    fwrite($routerFile, ")");
-
-
     // Close Include file
     if ($replaceRouteForms && !$failedRouterFile) {
+
+      fwrite($routerFile, "\$routes = array(");
+      foreach($routes as $r) fwrite($routerFile, "'$r',");
+      fwrite($routerFile, ")");
+
       fwrite($routerFile, "\n");
       fwrite($routerFile,"?>");
       fclose($routerFile);
@@ -462,9 +462,9 @@ class BuildTableForms
         fwrite($viewFile, "@endcomponent");
         fwrite($viewFile, "\n");
       }
-      else echo "ERROR: Check your permissions to write ".$viewsPath."/".$db->GetTableName().".View.php";
+      else echo "ERROR: Check your permissions to write ".$viewsPath."/".$db->GetTableName().".blade files\n";
     }
-    else echo "ERROR: Check your permissions to remove ".$viewsPath."/".$db->GetTableName().".View.php";
+    else echo "ERROR: Check your permissions to remove ".$viewsPath."/".$db->GetTableName().".blade filesn";
   }
 
   function ConstructController($controllersPath, $classesPath, $db, $cssClass)
@@ -621,7 +621,7 @@ class BuildTableForms
           fwrite($controllerFile, "\t\t\$".$db->GetTableName()." = new \LazyMePHP\Classes\\".$db->GetTableName()."_List();");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\$filters = array();");
-          
+
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\$allowedMethods = array(");
@@ -702,9 +702,9 @@ class BuildTableForms
         fwrite($controllerFile, "\n");
         fwrite($controllerFile, "?>");
       }
-      else echo "ERROR: Check your permissions to write ".$controllersPath."/".$db->GetTableName().".Controller.php";
+      else echo "ERROR: Check your permissions to write ".$controllersPath."/".$db->GetTableName().".Controller.php\n";
     }
-    else echo "ERROR: Check your permissions to remove ".$controllersPath."/".$db->GetTableName().".Controller.php";
+    else echo "ERROR: Check your permissions to remove ".$controllersPath."/".$db->GetTableName().".Controller.php\n";
   }
 }
 ?>

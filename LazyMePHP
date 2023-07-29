@@ -1,0 +1,33 @@
+<?php
+
+/**
+ * LazyMePHP
+ * @copyright This file is part of the LazyMePHP developed by Duarte Peixinho
+ * @author Duarte Peixinho
+ */
+
+switch($argv[1]) {
+  case "serve":
+    echo "What port do you want to use for web server?";
+    $port = false;
+    while(!$port) {
+      echo "\n8080:?";
+      $port = trim(fgets(STDIN));
+      if (strlen($port)>0 && !intval($port)) {
+        echo "invalid port, please try again";
+        $port = false;
+      }
+      else if (strlen($port)==0) $port = 8080;
+      else $port = intval($port);
+    }
+    if (!$port || !is_int($port)) $port = 8080;
+    @exec("php -S localhost:".$port." -t ./public tools/webserver");
+  break;
+  case "build":
+    require_once "tools/build";
+  break;
+  case "config":
+    require_once "tools/config";
+  break;
+}
+?>

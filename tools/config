@@ -1,0 +1,128 @@
+<?php
+
+/**
+ * LazyMePHP
+* @copyright This file is part of the LazyMePHP developed by Duarte Peixinho
+* @author Duarte Peixinho
+*/
+
+use \LazyMePHP\Config\Internal\APP;
+use \LazyMePHP\Helper;
+
+require_once 'helper';
+
+\LazyMePHP\Helper\clear();
+
+function insert($message, $notnull = true) {
+  $proceed = false;
+  $data="";
+  while(!$proceed) {
+    echo $message;
+    $data = \LazyMePHP\Helper\read();
+    if ($notnull && strlen($data)==0) continue;
+    $proceed = \LazyMePHP\Helper\promptYesNo("Database name: ".$data."\nis this correct");
+  }
+  return $data;
+
+}
+echo "Configurations\n";
+$db_name = insert("Database name [string]: ");
+$db_user = insert("Database user [string]: ");
+$db_password = insert("Database password [string]: ");
+$db_host = insert("Database host [string]: ");
+$db_db = \LazyMePHP\Helper\select("Database type: ", array("mssql", "mysql"), "mysql");
+$app_name = insert("App name [string]: ");
+$app_title = insert("App title [string]: ");
+$app_version = insert("App version [string]: ");
+$app_description = insert("App description [string]: ");
+$app_timezone = insert("Timezone [string]: ");
+$email_support = insert("Email support [string]: ");
+$app_nresults = insert("How many records you want by default on each page [int]: ");
+$app_fullpath = dirname(__FILE__);
+$activity_log = \LazyMePHP\Helper\promptYesNo("Enable logging");
+switch($db_db)
+{
+  case "mssql":
+    $db_file = "MSSQL.php";
+    $db_type = 1;
+    break;
+  default:
+  case "mysql":
+    $db_file = "MYSQL.php";
+    $db_type = 2;
+    break;
+}
+
+  // Generate new config file
+  $file = fopen(__DIR__."/../src/Configurations/Configurations.php","w+");
+  fwrite($file,"<?php ");
+  fwrite($file, "\n");
+  fwrite($file,"/**");
+  fwrite($file, "\n");
+  fwrite($file," * @copyright This file is part of the LazyMePHP Framework developed by Duarte Peixinho");
+  fwrite($file, "\n");
+  fwrite($file," * @author Duarte Peixinho - ".date("Y"));
+  fwrite($file," *");
+  fwrite($file, "\n");
+  fwrite($file," * Config File Generated Automatically");
+  fwrite($file, "\n");
+  fwrite($file," */");
+  fwrite($file, "\n");
+  fwrite($file, "\n");
+  fwrite($file, "require_once 'Internal/InternalConfigurations.php';\n");
+  fwrite($file, "use \LazyMePHP\Config\Internal\APP;\n");
+  fwrite($file, "\n");
+  fwrite($file, "/**\n");
+  fwrite($file, " * CONFIGURATIONS\n");
+  fwrite($file, " */\n");
+  fwrite($file, "\n");
+  fwrite($file, "// DATABASE\n");
+  fwrite($file, "\$CONFIG['DB_NAME']\t\t\t\t=\"".$db_name."\";\n");
+  fwrite($file, "\$CONFIG['DB_USER']\t\t\t\t=\"".$db_user."\";\n");
+  fwrite($file, "\$CONFIG['DB_PASSWORD']\t\t\t=\"".$db_password."\";\n");
+  fwrite($file, "\$CONFIG['DB_HOST']\t\t\t\t=\"".$db_host."\";\n");
+  fwrite($file, "\$CONFIG['DB_TYPE']\t\t\t\t=\"".$db_type."\";\n");
+  fwrite($file, "\$CONFIG['DB_FILE']\t\t\t\t=\"".$db_file."\";\n");
+  fwrite($file, "\n");
+  fwrite($file, "// APPLICATION\n");
+  fwrite($file, "\$CONFIG['APP_NAME']\t\t\t\t=\"".$app_name."\";\n");
+  fwrite($file, "\$CONFIG['APP_TITLE']\t\t\t=\"".$app_title."\";\n");
+  fwrite($file, "\$CONFIG['APP_VERSION']\t\t\t=\"".$app_version."\";\n");
+  fwrite($file, "\$CONFIG['APP_DESCRIPTION']\t\t=\"".$app_description."\";\n");
+  fwrite($file, "\$CONFIG['APP_TIMEZONE']\t\t\t=\"".$app_timezone."\";\n");
+  fwrite($file, "\$CONFIG['APP_NRESULTS']\t\t\t=\"".$app_nresults."\";\n");
+  fwrite($file, "\n");
+  fwrite($file, "// ACTIVITY LOG\n");
+  fwrite($file, "\$CONFIG['APP_ACTIVITY_LOG']\t\t\t\t=\"".$activity_log."\";\n");
+  fwrite($file, "\$CONFIG['APP_ACTIVITY_AUTH']\t\t\t\t=\"\";\n");
+  fwrite($file, "\n");
+  fwrite($file, "// SUPPORT EMAIL\n");
+  fwrite($file, "\$CONFIG['APP_EMAIL_SUPPORT']\t=\"".$email_support."\";\n");
+  fwrite($file, "\n");
+  fwrite($file, "// ROOT PATH\n");
+  fwrite($file, "\$CONFIG['ROOT']\t\t\t\t\t=\"".substr_replace(str_replace('\\','/',$app_fullpath),"",-6)."\";\n");
+  fwrite($file, "\n");
+  fwrite($file, "/**\n");
+  fwrite($file, " * END OF CONFIGURATIONS\n");
+  fwrite($file, " */\n");
+  fwrite($file, "\n");
+  fwrite($file, "// INITIALIZE LazyMePHP\n");
+  fwrite($file, "new APP(\$CONFIG);\n");
+  fwrite($file, "\n");
+  fwrite($file, "?>");
+  fclose($file);
+
+  // Require newly created file
+  require_once __DIR__."/../src/Configurations/Configurations.php";
+
+  // Create compiled directory for bladeone
+  \LazyMePHP\Helper\MKDIR(__DIR__."/../src/Views/compiled");
+
+  // Add Javacript File
+  file_put_contents(__DIR__.'/../public/index.php',str_replace('<script src="/js/app.js"></script>','<script src="/js/'.$app_name.'.js"></script>',file_get_contents(__DIR__.'/../public/index.php')));
+  fopen(__DIR__.'/../public/js/'.$app_name.'.js', 'w');
+
+  \LazyMePHP\Helper\clear();
+  echo "Configuration done";
+  exit();
+?>
