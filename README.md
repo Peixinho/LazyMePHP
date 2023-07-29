@@ -23,7 +23,8 @@ git clone https://github.com/Peixinho/LazyMePHP myAwesomeProject
 
 #optional, but I advise to start your own git repository, for many reasons...
 cd myAwesomeProject && rm -rf .git
-git init
+cd src/Ext
+composer update (to get dependencies)
 
 # run initial config
 php LazyMePHP config
