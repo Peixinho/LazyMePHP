@@ -19,20 +19,20 @@
   <input 
     @switch($type)
     @case("number")
-    type="number"
+      type="number"
     @break
     @case("date")
-    type="date"
+      type="date"
     @break
     @case("text")
-    type="text"
+      type="text"
     @break
     @endswitch
     id="{{$id or $name}}" 
     name="{{$name}}"
     value="{{$value or ''}}"
-    validation="{{$validation or ''}}"
-    validation-fail="{{$validationfail or ''}}"
+    @if (isset($validation)) validation="{{$validation or ''}}" @endif
+    @if (isset($validationfail)) validation-fail="{{$validationfail or ''}}" @endif
   >
   <label for="{{$name}}">{{$fieldname or $name}}</label>
 </div>

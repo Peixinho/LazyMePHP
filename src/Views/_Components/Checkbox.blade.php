@@ -27,7 +27,7 @@
       id="{{$id or $name}}" 
       name="{{$name}}"
       value="{{$value}}"
-      {{$checked}}
+      @if (isset($checked)) checked @endif
     />
     <span>{{$fieldname or $name}}</span>
   </label>

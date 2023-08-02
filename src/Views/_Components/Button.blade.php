@@ -24,7 +24,7 @@
   @endswitch
   name="{{$name}}"
   id="{{$id or $name}}"
-  onclick="{{$onclick or ''}}"
+  @if (isset($onclick)) onclick="{{$onclick}}" @endif
 >
   {{$fieldname or $name}}
   </button>

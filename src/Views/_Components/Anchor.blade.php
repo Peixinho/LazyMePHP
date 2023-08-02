@@ -10,4 +10,7 @@
  */
 ?>
 
-<a href="{{$href}}" target="{{$target or '_self'}}">{{$link}}</a>
+<a 
+  href="{{$href}}" 
+  @if (isset($target)) target="{{$target}}" @endif
+>{{$link}}</a>
