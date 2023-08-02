@@ -398,6 +398,7 @@ class BuildTableForms
           fwrite($viewFile, "<br/>");
         }
 
+        fwrite($viewFile, "\n");
         fwrite($viewFile, "<table>");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "\t<tr>");
