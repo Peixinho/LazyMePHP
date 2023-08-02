@@ -314,7 +314,7 @@ class BuildTableForms
                   break;
               }
             }
-            fwrite($viewFile, "\t<strong>Failed to load component!</strong>");
+            fwrite($viewFile, "\n");
             fwrite($viewFile, "\t@endcomponent");
             fwrite($viewFile, "\n");
           }
@@ -322,11 +322,11 @@ class BuildTableForms
         fwrite($viewFile, "\t<br/>");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "@component('_Components.Button',array('type' => 'submit', 'name' => 'Save'))");
-        fwrite($viewFile, "<strong>Failed to load component!</strong>");
+        fwrite($viewFile, "\n");
         fwrite($viewFile, "@endcomponent");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "@component('_Components.Button',array('type' => 'button', 'name' => 'Cancel', 'onclick' => 'window.open(\"/".$db->GetTableName()."\",\"_self\");'))");
-        fwrite($viewFile, "<strong>Failed to load component!</strong>");
+        fwrite($viewFile, "\n");
         fwrite($viewFile, "@endcomponent");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "</form>");
@@ -357,7 +357,7 @@ class BuildTableForms
         fwrite($viewFile, "\n");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "@component('_Components.Anchor',array('href' => '/".$db->GetTableName()."/new', 'link' => 'Add New'))");
-        fwrite($viewFile, "<strong>Failed to load component!</strong>");
+        fwrite($viewFile, "\n");
         fwrite($viewFile, "@endcomponent");
         fwrite($viewFile, "\t<br/>");
         fwrite($viewFile, "\n");
@@ -377,7 +377,7 @@ class BuildTableForms
             fwrite($viewFile, "\t<br/>");
             fwrite($viewFile, "\n");
             fwrite($viewFile, "\t@component('_Components.Select',array('name'=> 'FindBy".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'defaultValueEmpty' => true, 'options' => \$".$field->GetForeignTable()."->GetList(false), 'selected' => (isset(\$filters['FindBy".$field->GetName()."'])?\$filters['FindBy".$field->GetName()."']:'')))");
-            fwrite($viewFile, "\t<strong>Failed to load component!</strong>");
+            fwrite($viewFile, "\n");
             fwrite($viewFile, "\t@endcomponent");
             fwrite($viewFile, "\n");
 
@@ -390,8 +390,8 @@ class BuildTableForms
           fwrite($viewFile, "\t<br/>");
           fwrite($viewFile, "\n");
           fwrite($viewFile, "\t@component('_Components.Button',array('type' => 'submit', 'name' => 'Filter'))");
-          fwrite($viewFile, "<strong>Failed to load pagination component!</strong>");
-          fwrite($viewFile, "@endcomponent</td>");
+          fwrite($viewFile, "\n");
+          fwrite($viewFile, "\t@endcomponent</td>");
           fwrite($viewFile, "\n");
           fwrite($viewFile, "</form>");
           fwrite($viewFile, "\n");
@@ -421,12 +421,12 @@ class BuildTableForms
         fwrite($viewFile, "\n");
         if ($primaryKey) {
           fwrite($viewFile, "\t\t<td>@component('_Components.Anchor',array('href' => '/".$db->GetTableName()."/'.\$member->Get".$primaryKey->GetName()."().'/edit', 'link' => 'edit'))");
-          fwrite($viewFile, "<strong>Failed to load pagination component!</strong>");
-          fwrite($viewFile, "@endcomponent</td>");
+          fwrite($viewFile, "\n");
+          fwrite($viewFile, "\t\t@endcomponent</td>");
           fwrite($viewFile, "\n");
           fwrite($viewFile, "\t\t<td>@component('_Components.Anchor',array('href' => '/".$db->GetTableName()."/'.\$member->Get".$primaryKey->GetName()."().'/delete', 'link' => 'delete'))");
-          fwrite($viewFile, "<strong>Failed to load pagination component!</strong>");
-          fwrite($viewFile, "@endcomponent</td>");
+          fwrite($viewFile, "\n");
+          fwrite($viewFile, "\t\t@endcomponent</td>");
         }
         fwrite($viewFile, "\n");
         foreach ($db->GetTableFields() as $field) {
@@ -446,8 +446,6 @@ class BuildTableForms
         fwrite($viewFile, "</table>");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "@component('_Components.Pagination',array('total'=> \$length, 'current' => \$current, 'limit' => \$limit))");
-        fwrite($viewFile, "\n");
-        fwrite($viewFile, "\t<strong>Failed to load pagination component!</strong>");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "@endcomponent");
         fwrite($viewFile, "\n");
