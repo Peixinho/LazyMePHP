@@ -294,7 +294,7 @@ class BuildTableForms
             if ($field->HasForeignKey() && !is_null($field->GetForeignField()))
             {
               fwrite($viewFile, "\n");
-              fwrite($viewFile, "\t@component('_Components.Select',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'defaultValueEmpty' => true, 'options' => \$".$field->GetForeignTable()."->GetList(false), 'selected' => \$".$db->GetTableName()."->Get".$field->GetName()."()))");
+              fwrite($viewFile, "\t@component('_Components.Select',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'defaultValueEmpty' => true, 'options' => \$".$field->GetForeignTable()."->GetList(false), 'selected' => \$".$db->GetTableName()."->Get".$field->GetName()."() ".(!$field->AllowNull()?", 'validation' => 'NOTNULL', 'validationfail' => '".$field->GetName()." cannot be empty'":"")." ))");
             } else {
               fwrite($viewFile, "\n");
               switch ($field->GetDataType())
@@ -303,14 +303,14 @@ class BuildTableForms
                   fwrite($viewFile, "\t@component('_Components.Checkbox',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'placeholder' => '".$field->GetName()."', 'type' => 'checkbox', 'value' => '1', 'checked' => (\$".$db->GetTableName()."->Get".$field->GetName()."()==1?'checked':'')))");
                   break;
                 case "date":
-                  fwrite($viewFile, "\t@component('_Components.TextInput',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'placeholder' => '".$field->GetName()."', 'type' => 'date', 'value' => \$".$db->GetTableName()."->Get".$field->GetName()."()))");
+                  fwrite($viewFile, "\t@component('_Components.TextInput',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'placeholder' => '".$field->GetName()."', 'type' => 'date', 'value' => \$".$db->GetTableName()."->Get".$field->GetName()."() ".(!$field->AllowNull()?", 'validation' => 'NOTNULL', 'validationfail' => '".$field->GetName()." cannot be empty'":"")." ))");
                   break;
           case "float":
                 case "int":
-                  fwrite($viewFile, "\t@component('_Components.TextInput',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'placeholder' => '".$field->GetName()."', 'type' => 'number', 'value' => \$".$db->GetTableName()."->Get".$field->GetName()."()))");
+                  fwrite($viewFile, "\t@component('_Components.TextInput',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'placeholder' => '".$field->GetName()."', 'type' => 'number', 'value' => \$".$db->GetTableName()."->Get".$field->GetName()."() ".(!$field->AllowNull()?", 'validation' => 'NOTNULL', 'validationfail' => '".$field->GetName()." cannot be empty'":"")." ))");
                   break;
                 case "varchar":
-                  fwrite($viewFile, "\t@component('_Components.TextInput',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'placeholder' => '".$field->GetName()."', 'type' => 'text', 'value' => \$".$db->GetTableName()."->Get".$field->GetName()."()))");
+                  fwrite($viewFile, "\t@component('_Components.TextInput',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'placeholder' => '".$field->GetName()."', 'type' => 'text', 'value' => \$".$db->GetTableName()."->Get".$field->GetName()."() ".(!$field->AllowNull()?", 'validation' => 'NOTNULL', 'validationfail' => '".$field->GetName()." cannot be empty'":"")." ))");
                   break;
               }
             }

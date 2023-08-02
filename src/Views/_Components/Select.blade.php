@@ -9,6 +9,8 @@
  * $defaulValueEmpty (bool)
  * $options (array)
  * $id (string) opcional
+ * $validation (string) opcional
+ * $validationfail (string) opcional
  */
 ?>
 
@@ -17,6 +19,8 @@
     id="{{$id or $name}}" 
     name="{{$name}}"
     class="validate"
+    validation="{{$validation or ''}}"
+    validation-fail="{{$validationfail or ''}}"
   >
     @if ($defaultValueEmpty) 
       <option value="">-</option>

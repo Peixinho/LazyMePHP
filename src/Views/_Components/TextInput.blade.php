@@ -10,6 +10,8 @@
  * $placeholder (string) opcional
  * $id (string) opcional
  * $value (string) opcional
+ * $validation (string) opcional
+ * $validationfail (string) opcional
  */
 ?>
 
@@ -29,6 +31,8 @@
     id="{{$id or $name}}" 
     name="{{$name}}"
     value="{{$value or ''}}"
+    validation="{{$validation or ''}}"
+    validation-fail="{{$validationfail or ''}}"
   >
   <label for="{{$name}}">{{$fieldname or $name}}</label>
 </div>
