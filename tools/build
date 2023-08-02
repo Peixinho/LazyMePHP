@@ -174,20 +174,13 @@ function BuildForms() {
     echo "Tables selected for building forms:\n\n";
     echo "\nTable name\n";
     foreach($forms as $f) echo $f['name']."\n";
-    echo "\nInsert custom button class: ";
-    $cssbutton = trim(fgets(STDIN));
-    echo "Insert custom input class: ";
-    $cssinput = trim(fgets(STDIN));
-    echo "Insert custom anchor link class: ";
-    $cssanchor = trim(fgets(STDIN));
-    echo "Insert custom table class: ";
-    $csstable = trim(fgets(STDIN));
+    echo "\n";
     $replaceR = \LazyMePHP\Helper\promptYesNo("Replace RouteForms");
     $proceed = \LazyMePHP\Helper\promptYesNo("Proceed");
     if ($proceed) {
       $tablesList = array();
       foreach($forms as $c) $tablesList[] = $c['name'];
-      new \LazyMePHP\FormsBuilder\BuildTableForms('src/Controllers', 'src/Views', 'src/Classes', $tablesList, $replaceR == 'Y',array("button"=>$cssbutton, "input"=>$cssinput, "anchor"=>$cssanchor, "table"=>$csstable));
+      new \LazyMePHP\FormsBuilder\BuildTableForms('src/Controllers', 'src/Views', 'src/Classes', $tablesList, $replaceR == 'Y');
     }
   }
   echo "\nDone, press enter to finish...";

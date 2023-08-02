@@ -26,7 +26,7 @@ class BuildTableForms
      * @param (string) (path)
      * @return (NULL)
      */
-  function __construct($controllersPath, $viewsPath, $classesPath, $tablesList, $replaceRouteForms, $cssClass)
+  function __construct($controllersPath, $viewsPath, $classesPath, $tablesList, $replaceRouteForms)
   {
     // Create Folder if doesn't exist
     if (!is_dir(APP::ROOT_PATH()."/".$controllersPath)) \LazyMePHP\Helper\MKDIR(APP::ROOT_PATH()."/".$controllersPath);
@@ -92,8 +92,8 @@ class BuildTableForms
       if (is_array($tablesList) && array_search($o->Table, $tablesList)!==false) {
         $db = new \LazyMePHP\DatabaseHelper\_DB_TABLE($o->Table);
         $db->GetFieldsFromDB();
-        $this->ConstructForm($viewsPath, $db, $cssClass);
-        $this->ConstructController($controllersPath, $classesPath, $db, $cssClass);
+        $this->ConstructForm($viewsPath, $db);
+        $this->ConstructController($controllersPath, $classesPath, $db);
 
         if ($replaceRouteForms && !$failedRouterFile) {
           $routes[] = $db->GetTableName();
@@ -202,13 +202,8 @@ class BuildTableForms
     }
   }
 
-  protected function ConstructForm($viewsPath, $db, $cssClass)
+  protected function ConstructForm($viewsPath, $db)
   {
-    $buttonClass = $cssClass['button'];
-    $inputClass = $cssClass['input'];
-    $anchorClass = $cssClass['anchor'];
-    $tableClass = $cssClass['table'];
-
     // Create Folder if doesn't exist
     if (!is_dir(APP::ROOT_PATH()."/".$viewsPath)) \LazyMePHP\Helper\MKDIR(APP::ROOT_PATH()."/".$viewsPath);
 
@@ -292,55 +287,47 @@ class BuildTableForms
         fwrite($viewFile, "\n");
         fwrite($viewFile, "@else <form method='POST' action='/".$db->GetTableName()."/save' onsubmit='return LazyMePHP.ValidateForm(this);'>");
         fwrite($viewFile, "\n");
-        fwrite($viewFile, "\t@endif");
+        fwrite($viewFile, "@endif");
         foreach ($db->GetTableFields() as $field) {
           if (!$field->IsAutoIncrement() || !$field->IsPrimaryKey())
           {
-            fwrite($viewFile, "\t<b>".$field->GetName().":</b>");
             if ($field->HasForeignKey() && !is_null($field->GetForeignField()))
             {
               fwrite($viewFile, "\n");
-              fwrite($viewFile, "\t<select name='".$field->GetName()."' ".($inputClass?"class='".$inputClass."'":"")." ".(!$field->AllowNull()?"validation='NOTNULL' validation-fail='".$field->GetName()." cannot be empty'":"")." />");
-              fwrite($viewFile, "\n");
-              fwrite($viewFile, "\t\t<option value=''>-</option>");
-              fwrite($viewFile, "\n");
-              fwrite($viewFile, "\t\t@foreach(\$".$field->GetForeignTable()."->GetList(false) as \$v)");
-              fwrite($viewFile, "\n");
-              fwrite($viewFile, "\t\t<option value='{{\$v->Get".$field->GetForeignField()."()}}' {{\$".$db->GetTableName()."->Get".$field->GetName()."()==\$v->Get".$field->GetForeignField()."()?\"selected\":\"\"}}>{{\$v->GetDescriptor()}}</option>");
-              fwrite($viewFile, "\n");
-              fwrite($viewFile, "\t\t@endforeach");
-              fwrite($viewFile, "\n");
-              fwrite($viewFile, "\t</select>");
-              fwrite($viewFile, "\n");
+              fwrite($viewFile, "\t@component('_Components.Select',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'defaultValueEmpty' => true, 'options' => \$".$field->GetForeignTable()."->GetList(false), 'selected' => \$".$db->GetTableName()."->Get".$field->GetName()."()))");
             } else {
               fwrite($viewFile, "\n");
               switch ($field->GetDataType())
               {
                 case "bit":
-                  fwrite($viewFile, "\t<input type='checkbox' name='".$field->GetName()."' id='".$field->GetName()."' ".($inputClass?"class='".$inputClass."'":"")." value='1' {{\$".$db->GetTableName()."->Get".$field->GetName()."()==1?\"checked\":\"\"}} />");
+                  fwrite($viewFile, "\t@component('_Components.Checkbox',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'placeholder' => '".$field->GetName()."', 'type' => 'checkbox', 'value' => '1', 'checked' => (\$".$db->GetTableName()."->Get".$field->GetName()."()==1?'checked':'')))");
                   break;
                 case "date":
-                  fwrite($viewFile, "\t<input type='date' name='".$field->GetName()."' id='".$field->GetName()."' ".($inputClass?"class='".$inputClass."'":"")." value='{{\$".$db->GetTableName()."->Get".$field->GetName()."()}}' ".(!$field->AllowNull()?"validation='NOTNULL' validation-fail='".$field->GetName()." cannot be empty'":"")." ".($field->GetDataLength()?"maxlength='".$field->GetDataLength()."'":"")." />");
+                  fwrite($viewFile, "\t@component('_Components.TextInput',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'placeholder' => '".$field->GetName()."', 'type' => 'date', 'value' => \$".$db->GetTableName()."->Get".$field->GetName()."()))");
                   break;
-                case "float":
+          case "float":
                 case "int":
-                  fwrite($viewFile, "\t<input type='number' name='".$field->GetName()."' id='".$field->GetName()."' ".($inputClass?"class='".$inputClass."'":"")." value='{{\$".$db->GetTableName()."->Get".$field->GetName()."()}}' ".(!$field->AllowNull()?"validation='NOTNULL' validation-fail='".$field->GetName()." cannot be empty'":"")." ".($field->GetDataLength()?"maxlength='".$field->GetDataLength()."'":"")." />");
+                  fwrite($viewFile, "\t@component('_Components.TextInput',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'placeholder' => '".$field->GetName()."', 'type' => 'number', 'value' => \$".$db->GetTableName()."->Get".$field->GetName()."()))");
                   break;
                 case "varchar":
-                  fwrite($viewFile, "\t<input type='text' name='".$field->GetName()."' id='".$field->GetName()."' ".($inputClass?"class='".$inputClass."'":"")." value='{{\$".$db->GetTableName()."->Get".$field->GetName()."()}}' ".(!$field->AllowNull()?"validation='NOTNULL' validation-fail='".$field->GetName()." cannot be empty'":"")." ".($field->GetDataLength()?"maxlength='".$field->GetDataLength()."'":"")." />");
+                  fwrite($viewFile, "\t@component('_Components.TextInput',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'placeholder' => '".$field->GetName()."', 'type' => 'text', 'value' => \$".$db->GetTableName()."->Get".$field->GetName()."()))");
                   break;
               }
-              fwrite($viewFile, "\n");
             }
+            fwrite($viewFile, "\t<strong>Failed to load component!</strong>");
+            fwrite($viewFile, "\t@endcomponent");
+            fwrite($viewFile, "\n");
           }
-          fwrite($viewFile, "\t<br/>");
-          fwrite($viewFile, "\n");
         }
         fwrite($viewFile, "\t<br/>");
         fwrite($viewFile, "\n");
-        fwrite($viewFile, "\t<input type='submit' name='submit' ".($buttonClass?"class='".$buttonClass."'":"")." value='Save' />");
+        fwrite($viewFile, "@component('_Components.Button',array('type' => 'submit', 'name' => 'Save'))");
+        fwrite($viewFile, "<strong>Failed to load component!</strong>");
+        fwrite($viewFile, "@endcomponent");
         fwrite($viewFile, "\n");
-        fwrite($viewFile, "\t<input type='button' name='cancel' ".($buttonClass?"class='".$buttonClass."'":"")." value='Cancel' onclick='window.open(\"/".$db->GetTableName()."\",\"_self\");' />");
+        fwrite($viewFile, "@component('_Components.Button',array('type' => 'button', 'name' => 'Cancel', 'onclick' => 'window.open(\"/".$db->GetTableName()."\",\"_self\");'))");
+        fwrite($viewFile, "<strong>Failed to load component!</strong>");
+        fwrite($viewFile, "@endcomponent");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "</form>");
         fclose($viewFile);
@@ -369,7 +356,9 @@ class BuildTableForms
         fwrite($viewFile, "@include('".$db->GetTableName().".template')");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "\n");
-        fwrite($viewFile, "<a ".($anchorClass?"class='".$anchorClass."'":"")." href='/".$db->GetTableName()."/new'>Add New</a>");
+        fwrite($viewFile, "@component('_Components.Anchor',array('href' => '/".$db->GetTableName()."/new', 'link' => 'Add New'))");
+        fwrite($viewFile, "<strong>Failed to load component!</strong>");
+        fwrite($viewFile, "@endcomponent");
         fwrite($viewFile, "\t<br/>");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "\n");
@@ -387,19 +376,9 @@ class BuildTableForms
             }
             fwrite($viewFile, "\t<br/>");
             fwrite($viewFile, "\n");
-            fwrite($viewFile, "\t<b>".$field->GetName().":</b>");
-            fwrite($viewFile, "\n");
-            fwrite($viewFile, "\t<select name='FindBy".$field->GetName()."' ".($inputClass?"class='".$inputClass."'":"")." />");
-            fwrite($viewFile, "\n");
-            fwrite($viewFile, "\t\t<option value=''>-</option>");
-            fwrite($viewFile, "\n");
-            fwrite($viewFile, "\t\t@foreach(\$".$field->GetForeignTable()."->GetList(false) as \$v)");
-            fwrite($viewFile, "\n");
-            fwrite($viewFile, "\t\t<option value='{{\$v->Get".$field->GetForeignField()."()}}' {{isset(\$filters['FindBy".$field->GetName()."']) && \$filters['FindBy".$field->GetName()."']==\$v->Get".$field->GetForeignField()."()?\"selected\":\"\"}}>{{\$v->GetDescriptor()}}</option>");
-            fwrite($viewFile, "\n");
-            fwrite($viewFile, "\t\t@endforeach");
-            fwrite($viewFile, "\n");
-            fwrite($viewFile, "\t</select>");
+            fwrite($viewFile, "\t@component('_Components.Select',array('name'=> 'FindBy".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'defaultValueEmpty' => true, 'options' => \$".$field->GetForeignTable()."->GetList(false), 'selected' => (isset(\$filters['FindBy".$field->GetName()."'])?\$filters['FindBy".$field->GetName()."']:'')))");
+            fwrite($viewFile, "\t<strong>Failed to load component!</strong>");
+            fwrite($viewFile, "\t@endcomponent");
             fwrite($viewFile, "\n");
 
             $haveForeignMembers = true;
@@ -410,14 +389,16 @@ class BuildTableForms
         {
           fwrite($viewFile, "\t<br/>");
           fwrite($viewFile, "\n");
-          fwrite($viewFile, "\t<input type='submit' ".($buttonClass?"class='".$buttonClass."'":"")." />");
+          fwrite($viewFile, "\t@component('_Components.Button',array('type' => 'submit', 'name' => 'Filter'))");
+          fwrite($viewFile, "<strong>Failed to load pagination component!</strong>");
+          fwrite($viewFile, "@endcomponent</td>");
           fwrite($viewFile, "\n");
           fwrite($viewFile, "</form>");
           fwrite($viewFile, "\n");
           fwrite($viewFile, "<br/>");
         }
 
-        fwrite($viewFile, "<table ".($tableClass?"class='".$tableClass."'":"").">");
+        fwrite($viewFile, "<table>");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "\t<tr>");
         fwrite($viewFile, "\n");
@@ -437,7 +418,15 @@ class BuildTableForms
         fwrite($viewFile, "\n");
         fwrite($viewFile, "\t<tr>");
         fwrite($viewFile, "\n");
-        if ($primaryKey) fwrite($viewFile, "\t\t<td><a ".($anchorClass?"class='".$anchorClass."'":"")." href='/".$db->GetTableName()."\{{\$member->Get".$primaryKey->GetName()."()}}/edit'>edit</a></td>\n\t\t<td><a ".($anchorClass?"class='".$anchorClass."'":"")." href='/".$db->GetTableName()."\{{\$member->Get".$primaryKey->GetName()."()}}/delete'>delete</a></td>");
+        if ($primaryKey) {
+          fwrite($viewFile, "\t\t<td>@component('_Components.Anchor',array('href' => '/".$db->GetTableName()."/'.\$member->Get".$primaryKey->GetName()."().'/edit', 'link' => 'edit'))");
+          fwrite($viewFile, "<strong>Failed to load pagination component!</strong>");
+          fwrite($viewFile, "@endcomponent</td>");
+          fwrite($viewFile, "\n");
+          fwrite($viewFile, "\t\t<td>@component('_Components.Anchor',array('href' => '/".$db->GetTableName()."/'.\$member->Get".$primaryKey->GetName()."().'/delete', 'link' => 'delete'))");
+          fwrite($viewFile, "<strong>Failed to load pagination component!</strong>");
+          fwrite($viewFile, "@endcomponent</td>");
+        }
         fwrite($viewFile, "\n");
         foreach ($db->GetTableFields() as $field) {
           if ($primaryKey) { 
@@ -467,14 +456,8 @@ class BuildTableForms
     else echo "ERROR: Check your permissions to remove ".$viewsPath."/".$db->GetTableName().".blade filesn";
   }
 
-  function ConstructController($controllersPath, $classesPath, $db, $cssClass)
+  function ConstructController($controllersPath, $classesPath, $db)
   {
-
-    $buttonClass = $cssClass['button'];
-    $inputClass = $cssClass['input'];
-    $anchorClass = $cssClass['anchor'];
-    $tableClass = $cssClass['table'];
-
     // Create Folder if doesn't exist
     if (!is_dir(APP::ROOT_PATH()."/".$controllersPath)) \LazyMePHP\Helper\MKDIR(APP::ROOT_PATH()."/".$controllersPath);
 
