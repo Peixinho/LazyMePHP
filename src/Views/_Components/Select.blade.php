@@ -26,7 +26,7 @@
       <option value="">-</option>
     @endif
     @foreach($options as $o)
-      <option value="{{$o->Getid()}}" @if (isset($selected) && $selected==$o->Getid()) selected @endif>{{$o->Getdescriptor()}}</option> 
+      <option value="{{$o->GetPrimaryKey()}}" @if (isset($selected) && $selected==$o->GetPrimaryKey()) selected @endif>{{$o->Getdescriptor()}}</option> 
     @endforeach
   </select>
   <label>{{$fieldname}}</label>
