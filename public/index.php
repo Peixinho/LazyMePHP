@@ -25,7 +25,7 @@
       <div>
         <div>
         <!-- Main Content -->
-        <?php Pecee\SimpleRouter\SimpleRouter::start(); ?>
+        <?=$content?>
         <!-- End  -->
       </div>
     </div>
