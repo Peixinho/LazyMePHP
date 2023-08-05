@@ -176,11 +176,12 @@ function BuildForms() {
     foreach($forms as $f) echo $f['name']."\n";
     echo "\n";
     $replaceR = \LazyMePHP\Helper\promptYesNo("Replace RouteForms");
+    $buildViews = \LazyMePHP\Helper\promptYesNo("Build Views");
     $proceed = \LazyMePHP\Helper\promptYesNo("Proceed");
     if ($proceed) {
       $tablesList = array();
       foreach($forms as $c) $tablesList[] = $c['name'];
-      new \LazyMePHP\FormsBuilder\BuildTableForms('src/Controllers', 'src/Views', 'src/Classes', $tablesList, $replaceR == 'Y');
+      new \LazyMePHP\FormsBuilder\BuildTableForms('src/Controllers', 'src/Views', 'src/Classes', $tablesList, $replaceR == 'Y', $buildViews == 'Y');
     }
   }
   echo "\nDone, press enter to finish...";

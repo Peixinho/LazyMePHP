@@ -26,7 +26,7 @@ class BuildTableForms
      * @param (string) (path)
      * @return (NULL)
      */
-  function __construct($controllersPath, $viewsPath, $classesPath, $tablesList, $replaceRouteForms)
+  function __construct($controllersPath, $viewsPath, $classesPath, $tablesList, $replaceRouteForms, $buildViews)
   {
     // Create Folder if doesn't exist
     if (!is_dir(APP::ROOT_PATH()."/".$controllersPath)) \LazyMePHP\Helper\MKDIR(APP::ROOT_PATH()."/".$controllersPath);
@@ -92,7 +92,9 @@ class BuildTableForms
       if (is_array($tablesList) && array_search($o->Table, $tablesList)!==false) {
         $db = new \LazyMePHP\DatabaseHelper\_DB_TABLE($o->Table);
         $db->GetFieldsFromDB();
-        $this->ConstructForm($viewsPath, $db);
+        if ($buildViews) {
+          $this->ConstructForm($viewsPath, $db);
+        }
         $this->ConstructController($controllersPath, $classesPath, $db);
 
         if ($replaceRouteForms && !$failedRouterFile) {
