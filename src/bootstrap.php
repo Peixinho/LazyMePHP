@@ -55,13 +55,19 @@ require_once __DIR__."/Ext/vendor/autoload.php";
 require_once __DIR__."/Routes/Routes.php";
 require_once __DIR__."/Controllers/RouteForms.php";
 
-// Start the routing
-
 /*
  * Include Generated Class Files
  */
 if(file_exists(__DIR__."/Classes/includes.php"))
     require_once __DIR__."/Classes/includes.php";
+
+/*
+ * Routing
+ */
+ob_start();
+Pecee\SimpleRouter\SimpleRouter::start();
+$content = ob_get_contents();
+ob_clean();
 
 /*
  * App Files if Needed
