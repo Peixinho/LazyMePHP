@@ -21,7 +21,7 @@ switch($argv[1]) {
       else $port = intval($port);
     }
     if (!$port || !is_int($port)) $port = 8080;
-    @exec("php -S localhost:".$port." -t ./public tools/webserver");
+    @exec("php -S 0.0.0.0:".$port." -t ./public tools/webserver");
   break;
   case "build":
     require_once "tools/build";
