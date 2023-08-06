@@ -2,9 +2,11 @@ src/Configurations/Configurations.php
 src/Classes
 src/Controllers
 !src/Controllers/Default.Controller.php
+!src/Controllers/PageNotFound.Controller.php
 src/api
 !src/Views/compiled
-!src/Views/Default
+!src/Views/_Default
+!src/Views/_Error
 src/Views
 src/Ext/vendor
 src/Ext/composer.lock

@@ -8,13 +8,13 @@
 namespace LazyMePHP\Forms;
 use \eftec\bladeone\BladeOne;
 
-class DefaultController {
+class PageNotFoundController {
 	private static $views = __DIR__ . '/../Views/';
 	private static $cache = __DIR__ . '/../Views/compiled/';
 
 	static function Default() {
-		$blade = new BladeOne(DefaultController::$views,DefaultController::$cache);
-		echo $blade->run("_Default.view");
+		$blade = new BladeOne(PageNotFoundController::$views,PageNotFoundController::$cache);
+		echo $blade->run("_Error.view");
 	}
 }
 
