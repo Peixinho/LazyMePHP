@@ -20,17 +20,23 @@
     @switch($type)
     @case("number")
       type="number"
+      value="{{$value or ''}}" 
     @break
     @case("date")
       type="date"
+      value="{{$value or ''}}" 
     @break
     @case("text")
       type="text"
+      value="{{$value or ''}}" 
+    @break
+    @case("password")
+      type="password"
     @break
     @endswitch
     id="{{$id or $name}}" 
     name="{{$name}}"
-    value="{{$value or ''}}"
+    @if ($type!="password") @endif
     class="form-control"
     placeholder="{{$placeholder or ' '}}"
     @if (isset($validation)) validation="{{$validation or ''}}" @endif
