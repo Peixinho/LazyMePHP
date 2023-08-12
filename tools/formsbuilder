@@ -307,12 +307,12 @@ class BuildTableForms
                 case "date":
                   fwrite($viewFile, "\t@component('_Components.TextInput',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'placeholder' => '".$field->GetName()."', 'type' => 'date', 'value' => \$".$db->GetTableName()."->Get".$field->GetName()."() ".(!$field->AllowNull()?", 'validation' => 'NOTNULL', 'validationfail' => '".$field->GetName()." cannot be empty'":"")." ))");
                   break;
-          case "float":
+                case "float":
                 case "int":
-                  fwrite($viewFile, "\t@component('_Components.TextInput',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'placeholder' => '".$field->GetName()."', 'type' => 'number', 'value' => \$".$db->GetTableName()."->Get".$field->GetName()."() ".(!$field->AllowNull()?", 'validation' => 'NOTNULL', 'validationfail' => '".$field->GetName()." cannot be empty'":"")." ))");
+                  fwrite($viewFile, "\t@component('_Components.TextInput',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'placeholder' => '".$field->GetName()."', 'type' => 'number', 'value' => \$".$db->GetTableName()."->Get".$field->GetName()."() ".(!$field->AllowNull()?", 'validation' => 'NOTNULL', 'validationfail' => '".$field->GetName()." cannot be empty'":"")." ".($field->GetDataLength()?", 'maxlength' => '".$field->GetDataLength()."'":"")."))");
                   break;
                 case "varchar":
-                  fwrite($viewFile, "\t@component('_Components.TextInput',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'placeholder' => '".$field->GetName()."', 'type' => 'text', 'value' => \$".$db->GetTableName()."->Get".$field->GetName()."() ".(!$field->AllowNull()?", 'validation' => 'NOTNULL', 'validationfail' => '".$field->GetName()." cannot be empty'":"")." ))");
+                  fwrite($viewFile, "\t@component('_Components.TextInput',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'placeholder' => '".$field->GetName()."', 'type' => 'text', 'value' => \$".$db->GetTableName()."->Get".$field->GetName()."() ".(!$field->AllowNull()?", 'validation' => 'NOTNULL', 'validationfail' => '".$field->GetName()." cannot be empty'":"")."".($field->GetDataLength()?", 'maxlength' => '".$field->GetDataLength()."'":"")."))");
                   break;
               }
             }
