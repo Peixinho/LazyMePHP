@@ -32,6 +32,17 @@ LazyMePHP.Init = function () {
     };
   // END
 
+  // Add maxlength to all number inputs
+  el = document.querySelectorAll('input[type=number]');
+  for (let i=0;i<el.length;++i) {
+    if (el[i].getAttribute('maxlength'))
+      el[i].addEventListener('keydown', function(e) {
+        let maxlength = e.target.getAttribute('maxlength');
+        let t = e.target.value;
+        if (e.which!=8 && (e.which==69 || t.length>=maxlength)) e.preventDefault();
+      });
+  }
+
   if (typeof Init == "function") Init();
 };
 
