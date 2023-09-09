@@ -244,7 +244,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             fwrite($classFile, "\t\tif (APP::APP_ACTIVITY_LOG() && \$this->".$field->GetName()."!=\$".$field->GetName().")\n\t\t\t\$this->__log['".$field->GetName()."']=array((\$this->".$field->GetName()."?substr(\$this->".$field->GetName().",0,255):''), (\$".$field->GetName()."?substr(\$".$field->GetName().",0,255):''));");
             fwrite($classFile, "\n");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\$this->".$field->GetName()."=(\$".$field->GetName()."!=NULL?".($field->GetDataLength()>0?"substr(\$".$field->GetName().",0,".$field->GetDataLength().")":"\$".$field->GetName()).":NULL);");
+            fwrite($classFile, "\t\t\$this->".$field->GetName()."=(!is_null(\$".$field->GetName().")?".($field->GetDataLength()>0?"substr(\$".$field->GetName().",0,".$field->GetDataLength().")":"\$".$field->GetName()).":NULL);");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t}");
           }
@@ -323,7 +323,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             fwrite($classFile, "\n");
             fwrite($classFile,"\t\t// Get Elements from DB using Primary Key");
             fwrite($classFile, "\n");
-            fwrite($classFile,"\t\tif (\$".$field->GetName()."!=NULL) {");
+            fwrite($classFile,"\t\tif (!is_null(\$".$field->GetName().")) {");
             fwrite($classFile, "\n");
             fwrite($classFile,"\t\t\t\$sql = \"SELECT ");
             $countFields = 0;
@@ -455,7 +455,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             }
             fwrite($classFile, "\t\t\$fieldsNull = NULL;");
             fwrite($classFile, "\n");
-            fwrite($classFile, $fieldsNotNull);
+            if (isset($fieldsNotNull)) fwrite($classFile, $fieldsNotNull);
             fwrite($classFile, "\t\tif (\$fieldsNull) {");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t\t\ttrigger_error(\"NULL value not allowed!\\nFields: \$fieldsNull\\nError: \", E_USER_ERROR);");
@@ -464,7 +464,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
                     fwrite($classFile, "\n");
             fwrite($classFile, "\t\t} else {");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\tif (\$this->".$field->GetName()."!=NULL) {");
+            fwrite($classFile, "\t\t\tif (!is_null(\$this->".$field->GetName().")) {");
             // Update
             fwrite($classFile, "\n");
             fwrite($classFile, "\t\t\t\t\$sql = \"UPDATE ".$db->_Tablename." SET ");
