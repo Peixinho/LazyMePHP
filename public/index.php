@@ -21,6 +21,8 @@
       <title><?php echo APP::APP_TITLE(); ?></title>
     </head>
     <body onload="LazyMePHP.Init()">
+      <?= \LazyMePHP\Config\Internal\GetErrors();?>
+
       <ul> <?php foreach($routes as $r) { echo "<li><a href=\"/".$r."\">$r</a>"; } ?> </ul>
       <div>
         <div>
@@ -37,7 +39,6 @@
     if (array_key_exists('error', $_GET) && strlen($_GET['error'])>0) foreach (explode(',',$_GET['error']) as $e) { $showMessage_E = (strlen($showMessage_E)>0?$showMessage_E."<br/>".$ErrorMessages->GetName($e):$ErrorMessages->GetName($e)); }
     ?>
     <script src="/js/LazyMePHP.js"></script>
-    <script src="/js/app.js"></script>
     <script>
     <?php if (strlen($showMessage_E)>0) echo "LazyMePHP.ShowError('$showMessage_E');"; if (strlen($showMessage_S)>0) echo "LazyMePHP.ShowSuccess('$showMessage_S');"; ?>
     </script>

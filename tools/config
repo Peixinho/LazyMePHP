@@ -38,6 +38,7 @@ $app_description = insert("App description [string]: ");
 $app_timezone = insert("Timezone [string]: ");
 $email_support = insert("Email support [string]: ");
 $app_nresults = insert("How many records you want by default on each page [int]: ");
+$app_encryption = insert("What is the password to encrypt data using aes128 cbc: ");
 $app_fullpath = dirname(__FILE__);
 $activity_log = \LazyMePHP\Helper\promptYesNo("Enable logging");
 switch($db_db)
@@ -91,6 +92,7 @@ switch($db_db)
   fwrite($file, "\$CONFIG['APP_DESCRIPTION']\t\t=\"".$app_description."\";\n");
   fwrite($file, "\$CONFIG['APP_TIMEZONE']\t\t\t=\"".$app_timezone."\";\n");
   fwrite($file, "\$CONFIG['APP_NRESULTS']\t\t\t=\"".$app_nresults."\";\n");
+  fwrite($file, "\$CONFIG['APP_ENCRYPTION']\t\t\t=\"".$app_encryption."\";\n");
   fwrite($file, "\n");
   fwrite($file, "// ACTIVITY LOG\n");
   fwrite($file, "\$CONFIG['APP_ACTIVITY_LOG']\t\t\t\t=\"".$activity_log."\";\n");

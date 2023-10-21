@@ -164,17 +164,25 @@ class BuildTableForms
           fwrite($routerFile, "\n");
           fwrite($routerFile, "SimpleRouter::post('/".$db->GetTableName()."/{id}/save', function (\$".$db->GetPrimaryFieldName().") {");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\t".$db->GetTableName()."::Save(\$".$db->GetPrimaryFieldName().");");
+          fwrite($routerFile, "\tif (".$db->GetTableName()."::Save(\$".$db->GetPrimaryFieldName()."))");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\t\\LazyMePHP\\Helper\\redirect('/".$db->GetTableName()."?success=1');");
+          fwrite($routerFile, "\t\t\\LazyMePHP\\Helper\\redirect('/".$db->GetTableName()."?success=1');");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\telse");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\t\t\\LazyMePHP\\Helper\\redirect('/".$db->GetTableName()."/'.\$".$db->GetPrimaryFieldName().".'/edit?error=1');");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "});");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "SimpleRouter::post('/".$db->GetTableName()."/save', function () {");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\t".$db->GetTableName()."::Save();");
+          fwrite($routerFile, "\tif(".$db->GetTableName()."::Save())");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\t\\LazyMePHP\\Helper\\redirect('/".$db->GetTableName()."?success=1');");
+          fwrite($routerFile, "\t\t\\LazyMePHP\\Helper\\redirect('/".$db->GetTableName()."?success=1');");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\telse");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\t\t\\LazyMePHP\\Helper\\redirect('/".$db->GetTableName()."?error=1');");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "});");
           fwrite($routerFile, "\n");
@@ -568,20 +576,24 @@ class BuildTableForms
             {
               if (!$field->AllowNull())
               {
-                fwrite($controllerFile, "\t\tif (filter_input(INPUT_POST, \"".$field->GetName()."\")===false) \$fieldsNull .= (!is_null(\$fieldsNull)?\",\":\"\").\"".$field->GetName()."\";");
+                fwrite($controllerFile, "\t\tif (strlen(filter_input(INPUT_POST, \"".$field->GetName()."\"))===0) \$fieldsNull .= (!is_null(\$fieldsNull)?\",\":\"\").\"".$field->GetName()."\";");
                 fwrite($controllerFile, "\n");
               }
               fwrite($controllerFile, "\t\t".(!$field->AllowNull()?"else ":"")."\$obj->Set".$field->GetName()."(filter_input(INPUT_POST, \"".$field->GetName()."\"));");
               fwrite($controllerFile, "\n");
             }
           }
-          fwrite($controllerFile, "\t\tif (\$fieldsNull)");
+          fwrite($controllerFile, "\t\tif (\$fieldsNull) {");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\ttrigger_error(\"NULL value not allowed!\\nFields: \$fieldsNull\\nError: \", E_USER_ERROR);");
+          fwrite($controllerFile, "\t\t\t\\LazyMePHP\\Config\\Internal\\trigger_error(\"NULL value not allowed!\\nFields: \$fieldsNull\", E_USER_ERROR);");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\t\treturn false;");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\t}");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\telse");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\t\$obj->Save();");
+          fwrite($controllerFile, "\t\t\treturn \$obj->Save();");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t}");
           fwrite($controllerFile, "\n");

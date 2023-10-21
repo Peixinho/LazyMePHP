@@ -34,14 +34,13 @@ final class MYSQL extends ISQL {
   {
     if (!$this->isConnected)
     {
-      $this->connection = new \PDO("mysql:host=".$this->db_host.";dbname=".$this->db_name.";charset=utf8",$this->db_username,$this->db_password);
-      if(is_object($this->connection) && $this->connection != false)
-      {
+      try {
+        $this->connection = new \PDO("mysql:host=".$this->db_host.";dbname=".$this->db_name.";charset=utf8",$this->db_username,$this->db_password);
         $this->connection->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
         $this->isConnected = true;
-      }
-      else {
-        die("Connection failed");
+      } catch (\PDOException $e) {
+        die ("Connection failed: ".$e->getMessage());
+        return false;
       }
     }
   }
@@ -57,18 +56,27 @@ final class MYSQL extends ISQL {
    */
   public function Query($string, &$obj, $args = array())
   {
-    if (!$this->isConnected)
-    $this->Connect();
+    if (!$this->isConnected) $this->Connect();
+    if ($this->isConnected) {
 
-    if ($obj==NULL)
-    $obj = new MYSQL_OBJECT();
+      if ($obj==NULL)
+      $obj = new MYSQL_OBJECT();
 
-    $obj->queryString = $string;
-    $obj->db_result = $this->connection->prepare($obj->queryString);
-    foreach ($args as $key => $value) {
-      $obj->db_result->bindValue($key+1, $value);
+      $obj->queryString = $string;
+      $obj->db_result = $this->connection->prepare($obj->queryString);
+      foreach ($args as $key => $value) {
+        $obj->db_result->bindValue($key+1, $value);
+      }
+      try {
+        $obj->db_result->execute();
+      }
+      catch (\PDOException $e) {
+        $_SESSION['APP']['ERROR']['DB']['MESSAGE'] = $e->getMessage();
+        $_SESSION['APP']['ERROR']['DB']['CODE'] = $e->getCode();
+        return false;
+      }
     }
-    $obj->db_result->execute();
+    return true;
   }
 
   /**

@@ -450,7 +450,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             {
               if ($field!=$field2)
               {
-                if (!$field2->AllowNull()) $fieldsNotNull.= "\t\tif (isset(\$this->".$field2->GetName().")===false) \$fieldsNull .= (!is_null(\$fieldsNull)?\",\":\"\").\"".$field2->GetName()."\";\n";
+                if (!$field2->AllowNull()) $fieldsNotNull.= "\t\tif (strlen(\$this->".$field2->GetName().")===0) \$fieldsNull .= (!is_null(\$fieldsNull)?\",\":\"\").\"".$field2->GetName()."\";\n";
               }
             }
             fwrite($classFile, "\t\t\$fieldsNull = NULL;");
@@ -458,7 +458,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             if (isset($fieldsNotNull)) fwrite($classFile, $fieldsNotNull);
             fwrite($classFile, "\t\tif (\$fieldsNull) {");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\ttrigger_error(\"NULL value not allowed!\\nFields: \$fieldsNull\\nError: \", E_USER_ERROR);");
+            fwrite($classFile, "\t\t\t\\LazyMePHP\\Config\\Internal\\trigger_error(\"NULL value not allowed!\\nFields: \$fieldsNull\", E_USER_ERROR);");
                     fwrite($classFile, "\n");
                     fwrite($classFile, "\t\t\treturn false;");
                     fwrite($classFile, "\n");
@@ -493,7 +493,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             fwrite($classFile, "\n");
             fwrite($classFile,"\t\t\t\t\$method = \"U\";");
             fwrite($classFile, "\n");
-            fwrite($classFile,"\t\t\t\tAPP::DB_CONNECTION()->Query(\$sql, \$rtn, \$sqlArgs);");
+            fwrite($classFile,"\t\t\t\t\$ret = APP::DB_CONNECTION()->Query(\$sql, \$rtn, \$sqlArgs);");
             fwrite($classFile, "\n");
             fwrite($classFile,"\t\t\t} else {");
             // Insert
@@ -531,9 +531,9 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             }
             fwrite($classFile,"\t\t\t\t\$method = \"I\";");
             fwrite($classFile, "\n");
-            fwrite($classFile,"\t\t\t\tAPP::DB_CONNECTION()->Query(\$sql, \$rtn, \$sqlArgs);");
+            fwrite($classFile,"\t\t\t\t\$ret = APP::DB_CONNECTION()->Query(\$sql, \$rtn, \$sqlArgs);");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\t\t\$this->".$field->GetName()." = APP::DB_CONNECTION()->GetLastInsertedID('".$db->_Tablename."');");
+            fwrite($classFile, "\t\t\t\tif (\$ret) \$this->".$field->GetName()." = APP::DB_CONNECTION()->GetLastInsertedID('".$db->_Tablename."');");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t\t\t}");
             fwrite($classFile, "\n");
@@ -541,7 +541,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             fwrite($classFile, "\t\t\tif (APP::APP_ACTIVITY_LOG()) APP::APP_LOGDATA(\"".$db->_Tablename."\",\$this->__log,\$this->".$field->GetName().",\$method);");
             fwrite($classFile, "\n");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\treturn true;");
+            fwrite($classFile, "\t\t\treturn \$ret;");
             fwrite($classFile, "\n");
             // End Save
             fwrite($classFile, "\t\t}");
@@ -570,7 +570,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             fwrite($classFile, "\n");
             fwrite($classFile, "\t{");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t\tif (isset(\$this->".$field->GetName().")===false) return false;");
+            fwrite($classFile, "\t\tif (strlen(\$this->".$field->GetName().")===0) return false;");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t\t\$sql = \"DELETE FROM ".$db->_Tablename." WHERE ".$field->GetName()."=?\";");
             fwrite($classFile, "\n");

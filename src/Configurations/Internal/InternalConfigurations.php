@@ -11,6 +11,41 @@ use \LazyMePHP\DB\MYSQL;
 use \LazyMePHP\DB\MSSQL;
 
 /**
+ * Trigger error custom function
+ *
+ * Replaces trigger default function
+ */
+function trigger_error($message, $type = E_USER_NOTICE) {
+  $_SESSION['APP']['ERROR']['INTERNAL']['TYPE'] = $type;
+  $_SESSION['APP']['ERROR']['INTERNAL']['MESSAGE'] = $message;
+}
+
+/*
+ * Show last error
+ */
+function GetErrors() {
+  if (isset($_SESSION['APP']) && isset($_SESSION['APP']['ERROR']) && isset($_SESSION['APP']['ERROR']['INTERNAL']))
+    echo $_SESSION['APP']['ERROR']['INTERNAL']['MESSAGE'];
+  if (isset($_SESSION['APP']) && isset($_SESSION['APP']['ERROR']) && isset($_SESSION['APP']['ERROR']['DB']))
+    echo $_SESSION['APP']['ERROR']['DB']['MESSAGE'];
+  unset($_SESSION['APP']['ERROR']);
+}
+
+/*
+ * Encrypt string
+ */
+function encrypt($plaintext) {
+  return openssl_encrypt($plaintext, 'aes-128-ecb',APP::APP_ENCRYPTION());
+}
+
+/*
+ * Decrypt string
+ */
+function decrypt($cipherText) {
+  if ($cipherText) return openssl_decrypt($cipherText, 'aes-128-ecb',APP::APP_ENCRYPTION());
+}
+
+/**
  * ErrorHandler
  *
  * Replaces User Error
@@ -336,6 +371,21 @@ class APP
     return APP::$_app_nresults;
   }
 
+  /** @var _app_encryption */
+  private static $_app_encryption;
+  /**
+     * Encryption
+     *
+     * Returns encryption word
+     *
+     * @param (null)
+     * @return (string) (url)
+     */
+  static function APP_ENCRYPTION()
+  {
+    return APP::$_app_encryption;
+  }
+
   /** @var _app_activity_log */
   private static $_app_activity_log;
   /**
@@ -429,6 +479,7 @@ class APP
     APP::$_app_activity_log   = $CONFIG['APP_ACTIVITY_LOG'];
     APP::$_app_activity_auth  = $CONFIG['APP_ACTIVITY_AUTH'];
     APP::$_app_nresults 	    = $CONFIG['APP_NRESULTS'];
+    APP::$_app_encryption     = $CONFIG['APP_ENCRYPTION'];
 
     // Set Timezone
     date_default_timezone_set(APP::$_app_timezone);

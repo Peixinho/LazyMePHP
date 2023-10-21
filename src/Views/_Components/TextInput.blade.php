@@ -40,6 +40,7 @@
     class="form-control"
     placeholder="{{$placeholder or ' '}}"
     @if (isset($validation)) validation="{{$validation or ''}}" @endif
+    @if (isset($validationfail)) validation-fail="{{$validationfail or ''}}" @endif
     @if (isset($maxlength)) maxlength="{{$maxlength}}" @endif
     @if (isset($validation)) aria-describedby="validation{{$id or $name}}Feedback" @endif
    />
