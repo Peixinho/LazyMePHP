@@ -32,6 +32,15 @@ function GetErrors() {
 }
 
 /*
+ * Check if there are errors
+ */
+function HasErrors() {
+  return (isset($_SESSION['APP']) && isset($_SESSION['APP']['ERROR']) && isset($_SESSION['APP']['ERROR']['INTERNAL'])
+  ||   
+  (isset($_SESSION['APP']) && isset($_SESSION['APP']['ERROR']) && isset($_SESSION['APP']['ERROR']['DB'])));
+}
+
+/*
  * Encrypt string
  */
 function encrypt($plaintext) {
