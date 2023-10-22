@@ -576,7 +576,7 @@ class BuildTableForms
             {
               if (!$field->AllowNull())
               {
-                fwrite($controllerFile, "\t\tif (strlen(filter_input(INPUT_POST, \"".$field->GetName()."\"))===0) \$fieldsNull .= (!is_null(\$fieldsNull)?\",\":\"\").\"".$field->GetName()."\";");
+                fwrite($controllerFile, "\t\tif (empty(filter_input(INPUT_POST, \"".$field->GetName()."\"))) \$fieldsNull .= (!is_null(\$fieldsNull)?\",\":\"\").\"".$field->GetName()."\";");
                 fwrite($controllerFile, "\n");
               }
               fwrite($controllerFile, "\t\t".(!$field->AllowNull()?"else ":"")."\$obj->Set".$field->GetName()."(filter_input(INPUT_POST, \"".$field->GetName()."\"));");
