@@ -30,8 +30,10 @@ require_once __DIR__."/../../src/Ext/vendor/autoload.php";
 
 if(file_exists(__DIR__."/../../src/api/MaskAPI.php"))
 	require_once __DIR__."/../../src/api/MaskAPI.php";
-if(file_exists(__DIR__."/../../src/api/RouteAPI.php"))
-	require_once __DIR__."/../../src/api/RouteAPI.php";
+
+/* Load all api routes */
+foreach(glob(__DIR__."/../../src/api/" . "/*.php") as $r)
+  require_once $r;
 
 /*
  * Output result

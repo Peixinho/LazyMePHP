@@ -24,54 +24,54 @@ class BuildTableAPI
    * @param (string) (path)
    * @return (NULL)
    */
-	function __construct($apiPath, $replaceRouteApi, $tablesList)
-	{
+  function __construct($apiPath, $replaceRouteApi, $tablesList)
+  {
     // SELECT Tables
     $queryString = "";
     switch (APP::DB_TYPE())
     {
       case 1: // MSSQL
-            $queryString = "SELECT [Table] FROM (SELECT TABLE_NAME as [Table] FROM INFORMATION_SCHEMA.TABLES) SCH WHERE [Table] NOT LIKE '\_\_%'";
-      break;
+        $queryString = "SELECT [Table] FROM (SELECT TABLE_NAME as [Table] FROM INFORMATION_SCHEMA.TABLES) SCH WHERE [Table] NOT LIKE '\_\_%'";
+        break;
       case 2: // MYSQL
-          $queryString = "SELECT `Table` FROM (SELECT DISTINCT TABLE_NAME as `Table` FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='".APP::DB_NAME()."') SCH WHERE `Table` NOT LIKE '\_\_%'";
-      break;
+        $queryString = "SELECT `Table` FROM (SELECT DISTINCT TABLE_NAME as `Table` FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='".APP::DB_NAME()."') SCH WHERE `Table` NOT LIKE '\_\_%'";
+        break;
     }
 
     // Create Folder if doesn't exist
     if (!is_dir(APP::ROOT_PATH()."/".$apiPath)) \LazyMePHP\Helper\MKDIR(APP::ROOT_PATH()."/".$apiPath);
 
-		// Create API MASK
-		if ($replaceRouteApi) {
-			if (\LazyMePHP\Helper\UNLINK(APP::ROOT_PATH()."/".$apiPath."/MaskAPI.php"))
-			{
-				if (\LazyMePHP\Helper\TOUCH(APP::ROOT_PATH()."/".$apiPath."/MaskAPI.php"))
-				{
-					$routerFile = fopen(APP::ROOT_PATH()."/".$apiPath."/MaskAPI.php","w+");
-					fwrite($routerFile,"<?php");
-					fwrite($routerFile, "\n");
-					fwrite($routerFile, "\n");
-					fwrite($routerFile,"/**");
-					fwrite($routerFile, "\n");
-					fwrite($routerFile," * @copyright This file is part of the LazyMePHP Framework developed by Duarte Peixinho");
-					fwrite($routerFile, "\n");
-					fwrite($routerFile," * @author Duarte Peixinho");
-					fwrite($routerFile, "\n");
-					fwrite($routerFile," *");
-					fwrite($routerFile, "\n");
-					fwrite($routerFile," * Source File Generated Automatically");
-					fwrite($routerFile, "\n");
-					fwrite($routerFile," */");
-					fwrite($routerFile, "\n");
-					fwrite($routerFile, "\n");
+    // Create API MASK
+    if ($replaceRouteApi) {
+      if (\LazyMePHP\Helper\UNLINK(APP::ROOT_PATH()."/".$apiPath."/MaskAPI.php"))
+      {
+        if (\LazyMePHP\Helper\TOUCH(APP::ROOT_PATH()."/".$apiPath."/MaskAPI.php"))
+        {
+          $routerFile = fopen(APP::ROOT_PATH()."/".$apiPath."/MaskAPI.php","w+");
+          fwrite($routerFile,"<?php");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile,"/**");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile," * @copyright This file is part of the LazyMePHP Framework developed by Duarte Peixinho");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile," * @author Duarte Peixinho");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile," *");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile," * Source File Generated Automatically");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile," */");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\n");
 
-					// Generate Default Visible Fields
-					fwrite($routerFile,"\$GLOBALS['API_FIELDS_AVAILABLE'] = array(");
-					fwrite($routerFile, "\n");
-					APP::DB_CONNECTION()->Query($queryString, $sqlObj);
-					$_i = 0;
-					while ($o=$sqlObj->FetchObject())
-					{
+          // Generate Default Visible Fields
+          fwrite($routerFile,"\$GLOBALS['API_FIELDS_AVAILABLE'] = array(");
+          fwrite($routerFile, "\n");
+          APP::DB_CONNECTION()->Query($queryString, $sqlObj);
+          $_i = 0;
+          while ($o=$sqlObj->FetchObject())
+          {
 
             if (is_array($tablesList) && array_search($o->Table, $tablesList)!==false) {
               if ($_i>0) fwrite($routerFile, ",\n");
@@ -85,51 +85,52 @@ class BuildTableAPI
               }
               fwrite($routerFile, ")");
             }
-						$_i++;
-					}
-					fwrite($routerFile, "\n");
-					fwrite($routerFile, ");");
+            $_i++;
+          }
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, ");");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "?>");
-				}
+        }
         else echo "ERROR: Check your permissions to write ".$apiPath."/MaskAPI.php\n";
-			}
+      }
       else echo "ERROR: Check your permissions to remove ".$apiPath."/MaskAPI.php\n";
-		}
-		// Create Routing Rules
-		if ($replaceRouteApi) {
-			if (\LazyMePHP\Helper\UNLINK(APP::ROOT_PATH()."/".$apiPath."/RouteAPI.php"))
-			{
-				if (\LazyMePHP\Helper\TOUCH(APP::ROOT_PATH()."/".$apiPath."/RouteAPI.php"))
-				{
-					$routerFile = fopen(APP::ROOT_PATH()."/".$apiPath."/RouteAPI.php","w+");
-					fwrite($routerFile,"<?php");
-					fwrite($routerFile, "\n");
-					fwrite($routerFile, "\n");
-					fwrite($routerFile,"/**");
-					fwrite($routerFile, "\n");
-					fwrite($routerFile," * @copyright This file is part of the LazyMePHP Framework developed by Duarte Peixinho");
-					fwrite($routerFile, "\n");
-					fwrite($routerFile," * @author Duarte Peixinho");
-					fwrite($routerFile, "\n");
-					fwrite($routerFile," *");
-					fwrite($routerFile, "\n");
-					fwrite($routerFile," * Source File Generated Automatically");
-					fwrite($routerFile, "\n");
-					fwrite($routerFile," */");
-					fwrite($routerFile, "\n");
-					fwrite($routerFile, "\n");
-          fwrite($routerFile, "use Pecee\SimpleRouter\SimpleRouter;");
-          fwrite($routerFile, "\n");
-          fwrite($routerFile, "use \LazyMePHP\Config\Internal\APP;");
-					fwrite($routerFile, "\n");
-					fwrite($routerFile, "\n");
+    }
+    // Create Routing Rules
+    if ($replaceRouteApi) {
 
-					// Generate Default Visible Fields
-					APP::DB_CONNECTION()->Query($queryString, $sqlObj);
-					while ($o=$sqlObj->FetchObject())
-					{
+      // Generate Default Visible Fields
+      APP::DB_CONNECTION()->Query($queryString, $sqlObj);
+      while ($o=$sqlObj->FetchObject())
+      {
+        if (\LazyMePHP\Helper\UNLINK(APP::ROOT_PATH()."/".$apiPath."/".$o->Table.".php"))
+        {
+          if (\LazyMePHP\Helper\TOUCH(APP::ROOT_PATH()."/".$apiPath."/".$o->Table.".php"))
+          {
+            $routerFile = fopen(APP::ROOT_PATH()."/".$apiPath."/".$o->Table.".php","w+");
+            fwrite($routerFile,"<?php");
+            fwrite($routerFile, "\n");
+            fwrite($routerFile, "\n");
+            fwrite($routerFile,"/**");
+            fwrite($routerFile, "\n");
+            fwrite($routerFile," * @copyright This file is part of the LazyMePHP Framework developed by Duarte Peixinho");
+            fwrite($routerFile, "\n");
+            fwrite($routerFile," * @author Duarte Peixinho");
+            fwrite($routerFile, "\n");
+            fwrite($routerFile," *");
+            fwrite($routerFile, "\n");
+            fwrite($routerFile," * Source File Generated Automatically");
+            fwrite($routerFile, "\n");
+            fwrite($routerFile," */");
+            fwrite($routerFile, "\n");
+            fwrite($routerFile, "\n");
+            fwrite($routerFile, "use Pecee\SimpleRouter\SimpleRouter;");
+            fwrite($routerFile, "\n");
+            fwrite($routerFile, "use \LazyMePHP\Config\Internal\APP;");
+            fwrite($routerFile, "\n");
+            fwrite($routerFile, "\n");
+
             #fwrite($routerFile, "Router::Create(\"controller\", \"".$o->Table."\",APP::ROOT_PATH().\"/$apiPath/".$o->Table.".API.php\");");
             if (is_array($tablesList) && array_search($o->Table, $tablesList)!==false) {
               fwrite($routerFile, "/*");
@@ -184,14 +185,14 @@ class BuildTableAPI
               fwrite($routerFile, "\n");
               fwrite($routerFile, "\n");
             }
+            fwrite($routerFile, "\n");
+            fwrite($routerFile, "?>");
           }
-          fwrite($routerFile, "\n");
-          fwrite($routerFile, "?>");
-				}
-        else echo "ERROR: Check your permissions to write ".$apiPath."/RouteAPI.php\n";
-			}
-      else echo "ERROR: Check your permissions to remove ".$apiPath."/RouteAPI.php\n";
-		}
+          else echo "ERROR: Check your permissions to write ".$apiPath."/RouteAPI.php\n";
+        }
+        else echo "ERROR: Check your permissions to remove ".$apiPath."/RouteAPI.php\n";
+      }
+    }
   }
 }
 ?>
