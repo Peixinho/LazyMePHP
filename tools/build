@@ -181,7 +181,7 @@ function BuildForms() {
     if ($proceed) {
       $tablesList = array();
       foreach($forms as $c) $tablesList[] = $c['name'];
-      new \LazyMePHP\FormsBuilder\BuildTableForms('src/Controllers', 'src/Views', 'src/Classes', $tablesList, $replaceR == 'Y', $buildViews == 'Y');
+      new \LazyMePHP\FormsBuilder\BuildTableForms('src/Controllers', 'src/Views', 'src/Classes', 'src/Routes', $tablesList, $replaceR == 'Y', $buildViews == 'Y');
     }
   }
   echo "\nDone, press enter to finish...";

@@ -53,8 +53,10 @@ require_once __DIR__."/Ext/vendor/autoload.php";
 
 /* Load external routes file */
 require_once __DIR__."/Routes/Routes.php";
-require_once __DIR__."/Controllers/RouteForms.php";
-
+// Load all routes by default
+foreach (glob(__DIR__."/Routes/" . '/*.php') as $file) {
+    require($file);
+}
 /*
  * Include Generated Class Files
  */

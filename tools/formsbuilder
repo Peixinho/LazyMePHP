@@ -26,53 +26,10 @@ class BuildTableForms
      * @param (string) (path)
      * @return (NULL)
      */
-  function __construct($controllersPath, $viewsPath, $classesPath, $tablesList, $replaceRouteForms, $buildViews)
+  function __construct($controllersPath, $viewsPath, $classesPath, $routesPath, $tablesList, $replaceRouteForms, $buildViews)
   {
     // Create Folder if doesn't exist
     if (!is_dir(APP::ROOT_PATH()."/".$controllersPath)) \LazyMePHP\Helper\MKDIR(APP::ROOT_PATH()."/".$controllersPath);
-
-    $failedRouterFile = false;
-
-    // Create Last File to Help on Requires
-    if ($replaceRouteForms) {
-
-      if (\LazyMePHP\Helper\UNLINK(APP::ROOT_PATH()."/".$controllersPath."/RouteForms.php"))
-      {
-        if (\LazyMePHP\Helper\TOUCH(APP::ROOT_PATH()."/".$controllersPath."/RouteForms.php"))
-        {
-          $routerFile = fopen(APP::ROOT_PATH()."/".$controllersPath."/RouteForms.php","w+");
-          fwrite($routerFile,"<?php");
-          fwrite($routerFile, "\n");
-          fwrite($routerFile, "\n");
-          fwrite($routerFile,"/**");
-          fwrite($routerFile, "\n");
-          fwrite($routerFile," * @copyright This file is part of the LazyMePHP Framework developed by Duarte Peixinho");
-          fwrite($routerFile, "\n");
-          fwrite($routerFile," * @author Duarte Peixinho");
-          fwrite($routerFile, "\n");
-          fwrite($routerFile," *");
-          fwrite($routerFile, "\n");
-          fwrite($routerFile," * Source File Generated Automatically");
-          fwrite($routerFile, "\n");
-          fwrite($routerFile," */");
-          fwrite($routerFile, "\n");
-          fwrite($routerFile, "use Pecee\SimpleRouter\SimpleRouter;");
-          fwrite($routerFile, "\n");
-          fwrite($routerFile, "use \LazyMePHP\Config\Internal\APP;");
-          fwrite($routerFile, "\n");
-          fwrite($routerFile, "\n");
-        }
-        else {
-          echo "ERROR: Check your permissions to write the router file on $controllersPath/RouteForms.php\n";
-          $failedRouterFile = true;
-        }
-      }
-      else {
-        echo "ERROR: Check your permissions to remove the router file on $controllersPath/RouteForms.php\n";
-        $failedRouterFile = true;
-      }
-    }
-
     // SELECT Tables
     $queryString = "";
     switch (APP::DB_TYPE())
@@ -89,6 +46,49 @@ class BuildTableForms
     $routes = array();
     while ($o=$sqlObj->FetchObject())
     {
+
+      $failedRouterFile = false;
+
+      // Create Last File to Help on Requires
+      if ($replaceRouteForms) {
+
+        if (\LazyMePHP\Helper\UNLINK(APP::ROOT_PATH()."/".$routesPath."/".$o->Table.".php"))
+        {
+          if (\LazyMePHP\Helper\TOUCH(APP::ROOT_PATH()."/".$routesPath."/".$o->Table.".php"))
+          {
+            $routerFile = fopen(APP::ROOT_PATH()."/".$routesPath."/".$o->Table.".php","w+");
+            fwrite($routerFile,"<?php");
+            fwrite($routerFile, "\n");
+            fwrite($routerFile, "\n");
+            fwrite($routerFile,"/**");
+            fwrite($routerFile, "\n");
+            fwrite($routerFile," * @copyright This file is part of the LazyMePHP Framework developed by Duarte Peixinho");
+            fwrite($routerFile, "\n");
+            fwrite($routerFile," * @author Duarte Peixinho");
+            fwrite($routerFile, "\n");
+            fwrite($routerFile," *");
+            fwrite($routerFile, "\n");
+            fwrite($routerFile," * Source File Generated Automatically");
+            fwrite($routerFile, "\n");
+            fwrite($routerFile," */");
+            fwrite($routerFile, "\n");
+            fwrite($routerFile, "use Pecee\SimpleRouter\SimpleRouter;");
+            fwrite($routerFile, "\n");
+            fwrite($routerFile, "use \LazyMePHP\Config\Internal\APP;");
+            fwrite($routerFile, "\n");
+            fwrite($routerFile, "\n");
+          }
+          else {
+            echo "ERROR: Check your permissions to write the router file on $routesPath/".$o->Table.".php\n";
+            $failedRouterFile = true;
+          }
+        }
+        else {
+          echo "ERROR: Check your permissions to remove the router file on $routesPath/".$o->Table.".php\n";
+          $failedRouterFile = true;
+        }
+      }
+
       if (is_array($tablesList) && array_search($o->Table, $tablesList)!==false) {
         $db = new \LazyMePHP\DatabaseHelper\_DB_TABLE($o->Table);
         $db->GetFieldsFromDB();
@@ -197,18 +197,6 @@ class BuildTableForms
           fwrite($routerFile, "\n");
         }
       }
-    }
-
-    // Close Include file
-    if ($replaceRouteForms && !$failedRouterFile) {
-
-      fwrite($routerFile, "\$routes = array(");
-      foreach($routes as $r) fwrite($routerFile, "'$r',");
-      fwrite($routerFile, ")");
-
-      fwrite($routerFile, "\n");
-      fwrite($routerFile,"?>");
-      fclose($routerFile);
     }
   }
 
