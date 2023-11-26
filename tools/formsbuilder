@@ -613,12 +613,7 @@ class BuildTableForms
           $c = 0;
           foreach ($db->GetTableFields() as $field)
           {
-            if ($field->GetForeignField()) {
-              if ($field->HasForeignKey() && !is_null($field->GetForeignField()))
-              {
-                fwrite($controllerFile, ($c++>0?", ":"")."'FindBy".$field->GetName()."'");
-              }
-            }
+              fwrite($controllerFile, ($c++>0?", ":"")."'FindBy".$field->GetName()."'");
           }
           fwrite($controllerFile, ");");
           fwrite($controllerFile, "\n");
