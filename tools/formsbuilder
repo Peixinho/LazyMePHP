@@ -195,6 +195,7 @@ class BuildTableForms
           fwrite($routerFile, "});");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\n");
+          fwrite($routerFile, "?>");
         }
       }
     }
