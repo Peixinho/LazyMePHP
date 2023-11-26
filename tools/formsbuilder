@@ -50,7 +50,7 @@ class BuildTableForms
       $failedRouterFile = false;
 
       // Create Last File to Help on Requires
-      if ($replaceRouteForms) {
+      if ($replaceRouteForms && is_array($tablesList) && array_search($o->Table, $tablesList)!==false) {
 
         if (\LazyMePHP\Helper\UNLINK(APP::ROOT_PATH()."/".$routesPath."/".$o->Table.".php"))
         {
