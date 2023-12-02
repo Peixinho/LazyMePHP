@@ -7,9 +7,14 @@
 
 namespace LazyMePHP\Forms;
 use Pecee\SimpleRouter\SimpleRouter;
+use \eftec\bladeone\BladeOne;
 
 require_once __DIR__."/../Controllers/_Default.Controller.php";
 require_once __DIR__."/../Controllers/_PageNotFound.Controller.php";
+
+$views = __DIR__ . '/../Views/';
+$cache = __DIR__ . '/../Views/compiled/';
+$blade = new BladeOne($views,$cache);
 
 SimpleRouter::get('/', [DefaultController::class, 'default']); 
 SimpleRouter::get('/not-found', [PageNotFoundController::class, 'default']);
@@ -27,5 +32,13 @@ SimpleRouter::error(function(\Pecee\Http\Request $request, \Exception $exception
     }
     
 });
+
+// Load all routes by default
+foreach (glob(__DIR__."/" . '/*.php') as $file) {
+  if (
+    substr($file, strrpos($file, "/")+1, strlen($file)) != "Routes.php"
+  )
+  require($file);
+}
 
 ?>
