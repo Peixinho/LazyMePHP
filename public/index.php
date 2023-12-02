@@ -23,7 +23,7 @@
     <body onload="LazyMePHP.Init()">
       <?= \LazyMePHP\Config\Internal\GetErrors();?>
 
-      <ul> <?php foreach(glob(__DIR__."/../src/Routes/" . "/*.php") as $r) { echo "<li><a href=\"/".substr($r,strrpos($r,"/")+1, -4)."\">".substr($r,strrpos($r,"/")+1, -4)."</a>"; } ?> </ul>
+      <ul><?php foreach (glob(__DIR__."/../src/Routes/" . '/*.php') as $r) { if (substr($file, strrpos($file, "/")+1, strlen($file)) != "Routes.php") { echo "<li><a href=\"/".substr($r,strrpos($r,"/")+1, -4)."\">".substr($r,strrpos($r,"/")+1, -4)."</a>"; } } ?></ul>
 
       <div>
         <div>
