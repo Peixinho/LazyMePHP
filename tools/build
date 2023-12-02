@@ -98,9 +98,31 @@ while ($o=$sqlObj->FetchObject()) {
   $tablesDescriptors[$o->Table] = $tableDescriptorSelected;
 }
 
+// Check if descriptor file exists
+if (!is_file(__DIR__."/.descriptors")) {
+  // if not create one
+  \LazyMePHP\Helper\TOUCH(__DIR__."/.descriptors");
+  // and generate first version
+  $tablesDescriptorsFile = fopen(__DIR__."/.descriptors","w");
+  fwrite($tablesDescriptorsFile, json_encode($tablesDescriptors));
+  fclose($tablesDescriptorsFile);
+} 
+
+// open file
+$tablesDescriptorsFile = fopen(__DIR__."/.descriptors", "r");
+$json = fread($tablesDescriptorsFile,filesize(__DIR__."/.descriptors"));
+$tablesDescriptorsFromFile = json_decode($json, true);
+// Update tablesDescriptors
+foreach($tablesDescriptors as $t => $d) {
+  if (key_exists($t, $tablesDescriptorsFromFile)) {
+    $tablesDescriptors[$t] = $tablesDescriptorsFromFile[$t];
+  }
+}
 
 $option = -1;
 while (strlen($option)>0) {
+
+
   \LazyMePHP\Helper\printselect("Tables", $tables, null, $tablesDescriptors);
   echo "\nSelect your option:\n\n";
   echo "Build Classes: [c]\n";
@@ -120,6 +142,10 @@ while (strlen($option)>0) {
       foreach($table->GetTableFields() as $f) $fields[] = $f->GetName();
       $sel = \LazyMePHP\Helper\select("Select field", $fields, $tablesDescriptors[$descriptor['name']],false);
       $tablesDescriptors[$descriptor['name']] = $sel['name'];
+
+      $tablesDescriptorsFile = fopen(__DIR__."/.descriptors","w");
+      fwrite($tablesDescriptorsFile, json_encode($tablesDescriptors));
+      fclose($tablesDescriptorsFile);
     }
   } else if (strtolower($option) == 'e') {
     enableLogging();
