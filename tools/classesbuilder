@@ -951,11 +951,11 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
           fwrite($classFile, "\n");
           fwrite($classFile, "\t */");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\tpublic function FindBy".$field->GetName()."(\$var, \$operator = '=') {");
+          fwrite($classFile, "\tpublic function FindBy".$field->GetName()."(\$var, \$operator = '=', \$operator2 = 'AND') {");
           fwrite($classFile, "\n");
           fwrite($classFile, "\t\tif (strlen(\$var)>0) \$this->_args[]=\$var;");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\t\t\$this->_sql .= \" \".(strlen(\$this->_sql)>0?\"AND\":\"\").\" ".$db->GetTableName().".".$field->GetName()." \$operator \".(\$var || \$operator=='='?\"?\":\"\").\"\";");
+          fwrite($classFile, "\t\t\$this->_sql .= \" \".(strlen(\$this->_sql)>0?\"\$operator2\":\"\").\" ".$db->GetTableName().".".$field->GetName()." \$operator \".(\$var || \$operator=='='?\"?\":\"\").\"\";");
           fwrite($classFile, "\n");
           fwrite($classFile, "\t}");
           fwrite($classFile, "\n");
@@ -977,11 +977,11 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
           fwrite($classFile, "\n");
           fwrite($classFile, "\t */");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\tpublic function FindBy".$field->GetName()."Like(\$var) {");
+          fwrite($classFile, "\tpublic function FindBy".$field->GetName()."Like(\$var, \$operator = 'AND') {");
           fwrite($classFile, "\n");
           fwrite($classFile, "\t\t\$this->_args[] = \"%\$var%\";");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\t\t\$this->_sql .= \" \".(strlen(\$this->_sql)>0?\"AND\":\"\").\" ".$db->GetTableName().".".$field->GetName()." LIKE ?\";");
+          fwrite($classFile, "\t\t\$this->_sql .= \" \".(strlen(\$this->_sql)>0?\"\$operator\":\"\").\" ".$db->GetTableName().".".$field->GetName()." LIKE ?\";");
           fwrite($classFile, "\n");
           fwrite($classFile, "\t}");
           fwrite($classFile, "\n");
@@ -1061,7 +1061,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
               fwrite($classFile, "\n");
               fwrite($classFile, "\t */");
               fwrite($classFile, "\n");
-              fwrite($classFile, "\tpublic function FindBy".$field->GetName()."_".$fTable->GetTableName()."_".$field2->GetName()."(\$var, \$operator = '=') {");
+              fwrite($classFile, "\tpublic function FindBy".$field->GetName()."_".$fTable->GetTableName()."_".$field2->GetName()."(\$var, \$operator = '=', \$operator2 = 'AND') {");
               fwrite($classFile, "\n");
               fwrite($classFile, "\n");
               fwrite($classFile, "\t\t\$this->_searchNeedsForeignMembers=true;");
@@ -1069,7 +1069,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
               fwrite($classFile, "\n");
               fwrite($classFile, "\t\t\$this->_args[]=\$var;");
               fwrite($classFile, "\n");
-              fwrite($classFile, "\t\t\$this->_sql .= \" \".(strlen(\$this->_sql)>0?\"AND\":\"\").\" ".$field->GetName()."_".$fTable->GetTableName().".".$field2->GetName()." \$operator ?\";");
+              fwrite($classFile, "\t\t\$this->_sql .= \" \".(strlen(\$this->_sql)>0?\"\$operator2\":\"\").\" ".$field->GetName()."_".$fTable->GetTableName().".".$field2->GetName()." \$operator ?\";");
               fwrite($classFile, "\n");
               fwrite($classFile, "\t}");
               fwrite($classFile, "\n");
@@ -1091,7 +1091,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
               fwrite($classFile, "\n");
               fwrite($classFile, "\t */");
               fwrite($classFile, "\n");
-              fwrite($classFile, "\tpublic function FindBy".$field->GetName()."_".$fTable->GetTableName()."_".$field2->GetName()."Like(\$var) {");
+              fwrite($classFile, "\tpublic function FindBy".$field->GetName()."_".$fTable->GetTableName()."_".$field2->GetName()."Like(\$var, \$operator = 'AND') {");
               fwrite($classFile, "\n");
               fwrite($classFile, "\n");
               fwrite($classFile, "\t\t\$this->_searchNeedsForeignMembers=true;");
@@ -1099,7 +1099,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
               fwrite($classFile, "\n");
               fwrite($classFile, "\t\t\$this->_args[] = \"%\$var%\";");
               fwrite($classFile, "\n");
-              fwrite($classFile, "\t\t\$this->_sql .= \" \".(strlen(\$this->_sql)>0?\"AND\":\"\").\" ".$field->GetName()."_".$fTable->GetTableName().".".$field2->GetName()." LIKE ?\";");
+              fwrite($classFile, "\t\t\$this->_sql .= \" \".(strlen(\$this->_sql)>0?\"\$operator\":\"\").\" ".$field->GetName()."_".$fTable->GetTableName().".".$field2->GetName()." LIKE ?\";");
               fwrite($classFile, "\n");
               fwrite($classFile, "\t}");
               fwrite($classFile, "\n");
