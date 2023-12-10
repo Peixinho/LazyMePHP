@@ -483,7 +483,16 @@ class _DB_TABLE {
           $f->Identity = $f->pk;
           $f->PK = $f->pk;
           $f->FK = null;
-          $f->Data_Length = (strpos($f->type, '(')>0?substr(explode('(',$f->type)[1],0,-1):255);
+          // Check if is foreign key
+          $queryStringFK = "PRAGMA foreign_key_list(".$this->_Tablename.")";
+          APP::DB_CONNECTION()->Query($queryStringFK, $sqlObj3);
+          while ($_fk=$sqlObj3->FetchObject()) {
+            if ($_fk->from == $f->name) {
+              // There is a fk
+              $f->FK = true;
+            }
+          }
+          $f->Data_Length = (strpos($f->type, '(')>0?substr(explode('(',$f->type)[1],0,-1):null);
 					switch(strtolower($f->Type)) {
             case "integer":
               $__type = "int";
@@ -544,11 +553,23 @@ class _DB_TABLE {
                                                     INFORMATION_SCHEMA.KEY_COLUMN_USAGE.TABLE_NAME='".$this->_Tablename."' AND
                                                     INFORMATION_SCHEMA.KEY_COLUMN_USAGE.COLUMN_NAME='".$f->Field."'";
                     break;
+                    case 3: // SQLITE
+                      $queryString = "PRAGMA table_info(".$this->_Tablename.")";
+                    break;
                 }
                 APP::DB_CONNECTION()->Query($queryStringFK, $sqlObj3);
                 while($fk = $sqlObj3->FetchObject())
                 {
-                    $field->SetForeignKey($fk->UQ_TABLE_NAME, $fk->UQ_COLUMN_NAME);
+                  switch (APP::DB_TYPE()) {
+                    case 1:
+                    case 2:
+                      $field->SetForeignKey($fk->UQ_TABLE_NAME, $fk->UQ_COLUMN_NAME);
+                    break;
+                    case 3:
+                      if ($fk->from == $f->name)
+                      $field->SetForeignKey($fk->table, $fk->to);
+                    break;
+                  }
                 }
             }
             $this->_Tablefields[] = $field;
