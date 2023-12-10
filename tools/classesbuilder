@@ -473,7 +473,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             {
               if ($field!=$field2)
               {
-                fwrite($classFile,($countFields++>0?",":"").$db->_Tablename.".".$field2->GetName()."=".(APP::DB_TYPE() == 2 && $field2->GetDataType()=="bit"?"b":"")."?");
+                fwrite($classFile,($countFields++>0?",":"").$field2->GetName()."=".(APP::DB_TYPE() == 2 && $field2->GetDataType()=="bit"?"b":"")."?");
               }
             }
             fwrite($classFile," WHERE ".$field->GetName()."=?\";");
