@@ -481,6 +481,14 @@ class BuildTableForms
         fwrite($controllerFile, "\n");
         fwrite($controllerFile, "\n");
         fwrite($controllerFile, "namespace LazyMePHP\Forms;\n");
+        fwrite($controllerFile, "use \\LazyMePHP\Config\Internal\APP;\n");
+        fwrite($controllerFile, "use \\eftec\bladeone\BladeOne;\n");
+        fwrite($controllerFile, "\$views = __DIR__ . '/../Views/';");
+        fwrite($controllerFile, "\n");
+        fwrite($controllerFile, "\$cache = __DIR__ . '/../Views/compiled/';");
+        fwrite($controllerFile, "\n");
+        fwrite($controllerFile, "\$blade = new BladeOne(\$views,\$cache);");
+        fwrite($controllerFile, "\n");
         fwrite($controllerFile, "\n");
         fwrite($controllerFile, "require_once __DIR__.\"/../Configurations/Configurations.php\";");
         fwrite($controllerFile, "\n");

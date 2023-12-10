@@ -388,11 +388,14 @@ class _DB_TABLE {
 										information_schema.COLUMNS.TABLE_SCHEMA='".APP::DB_NAME()."' AND
 										information_schema.COLUMNS.TABLE_NAME='".$this->_Tablename."') SCH ORDER BY `ORDINAL_POSITION` ASC";
             break;
+            case 3: // SQLITE
+              $queryString = "PRAGMA table_info(".$this->_Tablename.")";
+            break;
         }
         APP::DB_CONNECTION()->Query($queryString, $sqlObj2);
         while ($f=$sqlObj2->FetchObject())
 		{
-			$__type = $f->Type;
+			$__type = $f->Type??$f->type;
 			switch (APP::DB_TYPE()) {
 				case 1:
 					switch(strtolower($f->Type))
@@ -473,6 +476,26 @@ class _DB_TABLE {
 							$__type = "date";
 					}
 					break;
+				case 3:
+          $f->Type = explode('(',$f->type)[0];
+          $f->Field = $f->name;
+          $f->Null = !$f->notnull;
+          $f->Identity = $f->pk;
+          $f->PK = $f->pk;
+          $f->FK = null;
+          $f->Data_Length = (strpos($f->type, '(')>0?substr(explode('(',$f->type)[1],0,-1):255);
+					switch(strtolower($f->Type)) {
+            case "integer":
+              $__type = "int";
+            break;
+            case "varchar":
+              $__type = "varchar";
+            break;
+            case "real":
+              $__type = "float";
+            break;
+          }
+        break;
 			}
 
             $field = new _DB_FIELD($f->Field,$__type);

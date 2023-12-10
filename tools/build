@@ -75,6 +75,9 @@ switch (APP::DB_TYPE())
   case 2: // MYSQL
     $queryString = "SELECT `Table` FROM (SELECT DISTINCT TABLE_NAME as `Table` FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='".APP::DB_NAME()."') SCH WHERE `Table` NOT LIKE '\_\_%'";
     break;
+  case 3: // SQLITE
+    $queryString = "SELECT name as `Table` FROM sqlite_master WHERE type='table' and name not like '#__%' ESCAPE '#' ORDER BY name";
+    break;
 }
 
 // Fetch all tables descriptors

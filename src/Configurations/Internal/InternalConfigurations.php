@@ -9,6 +9,7 @@
 namespace LazyMePHP\Config\Internal;
 use \LazyMePHP\DB\MYSQL;
 use \LazyMePHP\DB\MSSQL;
+use \LazyMePHP\DB\SQLITE;
 
 /**
  * Trigger error custom function
@@ -163,8 +164,7 @@ class APP
      */
   static function DB_CONNECTION()
   {
-    if (!APP::$_db_connection && APP::$_db_user && APP::$_db_password && APP::$_db_host && APP::$_db_name)
-    {
+    if (!APP::$_db_connection) {
       if (APP::$_db_type == 1) // MSSQL
       {
         APP::$_db_connection = new MSSQL(APP::$_db_name, APP::$_db_user, APP::$_db_password, APP::$_db_host);
@@ -173,6 +173,11 @@ class APP
       else if (APP::$_db_type == 2) // MYSQL
       {
         APP::$_db_connection = new MYSQL(APP::$_db_name, APP::$_db_user, APP::$_db_password, APP::$_db_host);
+      }
+
+      else if (APP::$_db_type == 3) // SQLITE
+      {
+        APP::$_db_connection = new SQLITE();
       }
     }
 
@@ -252,6 +257,21 @@ class APP
   static function DB_FILE()
   {
     return APP::$_db_file;
+  }
+
+  /** @var _db_file_path */
+  private static $_db_file_path;
+  /**
+     * DB_PATH - SQLITE
+     *
+     * Returns Database File Path
+     *
+     * @param (NULL)
+     * @return (string) (db_file_path)
+     */
+  static function DB_FILE_PATH()
+  {
+    return APP::$_db_file_path;
   }
 
   // APPLICATION
@@ -475,10 +495,14 @@ class APP
     // END
 
     APP::$_db_type            = $CONFIG['DB_TYPE'];
-    APP::$_db_user            = $CONFIG['DB_USER'];
-    APP::$_db_password        = $CONFIG['DB_PASSWORD'];
-    APP::$_db_host            = $CONFIG['DB_HOST'];
-    APP::$_db_name            = $CONFIG['DB_NAME'];
+    if (APP::$_db_type == 3) // SQLITE
+      APP::$_db_file_path       = $CONFIG['DB_FILE_PATH'];
+    else {
+      APP::$_db_user            = $CONFIG['DB_USER'];
+      APP::$_db_password        = $CONFIG['DB_PASSWORD'];
+      APP::$_db_host            = $CONFIG['DB_HOST'];
+      APP::$_db_name            = $CONFIG['DB_NAME'];
+    }
     APP::$_app_name           = $CONFIG['APP_NAME'];
     APP::$_app_title          = $CONFIG['APP_TITLE'];
     APP::$_app_version        = $CONFIG['APP_VERSION'];
