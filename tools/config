@@ -26,11 +26,15 @@ function insert($message, $notnull = true) {
 
 }
 echo "Configurations\n";
-$db_name = insert("Database name [string]: ");
-$db_user = insert("Database user [string]: ");
-$db_password = insert("Database password [string]: ");
-$db_host = insert("Database host [string]: ");
-$db_db = \LazyMePHP\Helper\select("Database type: ", array("mssql", "mysql"), "mysql");
+$db_db = \LazyMePHP\Helper\select("Database type: ", array("mssql", "mysql", "sqlite"), "mysql");
+if ($db_db['name'] == "sqlite")
+  $db_file_path = insert("Sqlite file path [string]: ");
+else {
+  $db_name = insert("Database name [string]: ");
+  $db_user = insert("Database user [string]: ");
+  $db_password = insert("Database password [string]: ");
+  $db_host = insert("Database host [string]: ");
+}
 $app_name = insert("App name [string]: ");
 $app_title = insert("App title [string]: ");
 $app_version = insert("App version [string]: ");
@@ -41,7 +45,7 @@ $app_nresults = insert("How many records you want by default on each page [int]:
 $app_encryption = insert("What is the password to encrypt data using aes128 cbc: ");
 $app_fullpath = dirname(__FILE__);
 $activity_log = \LazyMePHP\Helper\promptYesNo("Enable logging");
-switch($db_db)
+switch($db_db['name'])
 {
   case "mssql":
     $db_file = "MSSQL.php";
@@ -51,6 +55,10 @@ switch($db_db)
   case "mysql":
     $db_file = "MYSQL.php";
     $db_type = 2;
+    break;
+  case "sqlite":
+    $db_file = "SQLITE.php";
+    $db_type = 3;
     break;
 }
 
@@ -78,10 +86,14 @@ switch($db_db)
   fwrite($file, " */\n");
   fwrite($file, "\n");
   fwrite($file, "// DATABASE\n");
-  fwrite($file, "\$CONFIG['DB_NAME']\t\t\t\t=\"".$db_name."\";\n");
-  fwrite($file, "\$CONFIG['DB_USER']\t\t\t\t=\"".$db_user."\";\n");
-  fwrite($file, "\$CONFIG['DB_PASSWORD']\t\t\t=\"".$db_password."\";\n");
-  fwrite($file, "\$CONFIG['DB_HOST']\t\t\t\t=\"".$db_host."\";\n");
+  if ($db_db['name'] == "sqlite")
+    fwrite($file, "\$CONFIG['DB_FILE_PATH']\t\t\t\t=__DIR__."/../../\".\"".$db_file_path."\";\n");
+  else {
+    fwrite($file, "\$CONFIG['DB_NAME']\t\t\t\t=\"".$db_name."\";\n");
+    fwrite($file, "\$CONFIG['DB_USER']\t\t\t\t=\"".$db_user."\";\n");
+    fwrite($file, "\$CONFIG['DB_PASSWORD']\t\t\t=\"".$db_password."\";\n");
+    fwrite($file, "\$CONFIG['DB_HOST']\t\t\t\t=\"".$db_host."\";\n");
+    }
   fwrite($file, "\$CONFIG['DB_TYPE']\t\t\t\t=\"".$db_type."\";\n");
   fwrite($file, "\$CONFIG['DB_FILE']\t\t\t\t=\"".$db_file."\";\n");
   fwrite($file, "\n");

@@ -2,7 +2,7 @@
 ![LazyMePHP](https://raw.githubusercontent.com/Peixinho/LazyMePHP/main/public/img/logo.png)
 
 LazyMePHP is a small and easy to learn/use PHP framework that I've been using for quite some time, with success, and that has some nice features:
- - MySQL and MSSQL support
+ - MySQL, SQLite and MSSQL support
  - Class Generation based on database tables, one Class per table
  - Basic Form Generation based on database tables, one Form per table
  - RestAPI Generation based on database tables, one API file per table
@@ -37,7 +37,7 @@ It will now run the initial configurator in command line, where you have to fill
  - **Database Password** (*string*): 'myDatabase_Password'
 filling the form again .. so, to be lazy in the end)
  - **Database Host** (*string*): 'localhost'
- - **Database** (*int*): Select between MySQL and MSSQL 
+ - **Database** (*int*): Select between MySQL, MSSQL and SQLite
  - **Application Name** (*string*): 'MyAwesomeApplication'
  - **Application Title** (*string*): 'My Awesome Application'
  - **Application Version** (*string*): '1.0'
