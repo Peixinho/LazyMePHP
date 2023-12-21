@@ -1250,8 +1250,10 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "namespace LazyMePHP\Classes\Priv;");
         fwrite($classFile, "\n");
+        fwrite($classFile, "\n");
         fwrite($classFile, "use \LazyMePHP\Classes\\".$db->_Tablename.";");
         fwrite($classFile, "\n");
+        fwrite($classFile, "#[\AllowDynamicProperties]");
         fwrite($classFile, "\n");
         fwrite($classFile, "class __".$db->_Tablename." extends ".$db->_Tablename." {");
         fwrite($classFile, "\n");
