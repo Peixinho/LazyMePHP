@@ -87,7 +87,7 @@ switch($db_db['name'])
   fwrite($file, "\n");
   fwrite($file, "// DATABASE\n");
   if ($db_db['name'] == "sqlite")
-    fwrite($file, "\$CONFIG['DB_FILE_PATH']\t\t\t\t=__DIR__."/../../\".\"".$db_file_path."\";\n");
+    fwrite($file, "\$CONFIG['DB_FILE_PATH']\t\t\t\t=\"/../../\"".$db_file_path."\";\n");
   else {
     fwrite($file, "\$CONFIG['DB_NAME']\t\t\t\t=\"".$db_name."\";\n");
     fwrite($file, "\$CONFIG['DB_USER']\t\t\t\t=\"".$db_user."\";\n");
