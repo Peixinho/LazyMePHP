@@ -176,8 +176,6 @@ Every table generated will have a class that works as follows:
  
  # Specific user
  http://localhost:8080/api/User/123 # will output user 123 information in json format
- 
- # Same example but in other webserver, php built in for example:
 
 ### ohh but this way you expose all data, like passwords and other stuff
  yeap, thats true! However, you can configure it to expose only the columns you want (all by default) by editing the file
