@@ -501,7 +501,7 @@ class BuildTableForms
         // reload page with _get params from filter post
         fwrite($controllerFile, "if (\array_key_exists(\"filter\",\$_POST)) {\n");
         fwrite($controllerFile, "\t\$url=\"\";\n");
-        fwrite($controllerFile, "\tforeach(\$_POST as \$k=>\$g) if (\$g) \$url.=(strlen(\$url)>0?\"&\":\"?\").\"\$k=\$g\";\n");
+        fwrite($controllerFile, "\tforeach(\$_POST as \$k=>\$g) if (\$g) \$url.=(!empty(\$url)?\"&\":\"?\").\"\$k=\$g\";\n");
         fwrite($controllerFile, "\theader(\"location: \".\$url);\n");
         fwrite($controllerFile, "}\n");
 
@@ -536,7 +536,7 @@ class BuildTableForms
             fwrite($controllerFile, "\n");
             fwrite($controllerFile, "\t\t\$".$field->GetForeignTable()."->FindAll();");
             fwrite($controllerFile, "\n");
-            $foreignTables .= (strlen($foreignTables)>0?",":"")."'".$field->GetForeignTable()."' => \$".$field->GetForeignTable()."->GetList(false)";
+            $foreignTables .= (!empty($foreignTables)?",":"")."'".$field->GetForeignTable()."' => \$".$field->GetForeignTable()."->GetList(false)";
             fwrite($controllerFile, "\n");
           }
         }
@@ -657,7 +657,7 @@ class BuildTableForms
               fwrite($controllerFile, "\n");
               fwrite($controllerFile, "\t\t\t\$".$field->GetForeignTable()."->FindAll();");
               fwrite($controllerFile, "\n");
-              $foreignTables .= (strlen($foreignTables)>0?",":"")."'".$field->GetForeignTable()."' => \$".$field->GetForeignTable()."->GetList(false)";
+              $foreignTables .= (!empty($foreignTables)?",":"")."'".$field->GetForeignTable()."' => \$".$field->GetForeignTable()."->GetList(false)";
             }
           }
           fwrite($controllerFile, "\n");
