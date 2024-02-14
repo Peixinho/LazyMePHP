@@ -654,6 +654,8 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\tprotected \$_sql = \"\";");
         fwrite($classFile, "\n");
+        fwrite($classFile, "\tprotected \$_sqlToAdd = \"\";");
+        fwrite($classFile, "\n");
         fwrite($classFile, "\tprotected \$_order = \"\";");
         fwrite($classFile, "\n");
         fwrite($classFile, "\tprotected \$_group = \"\";");
@@ -700,7 +702,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\tpublic function AddLeftParentesis() {");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\t\t\$this->_sql.=\" ( \";");
+        fwrite($classFile, "\t\t\$this->_sqlToAdd=\" ( \";");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t}");
         fwrite($classFile, "\n");
@@ -974,9 +976,11 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
           fwrite($classFile, "\n");
           fwrite($classFile, "\t\tif (strlen(\$var)>0) \$this->_args[]=\$var;");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\t\t\$this->_sql .= \" \".(strlen(\$this->_listHasCondition)>0?\"\$operator2\":\"\").\" ".$db->GetTableName().".".$field->GetName()." \$operator \".(\$var || \$operator=='='?\"?\":\"\").\"\";");
+          fwrite($classFile, "\t\t\$this->_sql .= \" \".(strlen(\$this->_listHasCondition)>0?\"\$operator2\":\"\").\" \".\$this->_sqlToAdd.\" ".$db->GetTableName().".".$field->GetName()." \$operator \".(\$var || \$operator=='='?\"?\":\"\").\"\";");
           fwrite($classFile, "\n");
           fwrite($classFile, "\t\t\$this->_listHasCondition = true;");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\t\t\$this->_sqlToAdd = \"\";");
           fwrite($classFile, "\n");
           fwrite($classFile, "\t}");
           fwrite($classFile, "\n");
@@ -1002,7 +1006,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
           fwrite($classFile, "\n");
           fwrite($classFile, "\t\t\$this->_args[] = \"%\$var%\";");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\t\t\$this->_sql .= \" \".(strlen(\$this->_listHasCondition)>0?\"\$operator\":\"\").\" ".$db->GetTableName().".".$field->GetName()." LIKE ?\";");
+          fwrite($classFile, "\t\t\$this->_sql .= \" \".(strlen(\$this->_listHasCondition)>0?\"\$operator\":\"\").\" \".\$this->_sqlToAdd.\" ".$db->GetTableName().".".$field->GetName()." LIKE ?\";");
           fwrite($classFile, "\n");
           fwrite($classFile, "\t\t\$this->_listHasCondition = true;");
           fwrite($classFile, "\n");
@@ -1092,7 +1096,11 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
               fwrite($classFile, "\n");
               fwrite($classFile, "\t\t\$this->_args[]=\$var;");
               fwrite($classFile, "\n");
-              fwrite($classFile, "\t\t\$this->_sql .= \" \".(strlen(\$this->_sql)>0?\"\$operator2\":\"\").\" ".$field->GetName()."_".$fTable->GetTableName().".".$field2->GetName()." \$operator ?\";");
+              fwrite($classFile, "\t\t\$this->_sql .= \" \".(strlen(\$this->_sql)>0?\"\$operator2\":\"\").\" \".\$this->_sqlToAdd.\" ".$field->GetName()."_".$fTable->GetTableName().".".$field2->GetName()." \$operator ?\";");
+              fwrite($classFile, "\n");
+              fwrite($classFile, "\t\t\$this->_listHasCondition = true;");
+              fwrite($classFile, "\n");
+              fwrite($classFile, "\t\t\$this->_sqlToAdd = \"\";");
               fwrite($classFile, "\n");
               fwrite($classFile, "\t}");
               fwrite($classFile, "\n");
@@ -1122,7 +1130,11 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
               fwrite($classFile, "\n");
               fwrite($classFile, "\t\t\$this->_args[] = \"%\$var%\";");
               fwrite($classFile, "\n");
-              fwrite($classFile, "\t\t\$this->_sql .= \" \".(strlen(\$this->_sql)>0?\"\$operator\":\"\").\" ".$field->GetName()."_".$fTable->GetTableName().".".$field2->GetName()." LIKE ?\";");
+              fwrite($classFile, "\t\t\$this->_sql .= \" \".(strlen(\$this->_sql)>0?\"\$operator\":\"\").\" \".\$this->_sqlToAdd.\" ".$field->GetName()."_".$fTable->GetTableName().".".$field2->GetName()." LIKE ?\";");
+              fwrite($classFile, "\n");
+              fwrite($classFile, "\t\t\$this->_listHasCondition = true;");
+              fwrite($classFile, "\n");
+              fwrite($classFile, "\t\t\$this->_sqlToAdd = \"\";");
               fwrite($classFile, "\n");
               fwrite($classFile, "\t}");
               fwrite($classFile, "\n");
