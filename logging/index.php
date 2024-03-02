@@ -31,7 +31,7 @@ if ((!array_key_exists('username', $_SESSION) || !array_key_exists('password', $
 }
 
 // If user is logged with database credentials
-if ($_SESSION && $_SESSION['username'] == APP::DB_USER() && $_SESSION['password'] == APP::DB_PASSWORD())
+if ($_SESSION && isset($_SESSION['username']) == APP::DB_USER() && $_SESSION['password'] == APP::DB_PASSWORD())
 {
 
 $sqlFilter="";

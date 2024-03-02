@@ -61,8 +61,8 @@ if ($filePath && is_file($filePath)) {
   // rewrite to our index file
   if (substr($_SERVER["REQUEST_URI"],0,4) == "/api")
     include getcwd() . DIRECTORY_SEPARATOR . 'public/api/index.php';
-  elseif (substr($_SERVER["REQUEST_URI"],0,4) == "/logging")
-    include getcwd() . DIRECTORY_SEPARATOR . '../logging/index.php';
+  elseif (substr($_SERVER["REQUEST_URI"],0,8) == "/logging") 
+    include getcwd() . DIRECTORY_SEPARATOR . '/logging/index.php';
   else
     include getcwd() . DIRECTORY_SEPARATOR . 'public/index.php';
 }
