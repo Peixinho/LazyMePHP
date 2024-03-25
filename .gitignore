@@ -4,9 +4,11 @@ src/Controllers
 !src/Controllers/Default.Controller.php
 !src/Controllers/PageNotFound.Controller.php
 src/api
+src/Routes
 !src/Views/compiled
 !src/Views/_Default
 !src/Views/_Error
 src/Views
 src/Ext/vendor
 src/Ext/composer.lock
+tools/.descriptors
