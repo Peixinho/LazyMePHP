@@ -22,11 +22,6 @@ $urlFiles = filter_input(INPUT_SERVER, "SERVER_NAME");
 require_once __DIR__."/Configurations/Configurations.php";
 
 /*
- * Enum
- */
-require_once __DIR__."/Enum/Enum.class.php";
-
-/*
  * Helper Functions to Aliviate Stress :P
  */
 require_once __DIR__."/Helpers/Helper.php";

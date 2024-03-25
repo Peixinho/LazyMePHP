@@ -7,7 +7,6 @@
 */
 
 namespace LazyMePHP\Messages;
-use \LazyMePHP\Enum\Enum;
 
 function ShowError($err)
 {
@@ -19,13 +18,12 @@ function ShowSuccess($succ)
 	$_GET['success'] = $succ;
 }
 
-$SuccessMessages = new Enum();
-$ErrorMessages = new Enum();
-
-// Add Messages
-$SuccessMessages->Add("Success Message 1", 1);
-$SuccessMessages->Add("Success Message 2", 2);
-$ErrorMessages->Add("Error Message 1", 1);
-$ErrorMessages->Add("Error Message 2", 2);
-
+enum SuccessMessages:string {
+  case S1 = "Success Message 1";
+  case S2 = "Success Message 2";
+}
+enum ErrorMessages:string {
+  case E1 = "Error Message 1";
+  case E2 = "Error Message 2";
+}
 ?>

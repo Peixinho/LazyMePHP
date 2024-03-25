@@ -36,8 +36,12 @@
     $showMessage_S = "";
     $showMessage_E = "";
     //Error And Success Messages Generator
-    if (array_key_exists('success', $_GET) && strlen($_GET['success'])>0) foreach (explode(',',$_GET['success']) as $s) { $showMessage_S = (strlen($showMessage_S)>0?$showMessage_S."<br/>".$SuccessMessages->GetName($s):$SuccessMessages->GetName($s)); }
-    if (array_key_exists('error', $_GET) && strlen($_GET['error'])>0) foreach (explode(',',$_GET['error']) as $e) { $showMessage_E = (strlen($showMessage_E)>0?$showMessage_E."<br/>".$ErrorMessages->GetName($e):$ErrorMessages->GetName($e)); }
+    if (array_key_exists('success', $_GET) && strlen($_GET['success'])>0) foreach (explode(',',$_GET['success']) as $s) {
+      $showMessage_S = (strlen($showMessage_S)>0?$showMessage_S."\\n".constant("\LazyMePHP\Messages\SuccessMessages::{$s}")->value:constant("\LazyMePHP\Messages\SuccessMessages::{$s}")->value);
+    }
+    if (array_key_exists('error', $_GET) && strlen($_GET['error'])>0) foreach (explode(',',$_GET['error']) as $e) {
+      $showMessage_E = (strlen($showMessage_E)>0?$showMessage_E."\\n".constant("\LazyMePHP\Messages\ErrorMessages::{$e}")->value:constant("\LazyMePHP\Messages\ErrorMessages::{$e}")->value);
+    }
     ?>
     <script src="/js/LazyMePHP.js"></script>
     <script>

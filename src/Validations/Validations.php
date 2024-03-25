@@ -8,62 +8,38 @@
 
 namespace LazyMePHP\Validations;
 
-use  \LazyMePHP\Enum\Enum;
-
-$ValidationsMethod = new Enum();
-$ValidationsMethod->Add("STRING",0);
-$ValidationsMethod->Add("LATIN",1);
-$ValidationsMethod->Add("FLOAT",2);
-$ValidationsMethod->Add("INT",3);
-$ValidationsMethod->Add("NOTNULL",4);
-$ValidationsMethod->Add("LENGTH",5);
-$ValidationsMethod->Add("DATE",6);
-$ValidationsMethod->Add("POSTAL",7);
-$ValidationsMethod->Add("EMAIL",8);
-$ValidationsMethod->Add("LATINPUNCTUATION",9);
-$ValidationsMethod->Add("REGEXP",10);
-
+enum ValidationsMethod {
+  case STRING;
+  case LATIN;
+  case FLOAT;
+  case INT;
+  case NOTNULL;
+  case LENGTH;
+  case DATE;
+  case POSTAL;
+  case EMAIL;
+  case LATINPUNCTUATION;
+  case REGEXP;
+}
 function ValidateField($var, $functions)
 {
 	$error = false;
 	for ($i=0;$i<sizeof($functions);$i++)
 	{
-		switch($functions[$i])
+		match($functions[$i])
 		{
-			case "STRING":
-				$error = (ValidateString($var));
-			break;
-			case "LATIN":
-				$error = (ValidateLatinString($var));
-			break;
-			case "FLOAT":
-				$error = (ValidateFloat($var));
-			break;
-			case "INT":
-				$error = (ValidateInteger($var));
-			break;
-			case "NOTNULL":
-				$error = (ValidateNotNull($var));
-			break;
-			case "LENGTH":
-				$error = (ValidateLength($var,$functions[++$i]));
-			break;
-			case "DATE":
-				$error = (ValidateDate($var));
-			break;
-			case "POSTAL":
-				$error = (ValidatePostal($var));
-			break;
-			case "EMAIL":
-				$error = (ValidateEmail($var));
-			break;
-			case "LATINPUNCTUATION":
-				$error = (ValidateLatinPunctuationString($var));
-			break;	
-			case "REGEXP":
-				$error = (ValidateRegExp($var, $functions[++$i]));
-			break;	
-		}
+      ValidationsMethod::STRING => $error = ValidateString($var),
+      ValidationsMethod::LATIN => $error = ValidateLatinString($var),
+      ValidationsMethod::FLOAT => $error = ValidateFloat($var),
+      ValidationsMethod::INT => $error = ValidateInteger($var),
+      ValidationsMethod::NOTNULL => $error = ValidateNotNull($var),
+      ValidationsMethod::LENGTH => $error = ValidateNotNull($var,$functions[++$i]),
+      ValidationsMethod::DATE => $error = ValidateDate($var),
+      ValidationsMethod::POSTAL => $error = ValidatePostal($var),
+      ValidationsMethod::EMAIL => $error = ValidateEmail($var),
+      ValidationsMethod::LATINPUNCTUATION => $error = ValidateLatinPunctuationString($var),
+      ValidationsMethod::REGEXP => $error = ValidateRegExp($var,$functions[++$i])
+		};
 	}
 	return $error;
 }

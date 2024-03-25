@@ -7,8 +7,6 @@
 */
 
 namespace LazyMePHP\ValuesList;
-use \LazyMePHP\Enum\Enum;
-
 
 class VALUESLIST {
 
@@ -24,8 +22,9 @@ class VALUESLIST {
 /**
  * ExampleValue
  */
-VALUESLIST::$ExampleValue = new Enum();
-VALUESLIST::$ExampleValue->Add("Value 1",1);
-VALUESLIST::$ExampleValue->Add("Value 2",2);
 
+enum ExampleValue:string {
+  case Value_1 = "Value 1";
+  case Value_2 = "Value 2";
+}
 ?>
