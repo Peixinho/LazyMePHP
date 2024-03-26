@@ -8,23 +8,18 @@
 
 namespace LazyMePHP\ValuesList;
 
-class VALUESLIST {
+enum ExampleValue:int {
+  use \LazyMePHP\Enum\EnumToArray;
+  case STATE_1 = 1;
+  case STATE_2 = 2;
+  case STATE_3 = 3;
 
-	// Its a "static" class
-	private function __construct() {}
-
-	// Localizações
-	static $ExampleValue;
-
-}
-
-
-/**
- * ExampleValue
- */
-
-enum ExampleValue:string {
-  case Value_1 = "Value 1";
-  case Value_2 = "Value 2";
+  public function getDescription():string {
+    return match($this) {
+      ExampleValue::STATE_1 => "State 1",
+      ExampleValue::STATE_2 => "State 2",
+      ExampleValue::STATE_3 => "State 3"
+    };
+  }
 }
 ?>

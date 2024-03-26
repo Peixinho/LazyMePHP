@@ -22,6 +22,11 @@ $urlFiles = filter_input(INPUT_SERVER, "SERVER_NAME");
 require_once __DIR__."/Configurations/Configurations.php";
 
 /*
+ * Validations
+ */
+require_once __DIR__."/Enum/Enum.php";
+
+/*
  * Helper Functions to Aliviate Stress :P
  */
 require_once __DIR__."/Helpers/Helper.php";
