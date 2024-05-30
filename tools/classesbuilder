@@ -1174,7 +1174,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
               fwrite($classFile, "\n");
               fwrite($classFile, "\t *");
               fwrite($classFile, "\n");
-              fwrite($classFile, "\t * Groups last find by ".$fTable->GetTableName().$field2->GetName()." \$var\"");
+              fwrite($classFile, "\t * Groups last find by ".$fTable->GetTableName().$field2->GetName());
               fwrite($classFile, "\n");
               fwrite($classFile, "\t *");
               fwrite($classFile, "\n");
@@ -1188,7 +1188,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
               fwrite($classFile, "\t\t\$this->_searchNeedsForeignMembers=true;");
               fwrite($classFile, "\n");
               fwrite($classFile, "\n");
-              fwrite($classFile, "\t\t\$this->_group=\$this->_group.(strlen(\$this->_group)>0?\",\":\"\").\" ".$field->GetName()."_".$fTable->GetTableName().".".$field2->GetName()." \$var\";");
+              fwrite($classFile, "\t\t\$this->_group=\$this->_group.(strlen(\$this->_group)>0?\",\":\"\").\" ".$field->GetName()."_".$fTable->GetTableName().".".$field2->GetName()."\";");
               fwrite($classFile, "\n");
               fwrite($classFile, "\t}");
               fwrite($classFile, "\n");
