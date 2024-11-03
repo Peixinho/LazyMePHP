@@ -618,6 +618,7 @@ class BuildTableForms
           foreach ($db->GetTableFields() as $field)
           {
               fwrite($controllerFile, ($c++>0?", ":"")."'FindBy".$field->GetName()."'");
+              fwrite($controllerFile, ($c++>0?", ":"")."'OrderBy".$field->GetName()."'");
           }
           fwrite($controllerFile, ");");
           fwrite($controllerFile, "\n");
