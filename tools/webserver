@@ -10,7 +10,7 @@ if (file_exists(getcwd() . '/public/' . $_SERVER['REQUEST_URI'])) {
   return false; // serve the requested resource as-is.
 } 
 
-$cmdline = file_get_contents('/proc/self/cmdline');
+$cmdline = file_get_contents('php://input');
 $argv = str_getcsv($cmdline, "\0");
 $argvo = $argv;
 

@@ -645,7 +645,7 @@ class BuildTableForms
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\$length = \$".$db->GetTableName()."->GetCount();");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\tif (\$page && \$limit) \$".$db->GetTableName()."->Limit(\$limit,(\$page-1)*\$limit);");
+          fwrite($controllerFile, "\t\tif (\$page && \$limit>0) \$".$db->GetTableName()."->Limit(\$limit,(\$page-1)*\$limit);");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\tif (\$foreignTables) {");
           $foreignTables = "";
@@ -673,7 +673,7 @@ class BuildTableForms
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t} else {");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\treturn ['".$db->GetTableName()."' => \$".$db->GetTableName().", 'filters' => \$filters];");
+          fwrite($controllerFile, "\t\t\treturn ['".$db->GetTableName()."' => \$".$db->GetTableName().", 'length' => \$length, 'filters' => \$filters];");
 
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t}");

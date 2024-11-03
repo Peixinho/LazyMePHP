@@ -148,9 +148,9 @@ class BuildTableAPI
               fwrite($routerFile, "\n");
               fwrite($routerFile, "SimpleRouter::get('/api/".$o->Table."', function() {");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "\t\$data = ".$o->Table."::Default(false, \$_GET['page']??1, APP::APP_NRESULTS());");
+              fwrite($routerFile, "\t\$data = ".$o->Table."::Default(false, \$_GET['page']??1, \$_GET['itemsPerPage']??APP::APP_NRESULTS());");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "\techo json_encode(\$data['".$o->Table."']->Serialize(true, \$GLOBALS['API_FIELDS_AVAILABLE']));");
+              fwrite($routerFile, "\techo json_encode(array('data' => \$data['".$o->Table."']->Serialize(true, \$GLOBALS['API_FIELDS_AVAILABLE']), 'length' => \$data['length'], 'filters' => \$data['filters']));");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "});");
               fwrite($routerFile, "\n");
