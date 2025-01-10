@@ -26,7 +26,7 @@ interface IDB_CLASS
 interface IDB_CLASS_LIST
 {
     public function FindAll();
-    public function GetList($buildForeignMembers = true);
+    public function GetList(bool $buildForeignMembers = true, bool $serialize = false, array $mask = array());
 }
 
 /**
@@ -311,7 +311,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
                 $addToSerialize.="\n\t\t\tif (\$this->".$field2->GetName()."_OBJ) \$vars[\"".$field2->GetName()."_OBJ\"]=\$this->".$field2->GetName()."_OBJ->Serialize(\$foreign, \$mask);";
 
                 $fTable = new \LazyMePHP\DatabaseHelper\_DB_TABLE($field2->GetForeignTable());
-                $foreignTablesJoin.=(strlen($foreignTablesJoin)>0?" ":"")."LEFT JOIN ".$fTable->GetTableName()." ".$field2->GetName()."_".$fTable->GetTableName();
+                $foreignTablesJoin.=(!empty($foreignTablesJoin)?" ":"")."LEFT JOIN ".$fTable->GetTableName()." ".$field2->GetName()."_".$fTable->GetTableName();
                 $fTable->GetFieldsFromDB();
                 foreach($fTable->GetTableFields() as $field3)
                 {
@@ -325,7 +325,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
                 fwrite($classFile,"\":\"\").\"");
               }
             }
-            fwrite($classFile," FROM ".$db->_Tablename.(strlen($foreignTablesJoin)>0?" ":"")."\".(\$this->buildForeignMembers?\"$foreignTablesJoin\":\"\").\""." WHERE ".$db->GetTableName().".".$field->GetName()."=?\";");
+            fwrite($classFile," FROM ".$db->_Tablename.(!empty($foreignTablesJoin)?" ":"")."\".(\$this->buildForeignMembers?\"$foreignTablesJoin\":\"\").\""." WHERE ".$db->GetTableName().".".$field->GetName()."=?\";");
 
             fwrite($classFile, "\n");
             fwrite($classFile,"\t\t\tAPP::DB_CONNECTION()->Query(\$sql, \$rtn, array(\$".$field->GetName()."));");
@@ -726,7 +726,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "\t}");
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\tpublic function GetCount(\$buildForeignMembers = false) {");
+        fwrite($classFile, "\tpublic function GetCount(bool \$buildForeignMembers = false) {");
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
         fwrite($classFile,"\t\t\$_sql = \"SELECT ");
@@ -742,7 +742,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             $addToSerialize.="\n\t\t\$vars[\"".$field2->GetName()."_OBJ\"]=\$this->".$field2->GetName()."_OBJ->Serialize(\$foreign)";
 
             $fTable = new \LazyMePHP\DatabaseHelper\_DB_TABLE($field2->GetForeignTable());
-            $foreignTablesJoin.=(strlen($foreignTablesJoin)>0?" ":"")."LEFT JOIN ".$fTable->GetTableName()." ".$field2->GetName()."_".$fTable->GetTableName();
+            $foreignTablesJoin.=(!empty($foreignTablesJoin)?" ":"")."LEFT JOIN ".$fTable->GetTableName()." ".$field2->GetName()."_".$fTable->GetTableName();
             $fTable->GetFieldsFromDB();
             foreach($fTable->GetTableFields() as $field3)
             {
@@ -756,11 +756,11 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             fwrite($classFile,"\":\"\").\"");
           }
         }
-        fwrite($classFile," FROM ".$db->_Tablename.(strlen($foreignTablesJoin)>0?" ":"")."\".(\$this->_searchNeedsForeignMembers || \$buildForeignMembers?\"$foreignTablesJoin\":\"\").\""." \".(strlen(\$this->_sql)>0?\"WHERE \".\$this->_sql:\"\");");
+        fwrite($classFile," FROM ".$db->_Tablename.(empty($foreignTablesJoin)?" ":"")."\".(\$this->_searchNeedsForeignMembers || \$buildForeignMembers?\"$foreignTablesJoin\":\"\").\""." \".(!empty(\$this->_sql)?\"WHERE \".\$this->_sql:\"\");");
 
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\t\tAPP::DB_CONNECTION()->Query(\$_sql.\" \".(strlen(\$this->_group)>0?\"GROUP BY \".\$this->_group:\"\").\" \".(strlen(\$this->_order)>0?\"ORDER BY \".\$this->_order:\"\").\" \".(\$this->_limitEnd?(strlen(\$this->_order)==0?\"ORDER BY ".$db->_Tablename.".".$db->_PrimaryFieldName." \":\"\").APP::DB_CONNECTION()->Limit(\$this->_limitEnd, \$this->_limitStart):\"\"), \$rtn, \$this->_args);");
+        fwrite($classFile, "\t\tAPP::DB_CONNECTION()->Query(\$_sql.\" \".(!empty(\$this->_group)?\"GROUP BY \".\$this->_group:\"\").\" \".(!empty(\$this->_order)?\"ORDER BY \".\$this->_order:\"\").\" \".(\$this->_limitEnd?(empty(\$this->_order)?\"ORDER BY ".$db->_Tablename.".".$db->_PrimaryFieldName." \":\"\").APP::DB_CONNECTION()->Limit(\$this->_limitEnd, \$this->_limitStart):\"\"), \$rtn, \$this->_args);");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t\treturn \$rtn->FetchNumberResults();");
         fwrite($classFile, "\n");
@@ -787,7 +787,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\t */");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\tpublic function GetList(\$buildForeignMembers=true, \$serialize=false, \$mask=array()) {");
+        fwrite($classFile, "\tpublic function GetList(bool \$buildForeignMembers=true, bool \$serialize=false, array \$mask=array()) {");
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t\t\$this->_list = array();");
@@ -805,7 +805,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             $addToSerialize.="\n\t\t\$vars[\"".$field2->GetName()."_OBJ\"]=\$this->".$field2->GetName()."_OBJ->Serialize(\$foreign)";
 
             $fTable = new \LazyMePHP\DatabaseHelper\_DB_TABLE($field2->GetForeignTable());
-            $foreignTablesJoin.=(strlen($foreignTablesJoin)>0?" ":"")."LEFT JOIN ".$fTable->GetTableName()." ".$field2->GetName()."_".$fTable->GetTableName();
+            $foreignTablesJoin.=(!empty($foreignTablesJoin)?" ":"")."LEFT JOIN ".$fTable->GetTableName()." ".$field2->GetName()."_".$fTable->GetTableName();
             $fTable->GetFieldsFromDB();
             foreach($fTable->GetTableFields() as $field3)
             {
@@ -819,11 +819,11 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             fwrite($classFile,"\":\"\").\"");
           }
         }
-        fwrite($classFile," FROM ".$db->_Tablename.(strlen($foreignTablesJoin)>0?" ":"")."\".(\$this->_searchNeedsForeignMembers || \$buildForeignMembers?\"$foreignTablesJoin\":\"\").\""." \".(strlen(\$this->_sql)>0?\"WHERE \".\$this->_sql:\"\");");
+        fwrite($classFile," FROM ".$db->_Tablename.(!empty($foreignTablesJoin)?" ":"")."\".(\$this->_searchNeedsForeignMembers || \$buildForeignMembers?\"$foreignTablesJoin\":\"\").\""." \".(!empty(\$this->_sql)?\"WHERE \".\$this->_sql:\"\");");
 
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\t\tAPP::DB_CONNECTION()->Query(\$this->_sql.\" \".(strlen(\$this->_group)>0?\"GROUP BY \".\$this->_group:\"\").\" \".(strlen(\$this->_order)>0?\"ORDER BY \".\$this->_order:\"\").\" \".(\$this->_limitEnd?(strlen(\$this->_order)==0?\"ORDER BY ".$db->_Tablename.".".$db->_PrimaryFieldName." \":\"\").APP::DB_CONNECTION()->Limit(\$this->_limitEnd, \$this->_limitStart):\"\"), \$rtn, \$this->_args);");
+        fwrite($classFile, "\t\tAPP::DB_CONNECTION()->Query(\$this->_sql.\" \".(!empty(\$this->_group)?\"GROUP BY \".\$this->_group:\"\").\" \".(!empty(\$this->_order)?\"ORDER BY \".\$this->_order:\"\").\" \".(\$this->_limitEnd?(empty(\$this->_order)?\"ORDER BY ".$db->_Tablename.".".$db->_PrimaryFieldName." \":\"\").APP::DB_CONNECTION()->Limit(\$this->_limitEnd, \$this->_limitStart):\"\"), \$rtn, \$this->_args);");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t\twhile(\$row = \$rtn->FetchArray())");
         fwrite($classFile, "\n");
@@ -922,7 +922,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\t */");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\tpublic function Serialize(\$buildForeignMembers=true, \$mask = null)");
+        fwrite($classFile, "\tpublic function Serialize(bool \$buildForeignMembers=true, ?array \$mask = null)");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t{");
         fwrite($classFile, "\n");
@@ -1012,11 +1012,11 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
           fwrite($classFile, "\n");
           fwrite($classFile, "\t */");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\tpublic function FindBy".$field->GetName()."(\$var, \$operator = '=', \$operator2 = 'AND') {");
+          fwrite($classFile, "\tpublic function FindBy".$field->GetName()."(string \$var, string \$operator = '=', string \$operator2 = 'AND') {");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\t\tif (strlen(\$var)>0) \$this->_args[]=\$var;");
+          fwrite($classFile, "\t\tif (!empty(\$var)) \$this->_args[]=\$var;");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\t\t\$this->_sql .= \" \".(strlen(\$this->_listHasCondition)>0?\"\$operator2\":\"\").\" \".\$this->_sqlToAdd.\" ".$db->GetTableName().".".$field->GetName()." \$operator \".(\$var || \$operator=='='?\"?\":\"\").\"\";");
+          fwrite($classFile, "\t\t\$this->_sql .= \" \".(!empty(\$this->_listHasCondition)?\"\$operator2\":\"\").\" \".\$this->_sqlToAdd.\" ".$db->GetTableName().".".$field->GetName()." \$operator \".(\$var || \$operator=='='?\"?\":\"\").\"\";");
           fwrite($classFile, "\n");
           fwrite($classFile, "\t\t\$this->_listHasCondition = true;");
           fwrite($classFile, "\n");
@@ -1042,11 +1042,11 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
           fwrite($classFile, "\n");
           fwrite($classFile, "\t */");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\tpublic function FindBy".$field->GetName()."Like(\$var, \$operator = 'AND') {");
+          fwrite($classFile, "\tpublic function FindBy".$field->GetName()."Like(string \$var, string \$operator = 'AND') {");
           fwrite($classFile, "\n");
           fwrite($classFile, "\t\t\$this->_args[] = \"%\$var%\";");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\t\t\$this->_sql .= \" \".(strlen(\$this->_listHasCondition)>0?\"\$operator\":\"\").\" \".\$this->_sqlToAdd.\" ".$db->GetTableName().".".$field->GetName()." LIKE ?\";");
+          fwrite($classFile, "\t\t\$this->_sql .= \" \".(!empty(\$this->_listHasCondition)?\"\$operator\":\"\").\" \".\$this->_sqlToAdd.\" ".$db->GetTableName().".".$field->GetName()." LIKE ?\";");
           fwrite($classFile, "\n");
           fwrite($classFile, "\t\t\$this->_listHasCondition = true;");
           fwrite($classFile, "\n");
@@ -1070,9 +1070,9 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
           fwrite($classFile, "\n");
           fwrite($classFile, "\t */");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\tpublic function OrderBy".$field->GetName()."(\$var) {");
+          fwrite($classFile, "\tpublic function OrderBy".$field->GetName()."(string \$var) {");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\t\t\$this->_order=\$this->_order.(strlen(\$this->_order)>0?\",\":\"\").\" ".$field->GetName()." \$var\";");
+          fwrite($classFile, "\t\t\$this->_order=\$this->_order.(!empty(\$this->_order)?\",\":\"\").\" ".$field->GetName()." \$var\";");
           fwrite($classFile, "\n");
           fwrite($classFile, "\t}");
           fwrite($classFile, "\n");
@@ -1094,7 +1094,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
           fwrite($classFile, "\n");
           fwrite($classFile, "\tpublic function GroupBy".$field->GetName()."() {");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\t\t\$this->_group=\$this->_group.(strlen(\$this->_group)>0?\",\":\"\").\" ".$field->GetName()."\";");
+          fwrite($classFile, "\t\t\$this->_group=\$this->_group.(!empty(\$this->_group)?\",\":\"\").\" ".$field->GetName()."\";");
           fwrite($classFile, "\n");
           fwrite($classFile, "\t}");
           fwrite($classFile, "\n");
@@ -1128,7 +1128,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
               fwrite($classFile, "\n");
               fwrite($classFile, "\t */");
               fwrite($classFile, "\n");
-              fwrite($classFile, "\tpublic function FindBy".$field->GetName()."_".$fTable->GetTableName()."_".$field2->GetName()."(\$var, \$operator = '=', \$operator2 = 'AND') {");
+              fwrite($classFile, "\tpublic function FindBy".$field->GetName()."_".$fTable->GetTableName()."_".$field2->GetName()."(string \$var, string \$operator = '=', string \$operator2 = 'AND') {");
               fwrite($classFile, "\n");
               fwrite($classFile, "\n");
               fwrite($classFile, "\t\t\$this->_searchNeedsForeignMembers=true;");
@@ -1136,7 +1136,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
               fwrite($classFile, "\n");
               fwrite($classFile, "\t\t\$this->_args[]=\$var;");
               fwrite($classFile, "\n");
-              fwrite($classFile, "\t\t\$this->_sql .= \" \".(strlen(\$this->_sql)>0?\"\$operator2\":\"\").\" \".\$this->_sqlToAdd.\" ".$field->GetName()."_".$fTable->GetTableName().".".$field2->GetName()." \$operator ?\";");
+              fwrite($classFile, "\t\t\$this->_sql .= \" \".(!empty(\$this->_sql)?\"\$operator2\":\"\").\" \".\$this->_sqlToAdd.\" ".$field->GetName()."_".$fTable->GetTableName().".".$field2->GetName()." \$operator ?\";");
               fwrite($classFile, "\n");
               fwrite($classFile, "\t\t\$this->_listHasCondition = true;");
               fwrite($classFile, "\n");
@@ -1162,7 +1162,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
               fwrite($classFile, "\n");
               fwrite($classFile, "\t */");
               fwrite($classFile, "\n");
-              fwrite($classFile, "\tpublic function FindBy".$field->GetName()."_".$fTable->GetTableName()."_".$field2->GetName()."Like(\$var, \$operator = 'AND') {");
+              fwrite($classFile, "\tpublic function FindBy".$field->GetName()."_".$fTable->GetTableName()."_".$field2->GetName()."Like(string \$var, string \$operator = 'AND') {");
               fwrite($classFile, "\n");
               fwrite($classFile, "\n");
               fwrite($classFile, "\t\t\$this->_searchNeedsForeignMembers=true;");
@@ -1170,7 +1170,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
               fwrite($classFile, "\n");
               fwrite($classFile, "\t\t\$this->_args[] = \"%\$var%\";");
               fwrite($classFile, "\n");
-              fwrite($classFile, "\t\t\$this->_sql .= \" \".(strlen(\$this->_sql)>0?\"\$operator\":\"\").\" \".\$this->_sqlToAdd.\" ".$field->GetName()."_".$fTable->GetTableName().".".$field2->GetName()." LIKE ?\";");
+              fwrite($classFile, "\t\t\$this->_sql .= \" \".(!empty(\$this->_sql)?\"\$operator\":\"\").\" \".\$this->_sqlToAdd.\" ".$field->GetName()."_".$fTable->GetTableName().".".$field2->GetName()." LIKE ?\";");
               fwrite($classFile, "\n");
               fwrite($classFile, "\t\t\$this->_listHasCondition = true;");
               fwrite($classFile, "\n");
@@ -1196,13 +1196,13 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
               fwrite($classFile, "\n");
               fwrite($classFile, "\t */");
               fwrite($classFile, "\n");
-              fwrite($classFile, "\tpublic function OrderBy".$field->GetName()."_".$fTable->GetTableName()."_".$field2->GetName()."(\$var) {");
+              fwrite($classFile, "\tpublic function OrderBy".$field->GetName()."_".$fTable->GetTableName()."_".$field2->GetName()."(string \$var) {");
               fwrite($classFile, "\n");
               fwrite($classFile, "\n");
               fwrite($classFile, "\t\t\$this->_searchNeedsForeignMembers=true;");
               fwrite($classFile, "\n");
               fwrite($classFile, "\n");
-              fwrite($classFile, "\t\t\$this->_order=\$this->_order.(strlen(\$this->_order)>0?\",\":\"\").\" ".$field->GetName()."_".$fTable->GetTableName().".".$field2->GetName()." \$var\";");
+              fwrite($classFile, "\t\t\$this->_order=\$this->_order.(!empty(\$this->_order)?\",\":\"\").\" ".$field->GetName()."_".$fTable->GetTableName().".".$field2->GetName()." \$var\";");
               fwrite($classFile, "\n");
               fwrite($classFile, "\t}");
               fwrite($classFile, "\n");
@@ -1228,7 +1228,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
               fwrite($classFile, "\t\t\$this->_searchNeedsForeignMembers=true;");
               fwrite($classFile, "\n");
               fwrite($classFile, "\n");
-              fwrite($classFile, "\t\t\$this->_group=\$this->_group.(strlen(\$this->_group)>0?\",\":\"\").\" ".$field->GetName()."_".$fTable->GetTableName().".".$field2->GetName()."\";");
+              fwrite($classFile, "\t\t\$this->_group=\$this->_group.(!empty(\$this->_group)?\",\":\"\").\" ".$field->GetName()."_".$fTable->GetTableName().".".$field2->GetName()."\";");
               fwrite($classFile, "\n");
               fwrite($classFile, "\t}");
               fwrite($classFile, "\n");
@@ -1253,7 +1253,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\t */");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\tpublic function CustomFind(\$args) {");
+        fwrite($classFile, "\tpublic function CustomFind(string \$args) {");
         fwrite($classFile, "\n");
 
         fwrite($classFile, "\t\t\$this->_order = \"\";");
@@ -1283,7 +1283,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\t */");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\tpublic function Limit(\$end, \$start = 0) {");
+        fwrite($classFile, "\tpublic function Limit(int \$end, int \$start = 0) {");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t\t\$this->_limitEnd = \$end;");
         fwrite($classFile, "\n");
@@ -1321,7 +1321,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         foreach ($db->_Tablefields as $_field) {
           if ($_field->GetForeignTable())
           {
-            fwrite($classFile, "\tpublic function SetMember".$_field->GetName()."_OBJ(\$obj) {");
+            fwrite($classFile, "\tpublic function SetMember".$_field->GetName()."_OBJ(object \$obj) {");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t\t\$this->".$_field->GetName()."_OBJ=\$obj;");
             fwrite($classFile, "\n");
