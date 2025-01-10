@@ -145,6 +145,9 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile," */");
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
+        fwrite($classFile, "declare(strict_types=1);");
+        fwrite($classFile, "\n");
+        fwrite($classFile, "\n");
         fwrite($classFile, "namespace LazyMePHP\Classes;\n");
         fwrite($classFile, "use \LazyMePHP\ClassesBuilder\IDB_CLASS;\n");
         fwrite($classFile, "use \LazyMePHP\ClassesBuilder\IDB_CLASS_LIST;\n");
@@ -331,7 +334,21 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             fwrite($classFile, "\n");
             fwrite($classFile, "\t\t\t{");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\t\t\$this->".$field->GetName()."=\$".$field->GetName().";");
+            switch ($field->GetDataType())
+            {
+              case "bool":
+                fwrite($classFile, "\t\t\t\t\$this->".$field->GetName()."=(bool)\$".$field->GetName().";");
+              break;
+              case "float":
+                fwrite($classFile, "\t\t\t\t\$this->".$field->GetName()."=(float)\$".$field->GetName().";");
+              break;
+              case "int":
+              case "string":
+              case "float":
+              default:
+                fwrite($classFile, "\t\t\t\t\$this->".$field->GetName()."=\$".$field->GetName().";");
+              break;
+            }
             fwrite($classFile, "\n");
             foreach ($db->_Tablefields as $field2)
             {
@@ -351,7 +368,21 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
                   fwrite($classFile, "\n");
                   foreach($fTable->GetTableFields() as $field3)
                   {
-                    fwrite($classFile,"\t\t\t\t\t\$this->".$field2->GetName()."_OBJ->_Set".$field3->GetName()."(\$row['".$field2->GetName()."_".$field3->GetName()."']);");
+                    switch ($field3->GetDataType())
+                    {
+                      case "bool":
+                        fwrite($classFile,"\t\t\t\t\t\$this->".$field2->GetName()."_OBJ->".$field3->GetName()."=(bool)\$row['".$field2->GetName()."_".$field3->GetName()."'];");
+                      break;
+                      case "float":
+                        fwrite($classFile,"\t\t\t\t\t\$this->".$field2->GetName()."_OBJ->".$field3->GetName()."=(float)\$row['".$field2->GetName()."_".$field3->GetName()."'];");
+                      break;
+                      case "int":
+                      case "string":
+                      case "float":
+                      default:
+                        fwrite($classFile,"\t\t\t\t\t\$this->".$field2->GetName()."_OBJ->".$field3->GetName()."=\$row['".$field2->GetName()."_".$field3->GetName()."'];");
+                      break;
+                    }
                     fwrite($classFile, "\n");
                   }
                   fwrite($classFile, "\t\t\t\t\t\$this->".$field2->GetName()."_OBJ->constructForeignKeysObjs();");
@@ -361,7 +392,21 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
                   fwrite($classFile, "\n");
                   fwrite($classFile, "\n");
                 }
-                fwrite($classFile,"\t\t\t\t\$this->".$field2->GetName()."=\$row['".$field2->GetName()."'];");
+                switch ($field2->GetDataType())
+                {
+                  case "bool":
+                    fwrite($classFile,"\t\t\t\t\$this->".$field2->GetName()."=(bool)\$row['".$field2->GetName()."'];");
+                  break;
+                  case "float":
+                    fwrite($classFile,"\t\t\t\t\$this->".$field2->GetName()."=(float)\$row['".$field2->GetName()."'];");
+                  break;
+                  case "int":
+                  case "string":
+                  case "float":
+                  default:
+                    fwrite($classFile,"\t\t\t\t\$this->".$field2->GetName()."=\$row['".$field2->GetName()."'];");
+                  break;
+                }
                 fwrite($classFile, "\n");
               }
             }
@@ -802,7 +847,21 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
 
             foreach($fTable->GetTableFields() as $field3)
             {
-              fwrite($classFile,"\t\t\t\t\t\$_OBJ->_Set".$field3->GetName()."(\$row['".$field2->GetName()."_".$field3->GetName()."']);");
+              switch ($field3->GetDataType())
+              {
+                case "bool":
+                  fwrite($classFile,"\t\t\t\t\t\$_OBJ->".$field3->GetName()."=(bool)\$row['".$field2->GetName()."_".$field3->GetName()."'];");
+                break;
+                case "float":
+                  fwrite($classFile,"\t\t\t\t\t\$_OBJ->".$field3->GetName()."=(float)\$row['".$field2->GetName()."_".$field3->GetName()."'];");
+                break;
+                case "int":
+                case "string":
+                case "float":
+                default:
+                  fwrite($classFile,"\t\t\t\t\t\$_OBJ->".$field3->GetName()."=\$row['".$field2->GetName()."_".$field3->GetName()."'];");
+                break;
+              }
               fwrite($classFile, "\n");
             }
             fwrite($classFile, "\t\t\t\t\t\$_OBJ->constructForeignKeysObjs();");
@@ -814,7 +873,21 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             fwrite($classFile, "\n");
             fwrite($classFile, "\n");
           }
-          fwrite($classFile,"\t\t\t\t\$obj->_Set".$field2->GetName()."(\$row['".$field2->GetName()."']".($field2->GetForeignTable()?",\$buildForeignMembers":"").");");
+          switch ($field2->GetDataType())
+          {
+            case "bool":
+              fwrite($classFile,"\t\t\t\t\$obj->".$field2->GetName()."=(bool)\$row['".$field2->GetName()."'];");
+            break;
+            case "float":
+              fwrite($classFile,"\t\t\t\t\$obj->".$field2->GetName()."=(float)\$row['".$field2->GetName()."'];");
+            break;
+            case "int":
+            case "string":
+            case "float":
+            default:
+              fwrite($classFile,"\t\t\t\t\$obj->".$field2->GetName()."=\$row['".$field2->GetName()."'];");
+            break;
+          }
           fwrite($classFile, "\n");
         }
         fwrite($classFile, "\n");
@@ -1239,15 +1312,11 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\tfunction __construct() {}");
         fwrite($classFile, "\n");
+        fwrite($classFile, "\tpublic function constructForeignKeysObjs() {");
         fwrite($classFile, "\n");
-        foreach ($db->_Tablefields as $_field) {
-          fwrite($classFile, "\tpublic function _Set".$_field->GetName()."(\$var) {");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t\t\$this->".$_field->GetName()." = \$var;");
-          fwrite($classFile, "\n");
-          fwrite($classFile,"\t}");
-          fwrite($classFile, "\n");
-        }
+        fwrite($classFile, "\t\tparent::constructForeignKeysObjs();");
+        fwrite($classFile, "\n");
+        fwrite($classFile,"\t}");
         fwrite($classFile, "\n");
         foreach ($db->_Tablefields as $_field) {
           if ($_field->GetForeignTable())
@@ -1259,13 +1328,6 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             fwrite($classFile,"\t}");
           }
         }
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\tpublic function constructForeignKeysObjs() {");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t\tparent::constructForeignKeysObjs();");
-        fwrite($classFile, "\n");
-        fwrite($classFile,"\t}");
-        fwrite($classFile, "\n");
         fwrite($classFile, "}");
         fwrite($classFile, "\n");
         fwrite($classFile,"?>");
