@@ -11,7 +11,7 @@ if (file_exists(getcwd() . '/public/' . $_SERVER['REQUEST_URI'])) {
 } 
 
 $cmdline = file_get_contents('php://input');
-$argv = str_getcsv($cmdline, "\0");
+$argv = str_getcsv($cmdline, "\0", "\"", "\\");
 $argvo = $argv;
 
 while (true) {
