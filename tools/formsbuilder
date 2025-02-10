@@ -29,7 +29,7 @@ class BuildTableForms
   function __construct($controllersPath, $viewsPath, $classesPath, $routesPath, $tablesList, $replaceRouteForms, $buildViews)
   {
     // Create Folder if doesn't exist
-    if (!is_dir(APP::ROOT_PATH()."/".$controllersPath)) \LazyMePHP\Helper\MKDIR(APP::ROOT_PATH()."/".$controllersPath);
+    if (!is_dir($controllersPath)) \LazyMePHP\Helper\MKDIR($controllersPath);
     // SELECT Tables
     $queryString = "";
     switch (APP::DB_TYPE())
@@ -55,11 +55,11 @@ class BuildTableForms
       // Create Last File to Help on Requires
       if ($replaceRouteForms && is_array($tablesList) && array_search($o->Table, $tablesList)!==false) {
 
-        if (\LazyMePHP\Helper\UNLINK(APP::ROOT_PATH()."/".$routesPath."/".$o->Table.".php"))
+        if (\LazyMePHP\Helper\UNLINK($routesPath."/".$o->Table.".php"))
         {
-          if (\LazyMePHP\Helper\TOUCH(APP::ROOT_PATH()."/".$routesPath."/".$o->Table.".php"))
+          if (\LazyMePHP\Helper\TOUCH($routesPath."/".$o->Table.".php"))
           {
-            $routerFile = fopen(APP::ROOT_PATH()."/".$routesPath."/".$o->Table.".php","w+");
+            $routerFile = fopen($routesPath."/".$o->Table.".php","w+");
             fwrite($routerFile,"<?php");
             fwrite($routerFile, "\n");
             fwrite($routerFile, "\n");
@@ -207,23 +207,23 @@ class BuildTableForms
   protected function ConstructForm($viewsPath, $db)
   {
     // Create Folder if doesn't exist
-    if (!is_dir(APP::ROOT_PATH()."/".$viewsPath)) \LazyMePHP\Helper\MKDIR(APP::ROOT_PATH()."/".$viewsPath);
+    if (!is_dir($viewsPath)) \LazyMePHP\Helper\MKDIR($viewsPath);
 
     // Create Table Folder
-    if (!is_dir(APP::ROOT_PATH()."/".$viewsPath."/".$db->GetTableName())) \LazyMePHP\Helper\MKDIR(APP::ROOT_PATH()."/".$viewsPath."/".$db->GetTableName());
+    if (!is_dir($viewsPath."/".$db->GetTableName())) \LazyMePHP\Helper\MKDIR($viewsPath."/".$db->GetTableName());
 
     if (
-    \LazyMePHP\Helper\UNLINK(APP::ROOT_PATH()."/".$viewsPath."/".$db->GetTableName()."/template.blade.php") &&
-      \LazyMePHP\Helper\UNLINK(APP::ROOT_PATH()."/".$viewsPath."/".$db->GetTableName()."/list.blade.php") &&
-      \LazyMePHP\Helper\UNLINK(APP::ROOT_PATH()."/".$viewsPath."/".$db->GetTableName()."/edit.blade.php")
+    \LazyMePHP\Helper\UNLINK($viewsPath."/".$db->GetTableName()."/template.blade.php") &&
+      \LazyMePHP\Helper\UNLINK($viewsPath."/".$db->GetTableName()."/list.blade.php") &&
+      \LazyMePHP\Helper\UNLINK($viewsPath."/".$db->GetTableName()."/edit.blade.php")
   ) {
       if (
-      \LazyMePHP\Helper\TOUCH(APP::ROOT_PATH()."/".$viewsPath."/".$db->GetTableName()."/template.blade.php") &&
-        \LazyMePHP\Helper\TOUCH(APP::ROOT_PATH()."/".$viewsPath."/".$db->GetTableName()."/list.blade.php") &&
-        \LazyMePHP\Helper\TOUCH(APP::ROOT_PATH()."/".$viewsPath."/".$db->GetTableName()."/edit.blade.php")
+      \LazyMePHP\Helper\TOUCH($viewsPath."/".$db->GetTableName()."/template.blade.php") &&
+        \LazyMePHP\Helper\TOUCH($viewsPath."/".$db->GetTableName()."/list.blade.php") &&
+        \LazyMePHP\Helper\TOUCH($viewsPath."/".$db->GetTableName()."/edit.blade.php")
     ) {
 
-        $viewFile = fopen(APP::ROOT_PATH()."/".$viewsPath."/".$db->GetTableName()."/template.blade.php","w+");
+        $viewFile = fopen($viewsPath."/".$db->GetTableName()."/template.blade.php","w+");
         fwrite($viewFile,"<?php");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "\n");
@@ -252,7 +252,7 @@ class BuildTableForms
         fwrite($viewFile, "</script>");
         fclose($viewFile);
 
-        $viewFile = fopen(APP::ROOT_PATH()."/".$viewsPath."/".$db->GetTableName()."/edit.blade.php","w+");
+        $viewFile = fopen($viewsPath."/".$db->GetTableName()."/edit.blade.php","w+");
         fwrite($viewFile,"<?php");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "\n");
@@ -335,7 +335,7 @@ class BuildTableForms
         fclose($viewFile);
 
         // Show List
-        $viewFile = fopen(APP::ROOT_PATH()."/".$viewsPath."/".$db->GetTableName()."/list.blade.php","w+");
+        $viewFile = fopen($viewsPath."/".$db->GetTableName()."/list.blade.php","w+");
         fwrite($viewFile,"<?php");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "\n");
@@ -460,13 +460,13 @@ class BuildTableForms
   function ConstructController($controllersPath, $classesPath, $db)
   {
     // Create Folder if doesn't exist
-    if (!is_dir(APP::ROOT_PATH()."/".$controllersPath)) \LazyMePHP\Helper\MKDIR(APP::ROOT_PATH()."/".$controllersPath);
+    if (!is_dir($controllersPath)) \LazyMePHP\Helper\MKDIR($controllersPath);
 
-    if (\LazyMePHP\Helper\UNLINK(APP::ROOT_PATH()."/".$controllersPath."/".$db->GetTableName().".Controller.php"))
+    if (\LazyMePHP\Helper\UNLINK($controllersPath."/".$db->GetTableName().".Controller.php"))
     {
-      if (\LazyMePHP\Helper\TOUCH(APP::ROOT_PATH()."/".$controllersPath."/".$db->GetTableName().".Controller.php"))
+      if (\LazyMePHP\Helper\TOUCH($controllersPath."/".$db->GetTableName().".Controller.php"))
       {
-        $controllerFile = fopen(APP::ROOT_PATH()."/".$controllersPath."/".$db->GetTableName().".Controller.php","w+");
+        $controllerFile = fopen($controllersPath."/".$db->GetTableName().".Controller.php","w+");
         fwrite($controllerFile,"<?php");
         fwrite($controllerFile, "\n");
         fwrite($controllerFile, "\n");

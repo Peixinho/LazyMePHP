@@ -42,15 +42,15 @@ class BuildTableAPI
     }
 
     // Create Folder if doesn't exist
-    if (!is_dir(APP::ROOT_PATH()."/".$apiPath)) \LazyMePHP\Helper\MKDIR(APP::ROOT_PATH()."/".$apiPath);
+    if (!is_dir($apiPath)) \LazyMePHP\Helper\MKDIR($apiPath);
 
     // Create API MASK
     if ($replaceRouteApi) {
-      if (\LazyMePHP\Helper\UNLINK(APP::ROOT_PATH()."/".$apiPath."/MaskAPI.php"))
+      if (\LazyMePHP\Helper\UNLINK($apiPath."/MaskAPI.php"))
       {
-        if (\LazyMePHP\Helper\TOUCH(APP::ROOT_PATH()."/".$apiPath."/MaskAPI.php"))
+        if (\LazyMePHP\Helper\TOUCH($apiPath."/MaskAPI.php"))
         {
-          $routerFile = fopen(APP::ROOT_PATH()."/".$apiPath."/MaskAPI.php","w+");
+          $routerFile = fopen($apiPath."/MaskAPI.php","w+");
           fwrite($routerFile,"<?php");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\n");
@@ -107,11 +107,11 @@ class BuildTableAPI
       APP::DB_CONNECTION()->Query($queryString, $sqlObj);
       while ($o=$sqlObj->FetchObject())
       {
-        if (\LazyMePHP\Helper\UNLINK(APP::ROOT_PATH()."/".$apiPath."/".$o->Table.".php"))
+        if (\LazyMePHP\Helper\UNLINK($apiPath."/".$o->Table.".php"))
         {
-          if (\LazyMePHP\Helper\TOUCH(APP::ROOT_PATH()."/".$apiPath."/".$o->Table.".php"))
+          if (\LazyMePHP\Helper\TOUCH($apiPath."/".$o->Table.".php"))
           {
-            $routerFile = fopen(APP::ROOT_PATH()."/".$apiPath."/".$o->Table.".php","w+");
+            $routerFile = fopen($apiPath."/".$o->Table.".php","w+");
             fwrite($routerFile,"<?php");
             fwrite($routerFile, "\n");
             fwrite($routerFile, "\n");
