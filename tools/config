@@ -113,9 +113,6 @@ switch($db_db['name'])
   fwrite($file, "// SUPPORT EMAIL\n");
   fwrite($file, "\$CONFIG['APP_EMAIL_SUPPORT']\t=\"".$email_support."\";\n");
   fwrite($file, "\n");
-  fwrite($file, "// ROOT PATH\n");
-  fwrite($file, "\$CONFIG['ROOT']\t\t\t\t\t=\"".substr_replace(str_replace('\\','/',$app_fullpath),"",-6)."\";\n");
-  fwrite($file, "\n");
   fwrite($file, "/**\n");
   fwrite($file, " * END OF CONFIGURATIONS\n");
   fwrite($file, " */\n");

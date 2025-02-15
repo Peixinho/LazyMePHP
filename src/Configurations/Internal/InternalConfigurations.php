@@ -368,23 +368,6 @@ class APP
     return APP::$_support_email;
   }
 
-  // ROOT PATH
-
-  /** @var _root_path */
-  private static $_root_path;
-  /**
-     * ROOT_PATH
-     *
-     * Returns Full Path of the Application
-     *
-     * @param (NULL)
-     * @return (object) (root_path)
-     */
-  static function ROOT_PATH()
-  {
-    return APP::$_root_path;
-  }
-
   /** @var _app_nresults */
   private static $_app_nresults;
   /**
@@ -485,8 +468,6 @@ class APP
      */
   public function __construct($CONFIG)
   {
-
-    APP::$_root_path          = $CONFIG['ROOT'];
 
     // GET DB FILE AND Include IT
     APP::$_db_file            = __DIR__."/../../DB/".$CONFIG['DB_FILE'];

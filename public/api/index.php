@@ -43,6 +43,11 @@ if (!empty($customMask)) {
   }
   $GLOBALS['API_FIELDS_AVAILABLE'] = $customMask;
 }
+/*
+ * Check of our request needs foreing data
+ */
+$GLOBALS['API_FOREIGN_DATA'] = (isset($_GET['foreignData']) && $_GET['foreignData'] == 'true') ? true : false;
+
 
 /* Load all api routes */
 foreach(glob(__DIR__."/../../src/api/" . "/*.php") as $r)
