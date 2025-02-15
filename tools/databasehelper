@@ -419,7 +419,7 @@ class _DB_TABLE {
 						case "uniqueidentifier":
 						case "sysname":
 						case "image":
-							$__type = "varchar";
+							$__type = "string";
 							break;
 						case "numeric":
 						case "decimal":
@@ -429,12 +429,12 @@ class _DB_TABLE {
 							$__type = "float";
 							break;
 						case "bit":
-							$__type = "bit";
+							$__type = "bool";
 							break;
 						case "datetime":
 						case "smalldatetime":
 						case "timestamp":
-							$__type = "date";
+							$__type = "string";
 					}
 					break;
 				case 2:
@@ -458,7 +458,7 @@ class _DB_TABLE {
 						case "longblob":
 						case "longtext":
 						case "enum":
-							$__type = "varchar";
+							$__type = "string";
 							break;
 						case "float":
 						case "double":
@@ -466,14 +466,14 @@ class _DB_TABLE {
 							$__type = "float";
 							break;
 						case "bit":
-							$__type = "bit";
+							$__type = "bool";
 							break;
 						case "date":
 						case "datetime":
 						case "timestamp":
 						case "time":
 						case "year":
-							$__type = "date";
+							$__type = "string";
 					}
 					break;
 				case 3:
@@ -498,7 +498,7 @@ class _DB_TABLE {
               $__type = "int";
             break;
             case "varchar":
-              $__type = "varchar";
+              $__type = "string";
             break;
             case "real":
               $__type = "float";

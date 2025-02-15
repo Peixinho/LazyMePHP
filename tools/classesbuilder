@@ -41,7 +41,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
      * Builds Class Files for each Table in the DataBase
      *
      * @param (string) (path)
-     * @return (NULL)
+     * @return (null)
      */
 	function __construct($classesPath, $tablesList, $replaceInclude, $tableDescriptors)
 	{
@@ -177,14 +177,14 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\t *");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\t * @param (NULL)");
+        fwrite($classFile, "\t * @param (null)");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t * @return string");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t */");
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\tpublic function GetDescriptor() { return \$this->Get".(key_exists($db->_Tablename, $tableDescriptors)?$tableDescriptors[$db->_Tablename]:$db->_PrimaryFieldName)."(); }");
+        fwrite($classFile, "\tpublic function GetDescriptor() { return \$this->".(key_exists($db->_Tablename, $tableDescriptors)?$tableDescriptors[$db->_Tablename]:$db->_PrimaryFieldName)."; }");
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t/**");
@@ -197,13 +197,13 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\t *");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\t * @param (NULL)");
+        fwrite($classFile, "\t * @param (null)");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t * @return string");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t */");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\tpublic function GetPrimaryKey() { return \$this->Get".$db->_PrimaryFieldName."(); }");
+        fwrite($classFile, "\tpublic function GetPrimaryKey() { return \$this->".$db->_PrimaryFieldName."; }");
         fwrite($classFile, "\n");
         $addToConstruct = "";
         $addToSerialize = "";
@@ -212,97 +212,63 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
           fwrite($classFile, "\n");
           fwrite($classFile, "\t/** @var ".$field->GetName()."*/");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\tprotected \$".$field->GetName()." = NULL;");
-          if (!$field->IsAutoIncrement() || !$field->IsPrimaryKey())
-          {
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t/**");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t * Set".$field->GetName());
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t *");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t * Sets ".$field->GetName());
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t *");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t * @param (".$field->GetName().")");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t * @return NULL");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t */");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\tpublic function Set".$field->GetName()."(\$".$field->GetName()."".($field->GetForeignTable()?",\$buildForeignMembers=true":" = NULL").") {");
+          fwrite($classFile, "\tpublic ?".$field->GetDataType()." \$".$field->GetName()." = null {");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\t\tget {");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\t\t\treturn \$this->".$field->GetName().";");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\t\t}");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\t\tset(?".$field->GetDataType()." \$".$field->GetName().") {");
+          fwrite($classFile, "\n");
             if ($field->HasForeignKey() && $field->GetForeignField())
             {
               fwrite($classFile, "\n");
-              fwrite($classFile, "\t\tif (\$buildForeignMembers && \$this->".$field->GetName()."!=\$".$field->GetName().") {");
+              fwrite($classFile, "\t\t\tif (\$this->buildForeignMembers && \$this->".$field->GetName()."!=\$".$field->GetName().") {");
               fwrite($classFile, "\n");
-              fwrite($classFile, "\t\t\t\$this->".$field->GetName()."_OBJ = new ".$field->GetForeignTable()."(\$".$field->GetName().");");
+              fwrite($classFile, "\t\t\t\t\$this->".$field->GetName()."_OBJ = new ".$field->GetForeignTable()."(\$".$field->GetName().");");
               fwrite($classFile, "\n");
-              fwrite($classFile, "\t\t}");
+              fwrite($classFile, "\t\t\t}");
             }
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t\tif (APP::APP_ACTIVITY_LOG() && \$this->".$field->GetName()."!=\$".$field->GetName().")\n\t\t\t\$this->__log['".$field->GetName()."']=array((\$this->".$field->GetName()."?substr(\$this->".$field->GetName().",0,255):''), (\$".$field->GetName()."?substr(\$".$field->GetName().",0,255):''));");
+            fwrite($classFile, "\t\t\tif (!empty(\$this->".$field->GetName().") && APP::APP_ACTIVITY_LOG() && \$this->".$field->GetName()."!=\$".$field->GetName().")\n\t\t\t\t\$this->__log['".$field->GetName()."']=array((\$this->".$field->GetName()."?substr(\$this->".$field->GetName().",0,255):''), (\$".$field->GetName()."?substr(\$".$field->GetName().",0,255):''));");
             fwrite($classFile, "\n");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\$this->".$field->GetName()."=(!empty(\$".$field->GetName().")?".($field->GetDataLength()>0?"substr(\$".$field->GetName().",0,".$field->GetDataLength().")":"\$".$field->GetName()).":NULL);");
+            fwrite($classFile, "\t\t\t\$this->".$field->GetName()."=(isset(\$".$field->GetName().")?".($field->GetDataLength()>0?"substr(\$".$field->GetName().",0,".$field->GetDataLength().")":"\$".$field->GetName()).":null);");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t}");
-          }
+          fwrite($classFile, "\t\t}");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\t}");
+          fwrite($classFile, "\n");
 
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t/**");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t * Get".$field->GetName());
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t *");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t * Gets ".$field->GetName());
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t *");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t * @param (NULL)");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t * @return ".$field->GetName());
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t */");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\tpublic function Get".$field->GetName()."() { return \$this->".$field->GetName()."; }");
 
           if ($field->HasForeignKey())
           {
             fwrite($classFile, "\n");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t/** @var ".$field->GetName()." protected*/");
+            fwrite($classFile, "\t/** @var ".$field->GetName()." protected **/");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\tprotected \$".$field->GetName()."_OBJ;");
+            fwrite($classFile, "\tpublic protected(set) object \$".$field->GetName()."_OBJ {");
             fwrite($classFile, "\n");
+            fwrite($classFile, "\t\tget {");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t/**");
+            fwrite($classFile, "\t\t\treturn \$this->".$field->GetName()."_OBJ;");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t * Get".$field->GetName()."Object");
+            fwrite($classFile, "\t\t}");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t *");
+            fwrite($classFile, "\t}");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t * Gets ".$field->GetName()." Object Instance");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t *");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t * @param (NULL)");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t * @return (object) (".$field->GetName().")");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t */");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\tpublic function Get".$field->GetName()."Object() { return \$this->".$field->GetName()."_OBJ; }");
           }
 
           if ($field->IsPrimaryKey())
           {
             $primaryKeyFound = true;
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t/** @var buildForeignMembers **/");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\tprivate bool \$buildForeignMembers = true;");
             fwrite($classFile, "\n");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t/**");
@@ -317,12 +283,13 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             fwrite($classFile, "\n");
             fwrite($classFile, "\t * @param (int) (".$field->GetName().")");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t * @return NULL");
+            fwrite($classFile, "\t * @return null");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t */");
             fwrite($classFile, "\n");
-            fwrite($classFile,"\tpublic function __construct(\$".$field->GetName()."=NULL, \$buildForeignMembers=true) {");
+            fwrite($classFile,"\tpublic function __construct(\$".$field->GetName()."=null, \$buildForeignMembers=true) {");
             fwrite($classFile, "\n");
+            fwrite($classFile, "\t\t\$this->buildForeignMembers = \$buildForeignMembers;");
             fwrite($classFile, "\n");
             fwrite($classFile,"\t\t// Get Elements from DB using Primary Key");
             fwrite($classFile, "\n");
@@ -336,7 +303,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
               fwrite($classFile,($countFields++>0?",":"").$db->_Tablename.".".$field2->GetName());
               if ($field2->HasForeignKey() && $field2->GetForeignField())
               {
-                fwrite($classFile, "\".(\$buildForeignMembers?\"");
+                fwrite($classFile, "\".(\$this->buildForeignMembers?\"");
                 $addToConstruct.="\n\t\t\$this->".$field2->GetName()."_OBJ = new ".$field2->GetForeignTable()."(\$this->".$field2->GetName().");";
                 $addToSerialize.="\n\t\t\tif (\$this->".$field2->GetName()."_OBJ) \$vars[\"".$field2->GetName()."_OBJ\"]=\$this->".$field2->GetName()."_OBJ->Serialize(\$foreign, \$mask);";
 
@@ -355,7 +322,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
                 fwrite($classFile,"\":\"\").\"");
               }
             }
-            fwrite($classFile," FROM ".$db->_Tablename.(strlen($foreignTablesJoin)>0?" ":"")."\".(\$buildForeignMembers?\"$foreignTablesJoin\":\"\").\""." WHERE ".$db->GetTableName().".".$field->GetName()."=?\";");
+            fwrite($classFile," FROM ".$db->_Tablename.(strlen($foreignTablesJoin)>0?" ":"")."\".(\$this->buildForeignMembers?\"$foreignTablesJoin\":\"\").\""." WHERE ".$db->GetTableName().".".$field->GetName()."=?\";");
 
             fwrite($classFile, "\n");
             fwrite($classFile,"\t\t\tAPP::DB_CONNECTION()->Query(\$sql, \$rtn, array(\$".$field->GetName()."));");
@@ -376,7 +343,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
                   $fTable = new \LazyMePHP\DatabaseHelper\_DB_TABLE($field2->GetForeignTable());
                   $fTable->GetFieldsFromDB();
                   fwrite($classFile, "\n");
-                  fwrite($classFile, "\t\t\t\tif (\$buildForeignMembers)");
+                  fwrite($classFile, "\t\t\t\tif (\$this->buildForeignMembers)");
                   fwrite($classFile, "\n");
                   fwrite($classFile, "\t\t\t\t{");
                   fwrite($classFile, "\n");
@@ -419,7 +386,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             fwrite($classFile, "\n");
             fwrite($classFile, "\t *");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t * @return NULL");
+            fwrite($classFile, "\t * @return null");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t */");
             fwrite($classFile, "\n");
@@ -441,27 +408,27 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             fwrite($classFile, "\n");
             fwrite($classFile, "\t *");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t * @param (NULL)");
+            fwrite($classFile, "\t * @param (null)");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t * @return bool");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t */");
             fwrite($classFile, "\n");
             fwrite($classFile,"\tpublic function Save() {");
-            $fieldsNotNull = NULL;
+            $fieldsNotnull = null;
             foreach ($db->_Tablefields as $field2)
             {
               if ($field!=$field2)
               {
-                if (!$field2->AllowNull()) $fieldsNotNull.= "\t\tif (!isset(\$this->".$field2->GetName().")) \$fieldsNull .= (isset(\$fieldsNull)?\",\":\"\").\"".$field2->GetName()."\";\n";
+                if (!$field2->Allownull()) $fieldsNotnull.= "\t\tif (!isset(\$this->".$field2->GetName().")) \$fieldsnull .= (isset(\$fieldsnull)?\",\":\"\").\"".$field2->GetName()."\";\n";
               }
             }
-            fwrite($classFile, "\t\t\$fieldsNull = NULL;");
+            fwrite($classFile, "\t\t\$fieldsnull = null;");
             fwrite($classFile, "\n");
-            if (isset($fieldsNotNull)) fwrite($classFile, $fieldsNotNull);
-            fwrite($classFile, "\t\tif (\$fieldsNull) {");
+            if (isset($fieldsNotnull)) fwrite($classFile, $fieldsNotnull);
+            fwrite($classFile, "\t\tif (\$fieldsnull) {");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\t\\LazyMePHP\\Config\\Internal\\trigger_error(\"NULL value not allowed!\\nFields: \$fieldsNull\", E_USER_ERROR);");
+            fwrite($classFile, "\t\t\t\\LazyMePHP\\Config\\Internal\\trigger_error(\"null value not allowed!\\nFields: \$fieldsnull\", E_USER_ERROR);");
                     fwrite($classFile, "\n");
                     fwrite($classFile, "\t\t\treturn false;");
                     fwrite($classFile, "\n");
@@ -563,7 +530,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             fwrite($classFile, "\n");
             fwrite($classFile, "\t *");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t * @param (NULL)");
+            fwrite($classFile, "\t * @param (null)");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t * @return bool");
             fwrite($classFile, "\n");
@@ -623,7 +590,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\t */");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\tpublic function Serialize(\$foreign = false, \$mask = NULL) {");
+        fwrite($classFile, "\tpublic function Serialize(\$foreign = false, \$mask = null) {");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t\t\$vars = get_object_vars(\$this);");
         fwrite($classFile, "\n");
@@ -677,9 +644,9 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\t *");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\t * @param (NULL)");
+        fwrite($classFile, "\t * @param (null)");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\t * @return NULL");
+        fwrite($classFile, "\t * @return null");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t */");
         fwrite($classFile, "\n");
@@ -694,7 +661,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\t * Gets element count");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\t * @param (NULL)");
+        fwrite($classFile, "\t * @param (null)");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t * @return (INT)");
         fwrite($classFile, "\n");
@@ -882,7 +849,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\t */");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\tpublic function Serialize(\$buildForeignMembers=true, \$mask = NULL)");
+        fwrite($classFile, "\tpublic function Serialize(\$buildForeignMembers=true, \$mask = null)");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t{");
         fwrite($classFile, "\n");
@@ -901,9 +868,9 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\t *");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\t * @param (NULL)");
+        fwrite($classFile, "\t * @param (null)");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\t * @return (NULL)");
+        fwrite($classFile, "\t * @return (null)");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t */");
         fwrite($classFile, "\n");
@@ -936,9 +903,9 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\t *");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\t * @param (NULL)");
+        fwrite($classFile, "\t * @param (null)");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\t * @return (NULL)");
+        fwrite($classFile, "\t * @return (null)");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t */");
         fwrite($classFile, "\n");
@@ -968,7 +935,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
           fwrite($classFile, "\n");
           fwrite($classFile, "\t * @operator (string) (\$operator)");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\t * @return (NULL)");
+          fwrite($classFile, "\t * @return (null)");
           fwrite($classFile, "\n");
           fwrite($classFile, "\t */");
           fwrite($classFile, "\n");
@@ -998,7 +965,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
           fwrite($classFile, "\n");
           fwrite($classFile, "\t * @param (string) (\$var)");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\t * @return (NULL)");
+          fwrite($classFile, "\t * @return (null)");
           fwrite($classFile, "\n");
           fwrite($classFile, "\t */");
           fwrite($classFile, "\n");
@@ -1026,7 +993,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
           fwrite($classFile, "\n");
           fwrite($classFile, "\t * @param (string) (\$var)");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\t * @return (NULL)");
+          fwrite($classFile, "\t * @return (null)");
           fwrite($classFile, "\n");
           fwrite($classFile, "\t */");
           fwrite($classFile, "\n");
@@ -1048,7 +1015,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
           fwrite($classFile, "\n");
           fwrite($classFile, "\t *");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\t * @return (NULL)");
+          fwrite($classFile, "\t * @return (null)");
           fwrite($classFile, "\n");
           fwrite($classFile, "\t */");
           fwrite($classFile, "\n");
@@ -1084,7 +1051,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
               fwrite($classFile, "\n");
               fwrite($classFile, "\t * @operator (string) (\$operator)");
               fwrite($classFile, "\n");
-              fwrite($classFile, "\t * @return (NULL)");
+              fwrite($classFile, "\t * @return (null)");
               fwrite($classFile, "\n");
               fwrite($classFile, "\t */");
               fwrite($classFile, "\n");
@@ -1118,7 +1085,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
               fwrite($classFile, "\n");
               fwrite($classFile, "\t * @param (string) (\$var)");
               fwrite($classFile, "\n");
-              fwrite($classFile, "\t * @return (NULL)");
+              fwrite($classFile, "\t * @return (null)");
               fwrite($classFile, "\n");
               fwrite($classFile, "\t */");
               fwrite($classFile, "\n");
@@ -1152,7 +1119,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
               fwrite($classFile, "\n");
               fwrite($classFile, "\t * @param (string) (\$var)");
               fwrite($classFile, "\n");
-              fwrite($classFile, "\t * @return (NULL)");
+              fwrite($classFile, "\t * @return (null)");
               fwrite($classFile, "\n");
               fwrite($classFile, "\t */");
               fwrite($classFile, "\n");
@@ -1178,7 +1145,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
               fwrite($classFile, "\n");
               fwrite($classFile, "\t *");
               fwrite($classFile, "\n");
-              fwrite($classFile, "\t * @return (NULL)");
+              fwrite($classFile, "\t * @return (null)");
               fwrite($classFile, "\n");
               fwrite($classFile, "\t */");
               fwrite($classFile, "\n");
@@ -1209,7 +1176,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\t * @param (string) (sql)");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\t * @return (NULL)");
+        fwrite($classFile, "\t * @return (null)");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t */");
         fwrite($classFile, "\n");
@@ -1239,7 +1206,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "\t * @param (int) (end)");
         fwrite($classFile, "\t * @param (int) (start)");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\t * @return (NULL)");
+        fwrite($classFile, "\t * @return (null)");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t */");
         fwrite($classFile, "\n");
