@@ -325,12 +325,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
                 fwrite($classFile,"\":\"\").\"");
               }
             }
-<<<<<<< HEAD
-            fwrite($classFile," FROM ".$db->_Tablename.(strlen($foreignTablesJoin)>0?" ":"")."\".(\$this->buildForeignMembers?\"$foreignTablesJoin\":\"\").\""." WHERE ".$db->GetTableName().".".$field->GetName()."=?\";");
-=======
             fwrite($classFile," FROM ".$db->_Tablename.(!empty($foreignTablesJoin)?" ":"")."\".(\$this->buildForeignMembers?\"$foreignTablesJoin\":\"\").\""." WHERE ".$db->GetTableName().".".$field->GetName()."=?\";");
->>>>>>> 0fb96cbad2664536a338170abba868d856030665
-
             fwrite($classFile, "\n");
             fwrite($classFile,"\t\t\tAPP::DB_CONNECTION()->Query(\$sql, \$rtn, array(\$".$field->GetName()."));");
             fwrite($classFile, "\n");
@@ -926,11 +921,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\t */");
         fwrite($classFile, "\n");
-<<<<<<< HEAD
-        fwrite($classFile, "\tpublic function Serialize(\$buildForeignMembers=true, \$mask = null)");
-=======
         fwrite($classFile, "\tpublic function Serialize(bool \$buildForeignMembers=true, ?array \$mask = null)");
->>>>>>> 0fb96cbad2664536a338170abba868d856030665
         fwrite($classFile, "\n");
         fwrite($classFile, "\t{");
         fwrite($classFile, "\n");
