@@ -28,8 +28,21 @@ if(file_exists(__DIR__."/../../src/Classes/includes.php"))
  */
 require_once __DIR__."/../../src/Ext/vendor/autoload.php";
 
+/*
+ * Mask API
+ */
 if(file_exists(__DIR__."/../../src/api/MaskAPI.php"))
 	require_once __DIR__."/../../src/api/MaskAPI.php";
+/* Work our custom masks if sent, avoiding showing unwanted fields even if requested */
+$mask = $GLOBALS['API_FIELDS_AVAILABLE'];
+$customMask = (json_decode(file_get_contents('php://input'), true)); 
+if (!empty($customMask)) {
+  foreach ($customMask as $key => $value) {
+    $diffmask = array_diff($customMask[$key], $mask[$key]);
+    $customMask[$key] = array_flip(array_diff_key(array_flip($customMask[$key]), array_flip($diffmask)));
+  }
+  $GLOBALS['API_FIELDS_AVAILABLE'] = $customMask;
+}
 
 /* Load all api routes */
 foreach(glob(__DIR__."/../../src/api/" . "/*.php") as $r)
