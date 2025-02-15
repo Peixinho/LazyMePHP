@@ -134,7 +134,7 @@ class BuildTableAPI
             fwrite($routerFile, "\n");
             fwrite($routerFile, "\n");
 
-            #fwrite($routerFile, "Router::Create(\"controller\", \"".$o->Table."\",APP::ROOT_PATH().\"/$apiPath/".$o->Table.".API.php\");");
+            #fwrite($routerFile, "Router::Create(\"controller\", \"".$o->Table."\",$apiPath/".$o->Table.".API.php\");");
             if (is_array($tablesList) && array_search($o->Table, $tablesList)!==false) {
               fwrite($routerFile, "/*");
               fwrite($routerFile, "\n");
@@ -150,7 +150,7 @@ class BuildTableAPI
               fwrite($routerFile, "\n");
               fwrite($routerFile, "\t\$data = ".$o->Table."::Default(false, \$_GET['page']??1, \$_GET['itemsPerPage']??APP::APP_NRESULTS());");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "\techo json_encode(array('data' => \$data['".$o->Table."']->Serialize(true, \$GLOBALS['API_FIELDS_AVAILABLE']), 'length' => \$data['length'], 'filters' => \$data['filters']));");
+              fwrite($routerFile, "\techo json_encode(array('data' => \$data['".$o->Table."']->Serialize(\$GLOBALS['API_FOREIGN_DATA'], \$GLOBALS['API_FIELDS_AVAILABLE']), 'length' => \$data['length'], 'filters' => \$data['filters']));");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "});");
               fwrite($routerFile, "\n");
@@ -158,7 +158,7 @@ class BuildTableAPI
               fwrite($routerFile, "\n");
               fwrite($routerFile, "\t\$data = ".$o->Table."::Edit(\$".$db->GetPrimaryFieldName().");");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "\techo json_encode(\$data['".$o->Table."']->Serialize(true, \$GLOBALS['API_FIELDS_AVAILABLE']));");
+              fwrite($routerFile, "\techo json_encode(\$data['".$o->Table."']->Serialize(\$GLOBALS['API_FOREIGN_DATA'], \$GLOBALS['API_FIELDS_AVAILABLE']));");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "});");
               fwrite($routerFile, "\n");
