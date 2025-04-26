@@ -99,7 +99,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
       break;
     }
 
-    APP::DB_CONNECTION()->Query($queryString, $sqlObj);
+    $sqlObj = APP::DB_CONNECTION()->Query($queryString);
     while ($o=$sqlObj->FetchObject())
     {
       if (is_array($tablesList) && array_search($o->Table, $tablesList)!==false) {
@@ -290,7 +290,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             fwrite($classFile, "\n");
             fwrite($classFile, "\t */");
             fwrite($classFile, "\n");
-            fwrite($classFile,"\tpublic function __construct(\$".$field->GetName()."=null, \$buildForeignMembers=true) {");
+            fwrite($classFile,"\tpublic function __construct(?int \$".$field->GetName()."=null, ?bool \$buildForeignMembers=true) {");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t\t\$this->buildForeignMembers = \$buildForeignMembers;");
             fwrite($classFile, "\n");
@@ -327,7 +327,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             }
             fwrite($classFile," FROM ".$db->_Tablename.(!empty($foreignTablesJoin)?" ":"")."\".(\$this->buildForeignMembers?\"$foreignTablesJoin\":\"\").\""." WHERE ".$db->GetTableName().".".$field->GetName()."=?\";");
             fwrite($classFile, "\n");
-            fwrite($classFile,"\t\t\tAPP::DB_CONNECTION()->Query(\$sql, \$rtn, array(\$".$field->GetName()."));");
+            fwrite($classFile,"\t\t\t\$rtn = APP::DB_CONNECTION()->Query(\$sql, array(\$".$field->GetName()."));");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t\t\twhile(\$row = \$rtn->FetchArray())");
             fwrite($classFile, "\n");
@@ -342,10 +342,11 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
                 fwrite($classFile, "\t\t\t\t\$this->".$field->GetName()."=(float)\$".$field->GetName().";");
               break;
               case "int":
+                fwrite($classFile, "\t\t\t\t\$this->".$field->GetName()."=(int)\$".$field->GetName().";");
+              break;
               case "string":
-              case "float":
               default:
-                fwrite($classFile, "\t\t\t\t\$this->".$field->GetName()."=\$".$field->GetName().";");
+                fwrite($classFile, "\t\t\t\t\$this->".$field->GetName()."=(string)\$".$field->GetName().";");
               break;
             }
             fwrite($classFile, "\n");
@@ -376,10 +377,11 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
                         fwrite($classFile,"\t\t\t\t\t\$this->".$field2->GetName()."_OBJ->".$field3->GetName()."=(float)\$row['".$field2->GetName()."_".$field3->GetName()."'];");
                       break;
                       case "int":
+                        fwrite($classFile,"\t\t\t\t\t\$this->".$field2->GetName()."_OBJ->".$field3->GetName()."=(int)\$row['".$field2->GetName()."_".$field3->GetName()."'];");
+                      break;
                       case "string":
-                      case "float":
                       default:
-                        fwrite($classFile,"\t\t\t\t\t\$this->".$field2->GetName()."_OBJ->".$field3->GetName()."=\$row['".$field2->GetName()."_".$field3->GetName()."'];");
+                        fwrite($classFile,"\t\t\t\t\t\$this->".$field2->GetName()."_OBJ->".$field3->GetName()."=(string)\$row['".$field2->GetName()."_".$field3->GetName()."'];");
                       break;
                     }
                     fwrite($classFile, "\n");
@@ -400,10 +402,11 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
                     fwrite($classFile,"\t\t\t\t\$this->".$field2->GetName()."=(float)\$row['".$field2->GetName()."'];");
                   break;
                   case "int":
+                    fwrite($classFile,"\t\t\t\t\$this->".$field2->GetName()."=(int)\$row['".$field2->GetName()."'];");
+                  break;
                   case "string":
-                  case "float":
                   default:
-                    fwrite($classFile,"\t\t\t\t\$this->".$field2->GetName()."=\$row['".$field2->GetName()."'];");
+                    fwrite($classFile,"\t\t\t\t\$this->".$field2->GetName()."=(string)\$row['".$field2->GetName()."'];");
                   break;
                 }
                 fwrite($classFile, "\n");
@@ -459,6 +462,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             fwrite($classFile, "\t */");
             fwrite($classFile, "\n");
             fwrite($classFile,"\tpublic function Save() {");
+            fwrite($classFile, "\n");
             $fieldsNotnull = null;
             foreach ($db->_Tablefields as $field2)
             {
@@ -487,27 +491,25 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             {
               if ($field!=$field2)
               {
-                fwrite($classFile,($countFields++>0?",":"").$db->_Tablename.".".$field2->GetName()."=".(APP::DB_TYPE() == 2 && $field2->GetDataType()=="bit"?"b":"")."?");
+                fwrite($classFile,($countFields++>0?",":"")."`".$field2->GetName()."`=:".$field2->GetName());
               }
             }
-            fwrite($classFile," WHERE ".$field->GetName()."=?\";");
+            fwrite($classFile," WHERE ".$field->GetName()."=:".$field->GetName()."\";");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\t\t\$sqlArgs = array();");
+            fwrite($classFile, "\t\t\t\t\$params = [");
             fwrite($classFile, "\n");
             $countFields = 1;
             foreach ($db->_Tablefields as $field2)
             {
-              if ($field!=$field2)
-              {
-                fwrite($classFile,"\t\t\t\t\$sqlArgs[] = ".(APP::DB_TYPE() == 2 && $field2->GetDataType()=="bit"?"\$this->".$field2->GetName()."||0":"\$this->".$field2->GetName()).";");
+                fwrite($classFile,"\t\t\t\t\t':".$field2->GetName()."' => ".(APP::DB_TYPE() == 2 && $field2->GetDataType()=="bit"?"\$this->".$field2->GetName()."||0":"\$this->".$field2->GetName()).",");
                 fwrite($classFile, "\n");
-              }
             }
-            fwrite($classFile,"\t\t\t\t\$sqlArgs[] = \$this->".$field->GetName().";");
+            fwrite($classFile, "\t\t\t\t];");
+            fwrite($classFile, "\n");
             fwrite($classFile, "\n");
             fwrite($classFile,"\t\t\t\t\$method = \"U\";");
             fwrite($classFile, "\n");
-            fwrite($classFile,"\t\t\t\t\$ret = APP::DB_CONNECTION()->Query(\$sql, \$rtn, \$sqlArgs);");
+            fwrite($classFile,"\t\t\t\t\$ret = APP::DB_CONNECTION()->Query(\$sql, \$params);");
             fwrite($classFile, "\n");
             fwrite($classFile,"\t\t\t} else {");
             // Insert
@@ -527,25 +529,27 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             {
               if ($field!=$field2)
               {
-                fwrite($classFile,($countFields++>0?",":"")."".(APP::DB_TYPE() == 2 && $field2->GetDataType()=="bit"?"b":"")."?");
+                fwrite($classFile,($countFields++>0?",":"").":".$field2->GetName());
               }
             }
             fwrite($classFile, ")\";");
             fwrite($classFile, "\n");
             $countFields = 1;
-            fwrite($classFile, "\t\t\t\t\$sqlArgs = array();");
+            fwrite($classFile, "\t\t\t\t\$params = [");
             fwrite($classFile, "\n");
             foreach ($db->_Tablefields as $field2)
             {
               if ($field!=$field2)
               {
-                fwrite($classFile,"\t\t\t\t\$sqlArgs[] = ".(APP::DB_TYPE() == 2 && $field2->GetDataType()=="bit"?"\$this->".$field2->GetName()."||0":"\$this->".$field2->GetName()).";");
+                fwrite($classFile,"\t\t\t\t\t':".$field2->GetName()."' => ".(APP::DB_TYPE() == 2 && $field2->GetDataType()=="bit"?"\$this->".$field2->GetName()."||0":"\$this->".$field2->GetName()).",");
                 fwrite($classFile, "\n");
               }
             }
+            fwrite($classFile, "\t\t\t\t];");
+            fwrite($classFile, "\n");
             fwrite($classFile,"\t\t\t\t\$method = \"I\";");
             fwrite($classFile, "\n");
-            fwrite($classFile,"\t\t\t\t\$ret = APP::DB_CONNECTION()->Query(\$sql, \$rtn, \$sqlArgs);");
+            fwrite($classFile,"\t\t\t\t\$ret = APP::DB_CONNECTION()->Query(\$sql, \$params);");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t\t\t\tif (\$ret) \$this->".$field->GetName()." = APP::DB_CONNECTION()->GetLastInsertedID('".$db->_Tablename."');");
             fwrite($classFile, "\n");
@@ -590,7 +594,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             fwrite($classFile, "\n");
             fwrite($classFile,"\t\t\$method = \"D\";");
             fwrite($classFile, "\n");
-            fwrite($classFile,"\t\tAPP::DB_CONNECTION()->Query(\$sql, \$rtn, array(\$this->".$db->_PrimaryFieldName."));");
+            fwrite($classFile,"\t\t\$rtn = APP::DB_CONNECTION()->Query(\$sql, array(\$this->".$db->_PrimaryFieldName."));");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t\t\$this->__log[' ']=array(\"\",\"\");");
             fwrite($classFile, "\n");
@@ -759,9 +763,9 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
 
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\t\tAPP::DB_CONNECTION()->Query(\$_sql.\" \".(!empty(\$this->_group)?\"GROUP BY \".\$this->_group:\"\").\" \".(!empty(\$this->_order)?\"ORDER BY \".\$this->_order:\"\").\" \".(\$this->_limitEnd?(empty(\$this->_order)?\"ORDER BY ".$db->_Tablename.".".$db->_PrimaryFieldName." \":\"\").APP::DB_CONNECTION()->Limit(\$this->_limitEnd, \$this->_limitStart):\"\"), \$rtn, \$this->_args);");
+        fwrite($classFile, "\t\t\$rtn = APP::DB_CONNECTION()->Query(\$_sql.\" \".(!empty(\$this->_group)?\"GROUP BY \".\$this->_group:\"\").\" \".(!empty(\$this->_order)?\"ORDER BY \".\$this->_order:\"\").\" \".(\$this->_limitEnd?(empty(\$this->_order)?\"ORDER BY ".$db->_Tablename.".".$db->_PrimaryFieldName." \":\"\").APP::DB_CONNECTION()->Limit(\$this->_limitEnd, \$this->_limitStart):\"\"), \$this->_args);");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\t\treturn \$rtn->FetchNumberResults();");
+        fwrite($classFile, "\t\treturn \$rtn->getRowCount();");
         fwrite($classFile, "\n");
         fwrite($classFile,"\t}");
         fwrite($classFile, "\n");
@@ -822,7 +826,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
 
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\t\tAPP::DB_CONNECTION()->Query(\$this->_sql.\" \".(!empty(\$this->_group)?\"GROUP BY \".\$this->_group:\"\").\" \".(!empty(\$this->_order)?\"ORDER BY \".\$this->_order:\"\").\" \".(\$this->_limitEnd?(empty(\$this->_order)?\"ORDER BY ".$db->_Tablename.".".$db->_PrimaryFieldName." \":\"\").APP::DB_CONNECTION()->Limit(\$this->_limitEnd, \$this->_limitStart):\"\"), \$rtn, \$this->_args);");
+        fwrite($classFile, "\t\t\$rtn = APP::DB_CONNECTION()->Query(\$this->_sql.\" \".(!empty(\$this->_group)?\"GROUP BY \".\$this->_group:\"\").\" \".(!empty(\$this->_order)?\"ORDER BY \".\$this->_order:\"\").\" \".(\$this->_limitEnd?(empty(\$this->_order)?\"ORDER BY ".$db->_Tablename.".".$db->_PrimaryFieldName." \":\"\").APP::DB_CONNECTION()->Limit(\$this->_limitEnd, \$this->_limitStart):\"\"),\$this->_args);");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t\twhile(\$row = \$rtn->FetchArray())");
         fwrite($classFile, "\n");
@@ -855,10 +859,11 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
                   fwrite($classFile,"\t\t\t\t\t\$_OBJ->".$field3->GetName()."=(float)\$row['".$field2->GetName()."_".$field3->GetName()."'];");
                 break;
                 case "int":
+                  fwrite($classFile,"\t\t\t\t\t\$_OBJ->".$field3->GetName()."=(int)\$row['".$field2->GetName()."_".$field3->GetName()."'];");
+                break;
                 case "string":
-                case "float":
                 default:
-                  fwrite($classFile,"\t\t\t\t\t\$_OBJ->".$field3->GetName()."=\$row['".$field2->GetName()."_".$field3->GetName()."'];");
+                  fwrite($classFile,"\t\t\t\t\t\$_OBJ->".$field3->GetName()."=(string)\$row['".$field2->GetName()."_".$field3->GetName()."'];");
                 break;
               }
               fwrite($classFile, "\n");
@@ -881,10 +886,11 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
               fwrite($classFile,"\t\t\t\t\$obj->".$field2->GetName()."=(float)\$row['".$field2->GetName()."'];");
             break;
             case "int":
+              fwrite($classFile,"\t\t\t\t\$obj->".$field2->GetName()."=(int)\$row['".$field2->GetName()."'];");
+            break;
             case "string":
-            case "float":
             default:
-              fwrite($classFile,"\t\t\t\t\$obj->".$field2->GetName()."=\$row['".$field2->GetName()."'];");
+              fwrite($classFile,"\t\t\t\t\$obj->".$field2->GetName()."=(string)\$row['".$field2->GetName()."'];");
             break;
           }
           fwrite($classFile, "\n");

@@ -5,6 +5,8 @@
 * @author Duarte Peixinho
 */
 
+declare(strict_types=1);
+
 namespace LazyMePHP\Forms;
 use Pecee\SimpleRouter\SimpleRouter;
 use \eftec\bladeone\BladeOne;

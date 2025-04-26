@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * LazyMePHP
  * @copyright This file is part of the LazyMePHP developed by Duarte Peixinho
@@ -80,5 +82,6 @@ header('Access-Control-Allow-Methods: POST, GET, DELETE, PUT');
  * Runs logging activity
  */
 APP::LOG_ACTIVITY();
+APP::DB_CONNECTION()->Close();
 
 ?>

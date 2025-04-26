@@ -1,195 +1,349 @@
 <?php
-
 /**
- * LazyMePHP
-* @copyright This file is part of the LazyMePHP developed by Duarte Peixinho
-* @author Duarte Peixinho
-*/
+ * LazyMePHP MySQL Database Handler
+ * @copyright This file is part of LazyMePHP developed by Duarte Peixinho
+ * @author Duarte Peixinho
+ */
+
+declare(strict_types=1);
 
 namespace LazyMePHP\DB;
-use \PDO;
-require_once "ISQL.php";
 
-final class MYSQL extends ISQL {
+require "ISQL.php";
 
-  /**
-   * Public Constructor
-   *
-   * @param (NULL)
-   * @return (NULL)
-   */
-  function __construct($db_name, $db_user, $db_password, $db_host) {
-    parent::ISQL($db_name, $db_user, $db_password, $db_host);
-  }
+use PDO;
+use PDOException;
+use PDOStatement;
 
-  /**
-   * Connect
-   *
-   * Protected Method that Creates DB Connection
-   *
-   * @param (NULL)
-   * @return (NULL)
-   */
-  protected function Connect()
-  {
-    if (!$this->isConnected)
+/**
+ * MySQL database handler using PDO (Singleton).
+ */
+final class MySQL extends ISQL
+{
+    private static ?self $instance = null;
+    private string $configHash;
+
+    /**
+     * Private constructor to prevent direct instantiation.
+     *
+     * @param string $dbName Database name
+     * @param string $dbUser Database username
+     * @param string $dbPassword Database password
+     * @param string $dbHost Database host
+     */
+    private function __construct(string $dbName, string $dbUser, string $dbPassword, string $dbHost)
     {
-      try {
-        $this->connection = new \PDO("mysql:host=".$this->db_host.";dbname=".$this->db_name.";charset=utf8",$this->db_username,$this->db_password);
-        $this->connection->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-        $this->isConnected = true;
-      } catch (\PDOException $e) {
-        die ("Connection failed: ".$e->getMessage());
-        return false;
-      }
+        parent::__construct($dbName, $dbUser, $dbPassword, $dbHost);
+        $this->configHash = md5("{$dbName}:{$dbUser}:{$dbPassword}:{$dbHost}");
     }
-  }
 
-  /**
-   * Query
-   *
-   * Create DB Query
-   *
-   * @param (string) ($string)
-   * @param (MYSQL_OBJECT) (object)
-   * @return (NULL)
-   */
-  public function Query($string, &$obj, $args = array())
-  {
-    if (!$this->isConnected) $this->Connect();
-    if ($this->isConnected) {
+    /**
+     * Retrieves or creates the singleton instance.
+     *
+     * @param string $dbName Database name
+     * @param string $dbUser Database username
+     * @param string $dbPassword Database password
+     * @param string $dbHost Database host
+     * @return self Singleton instance
+     * @throws DatabaseException If instance exists with different configuration
+     */
+    public static function getInstance(
+        string $dbName,
+        string $dbUser,
+        string $dbPassword,
+        string $dbHost
+    ): self {
+        $configHash = md5("{$dbName}:{$dbUser}:{$dbPassword}:{$dbHost}");
+        if (self::$instance !== null && self::$instance->configHash !== $configHash) {
+            throw new DatabaseException('MySQL instance already initialized with different configuration.');
+        }
 
-      if ($obj==NULL)
-      $obj = new MYSQL_OBJECT();
+        if (self::$instance === null) {
+            self::$instance = new self($dbName, $dbUser, $dbPassword, $dbHost);
+        }
 
-      $obj->queryString = $string;
-      $obj->db_result = $this->connection->prepare($obj->queryString);
-      foreach ($args as $key => $value) {
-        $obj->db_result->bindValue($key+1, $value);
-      }
-      try {
-        $obj->db_result->execute();
-      }
-      catch (\PDOException $e) {
-        $_SESSION['APP']['ERROR']['DB']['MESSAGE'] = $e->getMessage();
-        $_SESSION['APP']['ERROR']['DB']['CODE'] = $e->getCode();
-        return false;
-      }
+        return self::$instance;
     }
-    return true;
-  }
 
-  /**
-   * Last Inserted ID
-   *
-   * Returns last inserted id
-   *
-   * @param (NULL)
-   * @return (int) (last id inserted)
-   */
-  public function GetLastInsertedID($table)
-  {
-    $this->Query("SELECT LAST_INSERT_ID() as ID", $obj);
-    while ($o=$obj->FetchObject()) return intval($o->ID);
-  }
+    /**
+     * Resets the singleton instance (for testing purposes).
+     */
+    public static function resetInstance(): void
+    {
+        self::$instance = null;
+    }
 
-  /**
-   * Limit
-   *
-   * Returns string for specifying limits clause
-   *
-   * @param (int) (end)
-   * @param (int) (start)
-   * @return (string) (limit clause)
-   */
-  public function Limit($end, $start = 0)
-  {
-    return "LIMIT $start, $end";
-  }
+    /**
+     * Gets the PDO connection.
+     *
+     * @return PDO PDO instance
+     * @throws DatabaseException If connection fails
+     */
+    public function getConnection(): PDO
+    {
+        $this->connect();
+        return $this->connection;
+    }
 
-  /**
-   * Close
-   *
-   * Closes Database Connection
-   *
-   * @param (NULL)
-   * @return (object) (fetch_object)
-   */
-  public function Close()
-  {
-    if ($this->isConnected)
-    $this->connection = null;
+    /**
+     * Establishes a database connection.
+     *
+     * @throws DatabaseException If connection fails
+     */
+    protected function connect(): void
+    {
+        if ($this->isConnected) {
+            return;
+        }
 
-    $this->isConnected = false;
-  }
+        try {
+            $this->connection = new PDO(
+                "mysql:host={$this->dbHost};dbname={$this->dbName};charset=utf8mb4",
+                $this->dbUsername,
+                $this->dbPassword,
+                [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_EMULATE_PREPARES => false,
+                ]
+            );
+            $this->dbSelected = $this->dbName;
+            $this->isConnected = true;
+        } catch (PDOException $e) {
+            throw new DatabaseException("Connection failed: {$e->getMessage()}", (int)$e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Executes a database query and returns a result object.
+     *
+     * @param string $query SQL query string
+     * @param array<string|int, mixed> $params Query parameters (positional or named)
+     * @return IDBObject Query result object
+     * @throws DatabaseException If query execution fails or parameter count mismatches
+     */
+    public function query(string $query, array $params = []): IDBObject
+    {
+        $this->connect();
+        $result = new MySQLResult($query);
+
+        try {
+            $stmt = $this->connection->prepare($query);
+            if ($stmt === false) {
+                throw new DatabaseException("Failed to prepare query: $query");
+            }
+
+            // Validate parameter count
+            $paramKeys = array_keys($params);
+            $isPositional = !empty($paramKeys) && is_int($paramKeys[0]);
+            if ($isPositional) {
+                $placeholderCount = substr_count($query, '?');
+                if (count($params) !== $placeholderCount) {
+                    throw new DatabaseException(
+                        "Parameter count mismatch: expected $placeholderCount positional placeholders (?), got " . count($params) . " parameters",
+                        0,
+                        null,
+                        $query,
+                        $params
+                    );
+                }
+            } else {
+                // Extract named placeholders (e.g., :description)
+                preg_match_all('/:([a-zA-Z0-9_]+)/', $query, $matches);
+                $placeholders = array_unique($matches[0]);
+                $expectedCount = count($placeholders);
+                $providedCount = count($params);
+                if ($providedCount > 0 && $expectedCount === 0) {
+                    throw new DatabaseException(
+                        "No named placeholders found in query, but $providedCount parameters provided",
+                        0,
+                        null,
+                        $query,
+                        $params
+                    );
+                }
+                if ($providedCount !== $expectedCount) {
+                    throw new DatabaseException(
+                        "Parameter count mismatch: expected $expectedCount named placeholders, got $providedCount parameters",
+                        0,
+                        null,
+                        $query,
+                        $params
+                    );
+                }
+                // Verify each parameter exists in the query
+                foreach ($paramKeys as $key) {
+                    if (!in_array($key, $placeholders, true)) {
+                        throw new DatabaseException(
+                            "Parameter $key not found in query",
+                            0,
+                            null,
+                            $query,
+                            $params
+                        );
+                    }
+                }
+            }
+
+            // Bind parameters
+            foreach ($params as $key => $value) {
+                $param = $isPositional ? ($key + 1) : $key;
+                $type = \PDO::PARAM_STR;
+                if (is_bool($value)) {
+                    $value = $value ? 1 : 0;
+                    $type = \PDO::PARAM_INT;
+                } elseif (is_int($value) || (is_string($value) && ctype_digit($value))) {
+                    $value = (int)$value;
+                    $type = \PDO::PARAM_INT;
+                } elseif (is_null($value)) {
+                    $type = \PDO::PARAM_NULL;
+                }
+                $stmt->bindValue($param, $value, $type);
+            }
+
+            $stmt->execute();
+            $result->setStatement($stmt);
+        } catch (PDOException $e) {
+            throw new DatabaseException(
+                "Query failed: {$e->getMessage()}",
+                (int)$e->getCode(),
+                $e,
+                $query,
+                $params
+            );
+        }
+
+        return $result;
+    }
+
+    /**
+     * Returns the ID of the last inserted row.
+     *
+     * @return int Last inserted ID
+     * @throws DatabaseException If retrieval fails
+     */
+    public function getLastInsertedId(): int
+    {
+        $this->connect();
+        return (int)$this->connection->lastInsertId();
+    }
+
+    /**
+     * Generates a LIMIT clause for MySQL.
+     *
+     * @param int $end Number of rows to return
+     * @param int $start Starting offset
+     * @return string LIMIT clause
+     */
+    public function limit(int $end, int $start = 0): string
+    {
+        return "LIMIT {$start}, {$end}";
+    }
+
+    /**
+     * Closes the database connection.
+     */
+    public function close(): void
+    {
+        if ($this->isConnected) {
+            $this->connection = null;
+            $this->isConnected = false;
+            $this->dbSelected = null;
+        }
+    }
 }
 
-final class MYSQL_OBJECT extends IDB_OBJECT {
+/**
+ * MySQL query result handler.
+ */
+final class MySQLResult extends IDBObject
+{
+    /**
+     * Constructor.
+     *
+     * @param string $queryString SQL query string
+     */
+    public function __construct(string $queryString)
+    {
+        $this->queryString = $queryString;
+    }
 
-  /**
-   * GetQueryString
-   *
-   * Returns Query String
-   *
-   * @param (NULL)
-   * @return (object) (fetch_object)
-   */
-  public function GetQueryString()
-  {
-    return $this->queryString;
-  }
+    /**
+     * Sets the PDO statement for the result.
+     *
+     * @param PDOStatement $statement PDO statement
+     */
+    public function setStatement(PDOStatement $statement): void
+    {
+        $this->dbResult = $statement;
+    }
 
-  /**
-   * GetDBResult
-   *
-   * Returns Database Result in Object
-   *
-   * @param (NULL)
-   * @return (object) (fetch_object)
-   */
-  public function GetDBResult()
-  {
-    return $this->db_result;
-  }
+    /**
+     * Returns the query string.
+     *
+     * @return string Query string
+     */
+    public function getQueryString(): string
+    {
+        return $this->queryString;
+    }
 
-  /**
-   * FetchObject
-   *
-   * Returns Database Number of Results
-   *
-   * @param (NULL)
-   * @return (object) (fetch_object)
-   */
-  public function FetchObject()
-  {
-    return $this->db_result->fetch(\PDO::FETCH_OBJ);
-  }
+    /**
+     * Returns the PDO statement.
+     *
+     * @return PDOStatement|null PDO statement
+     */
+    public function getStatement(): ?PDOStatement
+    {
+        return $this->dbResult;
+    }
 
-  /**
-   * FetchArray
-   *
-   * Returns Database Result in Array
-   *
-   * @param (NULL)
-   * @return (object) (fetch_object)
-   */
-  public function FetchArray()
-  {
-    return $this->db_result->fetch(\PDO::FETCH_ASSOC);
-  }
+    /**
+     * Fetches the next row as an object.
+     *
+     * @return object|null Row as stdClass or null if no more rows
+     */
+    public function fetchObject(): ?object
+    {
+        if (!$this->dbResult) {
+            return null;
+        }
+        $result = $this->dbResult->fetch(PDO::FETCH_OBJ);
+        return $result === false ? null : $result;
+    }
 
-  /**
-   * FetchNumberResults
-   *
-   * Returns Database Number of Results
-   *
-   * @param (NULL)
-   * @return (int)
-   */
-  public function FetchNumberResults()
-  {
-    return $this->db_result->rowCount();
-  }
+    /**
+     * Fetches the next row as an associative array.
+     *
+     * @return array|null Row as array or null if no more rows
+     */
+    public function fetchArray(): ?array
+    {
+        if (!$this->dbResult) {
+            return null;
+        }
+        $result = $this->dbResult->fetch(PDO::FETCH_ASSOC);
+        return $result === false ? null : $result;
+    }
+
+    /**
+     * Fetches all rows as an array of associative arrays.
+     *
+     * @return array Rows as arrays
+     */
+    public function fetchAll(): array
+    {
+        return $this->dbResult ? $this->dbResult->fetchAll(PDO::FETCH_ASSOC) : [];
+    }
+
+    /**
+     * Returns the number of rows affected or selected.
+     *
+     * @return int Row count
+     */
+    public function getRowCount(): int
+    {
+        return $this->dbResult ? $this->dbResult->rowCount() : 0;
+    }
 }
-
 ?>

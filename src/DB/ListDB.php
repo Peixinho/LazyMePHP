@@ -1,210 +1,271 @@
 <?php
-
 /**
- * LazyMePHP
-* @copyright This file is part of the LazyMePHP developed by Duarte Peixinho
-* @author Duarte Peixinho
-*/
+ * LazyMePHP Query Builder
+ * @copyright This file is part of LazyMePHP developed by Duarte Peixinho
+ * @author Duarte Peixinho
+ */
+
+declare(strict_types=1);
 
 namespace LazyMePHP\DB;
-use \LazyMePHP\Config\Internal\APP;
 
-class ListDB {
+use LazyMePHP\Config\Internal\APP;
 
-    private $_Table;
-    private $_Fields;
-    private $_FieldsArr = array();
-    private $_Filter;
-    private $_Limit;
-    private $_Offset;
-    private $_Order;
-    private $_CustomFilter;
-    private $_fieldsFilterCounter = array();
+/**
+ * Query builder for generating SQL SELECT queries.
+ */
+final class ListDB
+{
+    private string $table;
+    private string $fields = '*';
+    private array $filters = [];
+    private array $filterParams = [];
+    private ?int $limit = null;
+    private ?int $offset = null;
+    private array $orders = [];
 
     /**
-	 * Constructor
-	 *
-	 * @param (string) ($table)
-	 * @return NULL
-	 */
-    public function __construct($table)
+     * Constructor.
+     *
+     * @param string $table Table name
+     * @throws \InvalidArgumentException If table name is invalid
+     */
+    public function __construct(string $table)
     {
-        $this->_Table = $table;
-        if (isset($class)) {
-			$this->_Class = $class;
-		}
+        if (!$this->isValidIdentifier($table)) {
+            throw new \InvalidArgumentException('Invalid table name');
+        }
+        $this->table = $table;
     }
 
     /**
-	 * SetOrder
-	 *
-	 * Sets the order of the results
-	 *
-	 * @param (string) ($field)
-     * @param (string) ($order)
-	 * @return NULL
-	 */
-    public function SetOrder($field, $order = "ASC")
+     * Sets the order of the results.
+     *
+     * @param string $field Field to order by
+     * @param string $direction Order direction (ASC or DESC)
+     * @return self
+     * @throws \InvalidArgumentException If field or direction is invalid
+     */
+    public function setOrder(string $field, string $direction = 'ASC'): self
     {
-        $this->_Order = (strlen($this->_Order)>0?$this->_Order.", $field $order ":" ORDER BY $field $order ");
+        if (!$this->isValidIdentifier($field)) {
+            throw new \InvalidArgumentException('Invalid order field');
+        }
+        $direction = strtoupper($direction);
+        if (!in_array($direction, ['ASC', 'DESC'], true)) {
+            throw new \InvalidArgumentException('Invalid order direction');
+        }
+        $this->orders[] = "$field $direction";
+        return $this;
     }
 
     /**
-	 * AddFilter
-	 *
-	 * Adds a new filter
-	 *
-	 * @param (string) ($field)
-     * @param (string) ($value)
-     * @param (string) ($append)
-     * @param (string) ($operator)
-	 * @return NULL
-	 */
-    public function AddFilter($field, $value, $append = NULL, $operator = "=")
+     * Adds a filter condition.
+     *
+     * @param string $field Field to filter
+     * @param mixed $value Filter value
+     * @param string $operator Comparison operator
+     * @param string|null $logical Logical operator (AND or OR)
+     * @return self
+     * @throws \InvalidArgumentException If field or operator is invalid
+     */
+    public function addFilter(string $field, $value, string $operator = '=', ?string $logical = null): self
     {
-        if (!array_key_exists($field, $this->_fieldsFilterCounter)) {
-			$this->_fieldsFilterCounter[$field] = 1;
-		}
-        else {
-			$this->_fieldsFilterCounter[$field]++;
-		}
-        $this->_Filter .= (strlen($this->_Filter)>0?$append:"")." $field $operator ? ";
-        array_push($this->_FieldsArr, $value);
-        //$this->_Filter .= (strlen($this->_Filter)>0?$append:"")." $field $operator '$value' ";
+        if (!$this->isValidIdentifier($field)) {
+            throw new \InvalidArgumentException('Invalid filter field');
+        }
+        $operator = strtoupper($operator);
+        if (!in_array($operator, ['=', '<', '>', '<=', '>=', '<>', 'LIKE'], true)) {
+            throw new \InvalidArgumentException('Invalid filter operator');
+        }
+        $logical = $logical ? strtoupper($logical) : null;
+        if ($logical && !in_array($logical, ['AND', 'OR'], true)) {
+            throw new \InvalidArgumentException('Invalid logical operator');
+        }
+
+        $param = ":filter_" . count($this->filterParams);
+        $this->filters[] = [
+            'field' => $field,
+            'operator' => $operator,
+            'param' => $param,
+            'logical' => $logical,
+        ];
+        $this->filterParams[$param] = $value;
+        return $this;
     }
 
     /**
-	 * SetFields
-	 *
-	 * Sets Query Fields
-	 *
-	 * @param (string) ($fields)
-	 * @return NULL
-	 */
-    public function SetFields($fields)
+     * Sets the fields to select.
+     *
+     * @param string $fields Comma-separated field names
+     * @return self
+     * @throws \InvalidArgumentException If fields are invalid
+     */
+    public function setFields(string $fields): self
     {
-        $this->_Fields = preg_replace('/\s+/', '', $fields);
+        $fields = trim($fields);
+        if (empty($fields)) {
+            throw new \InvalidArgumentException('Fields cannot be empty');
+        }
+        // Basic validation: split and check identifiers
+        $fieldArray = array_map('trim', explode(',', $fields));
+        foreach ($fieldArray as $field) {
+            // Allow aliases and simple expressions
+            $parts = array_map('trim', explode(' AS ', $field));
+            $mainField = $parts[0];
+            if (!$this->isValidFieldExpression($mainField)) {
+                throw new \InvalidArgumentException("Invalid field: $mainField");
+            }
+        }
+        $this->fields = $fields;
+        return $this;
     }
 
     /**
-	 * AddCustomFilter
-	 *
-	 * Ads a custom filter to query
-	 *
-	 * @param (string) ($fields)
-	 * @return NULL
-	 */
-    public function AddCustomFilter($filter)
+     * Clears all filters, limits, and orders.
+     *
+     * @return self
+     */
+    public function clearFilter(): self
     {
-        $this->_CustomFilter = $filter;
+        $this->filters = [];
+        $this->filterParams = [];
+        $this->limit = null;
+        $this->offset = null;
+        $this->orders = [];
+        return $this;
     }
 
     /**
-	 * Clear Filter
-	 *
-	 * Clears Created Filters
-	 *
-	 * @param (NULL)
-	 * @return NULL
-	 */
-    public function ClearFilter()
+     * Sets the limit and offset for the results.
+     *
+     * @param int $limit Number of rows to return
+     * @param int $offset Starting offset
+     * @return self
+     * @throws \InvalidArgumentException If limit or offset is negative
+     */
+    public function setLimit(int $limit, int $offset = 0): self
     {
-        $this->_Filter = NULL;
-        $this->_Limit = NULL;
-        $this->_Offset = NULL;
-        $this->_FieldsArr = NULL;
+        if ($limit < 0 || $offset < 0) {
+            throw new \InvalidArgumentException('Limit and offset must be non-negative');
+        }
+        $this->limit = $limit;
+        $this->offset = $offset;
+        return $this;
     }
 
     /**
-	 * Set Limit
-	 *
-	 * Sets the limit and offset of the results
-	 *
-	 * @param (number) ($limit)
-     * @param (number) ($offset)
-	 * @return NULL
-	 */
-    public function SetLimit($limit, $offset = 0)
+     * Gets the generated results.
+     *
+     * @return array Array of associative arrays representing rows
+     * @throws DatabaseException If query execution fails
+     */
+    public function getList(): array
     {
-        $this->_Limit = $limit;
-        $this->_Offset = $offset;
+        $db = APP::DB_CONNECTION();
+        $query = $this->buildQuery();
+        $params = $this->filterParams;
+
+        if ($this->limit !== null && $this->offset !== null) {
+            if ($db instanceof MSSQL) {
+                // MSSQL requires ORDER BY for OFFSET...FETCH
+                if (empty($this->orders)) {
+                    $this->orders[] = '(SELECT NULL)';
+                }
+            }
+            // Add limit and offset as parameters
+            $params[':limit'] = $this->limit;
+            $params[':offset'] = $this->offset;
+        }
+
+        try {
+            $result = $db->query($query, $params);
+            return $result->fetchAll();
+        } catch (\PDOException $e) {
+            throw new DatabaseException("Query failed: {$e->getMessage()}", (int)$e->getCode(), $e);
+        }
     }
 
     /**
-	 * GetList
-	 *
-	 * Gets the generated results
-	 *
-	 * @param (NULL)
-	 * @return array
-	 */
-    public function GetList()
+     * Builds the SQL query based on the current configuration.
+     *
+     * @return string SQL query
+     */
+    private function buildQuery(): string
     {
-        // Add Parentheses to Filters
-        foreach ($this->_fieldsFilterCounter as $key => $field) {
-            if ($field>1)
-            {
-                // Set First Parentheses
-                $pos = strpos($this->_Filter, " ".$key." ");
-                $this->_Filter = substr_replace($this->_Filter, " (", $pos, 0);
+        $db = APP::DB_CONNECTION();
 
-                // Set Second Parentheses
-                $pos2 = strrpos($this->_Filter, " ".$key." ", $pos);
-                $posF = strpos($this->_Filter, " ? ", $pos2);
-                $this->_Filter = substr_replace($this->_Filter, " )", $posF+2, 0);
+        // Build WHERE clause
+        $where = '';
+        if (!empty($this->filters)) {
+            $conditions = [];
+            $group = [];
+            $currentGroup = null;
+
+            foreach ($this->filters as $filter) {
+                $condition = "{$filter['field']} {$filter['operator']} {$filter['param']}";
+                if ($filter['logical'] === 'AND' && $currentGroup !== null) {
+                    $group[] = $condition;
+                } else {
+                    if (!empty($group)) {
+                        $conditions[] = '(' . implode(' AND ', $group) . ')';
+                        $group = [];
+                    }
+                    $conditions[] = $condition;
+                    $currentGroup = $filter['logical'];
+                }
+            }
+
+            if (!empty($group)) {
+                $conditions[] = '(' . implode(' AND ', $group) . ')';
+            }
+
+            $where = 'WHERE ' . implode(' OR ', $conditions);
+        }
+
+        // Build ORDER BY clause
+        $order = '';
+        if (!empty($this->orders)) {
+            $order = 'ORDER BY ' . implode(', ', $this->orders);
+        }
+
+        // Build LIMIT clause
+        $limitClause = '';
+        if ($this->limit !== null && $this->offset !== null) {
+            if ($db instanceof MySQL) {
+                $limitClause = 'LIMIT :limit OFFSET :offset';
+            } elseif ($db instanceof SQLite) {
+                $limitClause = 'LIMIT :limit OFFSET :offset';
+            } elseif ($db instanceof MSSQL) {
+                $limitClause = 'OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY';
             }
         }
 
-        if (strlen($this->_CustomFilter)>0) {
-			$this->_Filter.=$this->_CustomFilter;
-		}
-
-        switch(APP::DB_TYPE())
-        {
-            case 1:
-            // MSSQL
-                $queryString =
-				(strlen($this->_Limit)>0 || strlen($this->_Offset)>0?"SELECT * FROM (":"")
-				."SELECT "
-				.$this->_Fields
-				." "
-				.(strlen($this->_Limit)>0 || strlen($this->_Offset>0)?", ROW_NUMBER() OVER (".(strlen($this->_Order)>0?$this->_Order:"ORDER BY (SELECT NULL)").") as __ROW":"")
-				." FROM ".$this->_Table." ".(strlen($this->_Filter)>0?"WHERE ".$this->_Filter:"")." "
-				.(strlen($this->_Limit)>0 || strlen($this->_Offset>0)?"":$this->_Order)." "
-				.(strlen($this->_Limit)>0 || strlen($this->_Offset)>0?") T WHERE ":"")." "
-				.(strlen($this->_Offset)>0?"__ROW >= '".$this->_Offset."'":"")." "
-				.(strlen($this->_Limit)>0?(strlen($this->_Offset)>0?" AND __ROW <= '".$this->_Limit:" __ROW <= '".$this->_Limit)."'":"");
-            break;
-            case 2:
-            // MySQL
-            default:
-                $queryString = "SELECT "
-                .$this->_Fields." FROM "
-                .$this->_Table." "
-                .(strlen($this->_Filter)>0?"WHERE ".$this->_Filter:"")." "
-                .$this->_Order." "
-                .($this->_Limit>0?"LIMIT ".$this->_Limit:"")." ".($this->_Offset>0?"OFFSET ".$this->_Offset:"");
-            break;
-        }
-
-        APP::DB_CONNECTION()->Query($queryString, $obj, $this->_FieldsArr);
-
-        $arr = array();
-
-        while($o = $obj->FetchObject())
-        {
-            $row = array();
-            foreach (explode(',',$this->_Fields) as $field) {
-                $_field = explode(" as ", $field);
-                $_field = $_field[sizeof($_field)-1];
-                $row[$_field]=$o->$_field;
-            }
-            array_push($arr,$row);
-        }
-
-        return $arr;
+        return "SELECT {$this->fields} FROM {$this->table} {$where} {$order} {$limitClause}";
     }
 
+    /**
+     * Validates a SQL identifier (table or field name).
+     *
+     * @param string $identifier Identifier to validate
+     * @return bool True if valid
+     */
+    private function isValidIdentifier(string $identifier): bool
+    {
+        // Basic validation: alphanumeric, underscores, and dots (for table.field)
+        return preg_match('/^[a-zA-Z0-9_]+(\.[a-zA-Z0-9_]+)?$/', $identifier) === 1;
+    }
+
+    /**
+     * Validates a field expression (including aliases, functions).
+     *
+     * @param string $field Field expression
+     * @return bool True if valid
+     */
+    private function isValidFieldExpression(string $field): bool
+    {
+        // Allow identifiers, functions (e.g., COUNT(*)), and simple expressions
+        return preg_match('/^[a-zA-Z0-9_\*\(\)]+(\.[a-zA-Z0-9_]+)?$/', $field) === 1;
+    }
 }
-
 ?>

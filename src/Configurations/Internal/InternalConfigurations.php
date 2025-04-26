@@ -6,6 +6,8 @@
 * @author Duarte Peixinho
 */
 
+declare(strict_types=1);
+
 namespace LazyMePHP\Config\Internal;
 use \LazyMePHP\DB\MYSQL;
 use \LazyMePHP\DB\MSSQL;
@@ -167,17 +169,17 @@ class APP
     if (!APP::$_db_connection) {
       if (APP::$_db_type == 1) // MSSQL
       {
-        APP::$_db_connection = new MSSQL(APP::$_db_name, APP::$_db_user, APP::$_db_password, APP::$_db_host);
+        APP::$_db_connection = MSSQL::getInstance(APP::$_db_name, APP::$_db_user, APP::$_db_password, APP::$_db_host);
       }
 
       else if (APP::$_db_type == 2) // MYSQL
       {
-        APP::$_db_connection = new MYSQL(APP::$_db_name, APP::$_db_user, APP::$_db_password, APP::$_db_host);
+        APP::$_db_connection = MYSQL::getInstance(APP::$_db_name, APP::$_db_user, APP::$_db_password, APP::$_db_host);
       }
 
       else if (APP::$_db_type == 3) // SQLITE
       {
-        APP::$_db_connection = new SQLITE();
+        APP::$_db_connection = SQLITE::getInstance(APP::$_db_file_path);
       }
     }
 

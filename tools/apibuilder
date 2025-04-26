@@ -67,11 +67,14 @@ class BuildTableAPI
           fwrite($routerFile," */");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\n");
+          fwrite($routerFile, "declare(strict_types=1);");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\n");
 
           // Generate Default Visible Fields
           fwrite($routerFile,"\$GLOBALS['API_FIELDS_AVAILABLE'] = array(");
           fwrite($routerFile, "\n");
-          APP::DB_CONNECTION()->Query($queryString, $sqlObj);
+          $sqlObj = APP::DB_CONNECTION()->Query($queryString);
           $_i = 0;
           while ($o=$sqlObj->FetchObject())
           {
@@ -104,7 +107,7 @@ class BuildTableAPI
     if ($replaceRouteApi) {
 
       // Generate Default Visible Fields
-      APP::DB_CONNECTION()->Query($queryString, $sqlObj);
+      $sqlObj = APP::DB_CONNECTION()->Query($queryString);
       while ($o=$sqlObj->FetchObject())
       {
         if (\LazyMePHP\Helper\UNLINK($apiPath."/".$o->Table.".php"))
@@ -128,6 +131,9 @@ class BuildTableAPI
             fwrite($routerFile," */");
             fwrite($routerFile, "\n");
             fwrite($routerFile, "\n");
+            fwrite($routerFile, "declare(strict_types=1);");
+            fwrite($routerFile, "\n");
+            fwrite($routerFile, "\n");
             fwrite($routerFile, "use Pecee\SimpleRouter\SimpleRouter;");
             fwrite($routerFile, "\n");
             fwrite($routerFile, "use \LazyMePHP\Config\Internal\APP;");
@@ -144,7 +150,7 @@ class BuildTableAPI
               fwrite($routerFile, "\n");
               fwrite($routerFile, "use LazyMePHP\Forms\\".$o->Table.";");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "require_once __DIR__.\"/../Controllers/".$o->Table.".Controller.php\";");
+              fwrite($routerFile, "require_once __DIR__.\"/../Controllers/".$o->Table.".php\";");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "SimpleRouter::get('/api/".$o->Table."', function() {");
               fwrite($routerFile, "\n");
