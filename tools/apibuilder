@@ -110,6 +110,8 @@ class BuildTableAPI
       $sqlObj = APP::DB_CONNECTION()->Query($queryString);
       while ($o=$sqlObj->FetchObject())
       {
+        $db = new \LazyMePHP\DatabaseHelper\_DB_TABLE($o->Table);
+        $db->GetFieldsFromDB();
         if (\LazyMePHP\Helper\UNLINK($apiPath."/".$o->Table.".php"))
         {
           if (\LazyMePHP\Helper\TOUCH($apiPath."/".$o->Table.".php"))
@@ -162,15 +164,15 @@ class BuildTableAPI
               fwrite($routerFile, "\n");
               fwrite($routerFile, "SimpleRouter::get('/api/".$o->Table."/{".$db->GetPrimaryFieldName()."}', function (\$".$db->GetPrimaryFieldName().") {");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "\t\$data = ".$o->Table."::Edit(\$".$db->GetPrimaryFieldName().");");
+              fwrite($routerFile, "\t\$data = ".$o->Table."::Edit((int)\$".$db->GetPrimaryFieldName().");");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "\techo json_encode(\$data['".$o->Table."']->Serialize(\$GLOBALS['API_FOREIGN_DATA'], \$GLOBALS['API_FIELDS_AVAILABLE']));");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "});");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "SimpleRouter::post('/api/".$o->Table."/{id}', function (\$".$db->GetPrimaryFieldName().") {");
+              fwrite($routerFile, "SimpleRouter::post('/api/".$o->Table."/{$db->GetPrimaryFieldName()}', function (\$".$db->GetPrimaryFieldName().") {");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "\t".$o->Table."::Save(\$".$db->GetPrimaryFieldName().");");
+              fwrite($routerFile, "\t".$o->Table."::Save((int)\$".$db->GetPrimaryFieldName().");");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "\techo json_encode(array('status' => 1));");
               fwrite($routerFile, "\n");
@@ -184,9 +186,9 @@ class BuildTableAPI
               fwrite($routerFile, "\n");
               fwrite($routerFile, "});");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "SimpleRouter::delete('/api/".$o->Table."/{id}', function (\$".$db->GetPrimaryFieldName().") {");
+              fwrite($routerFile, "SimpleRouter::delete('/api/".$o->Table."/{".$db->GetPrimaryFieldName()."}}', function (\$".$db->GetPrimaryFieldName().") {");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "\t".$o->Table."::Delete(\$".$db->GetPrimaryFieldName().");");
+              fwrite($routerFile, "\t".$o->Table."::Delete((int)\$".$db->GetPrimaryFieldName().");");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "\techo json_encode(array('status' => 1));");
               fwrite($routerFile, "\n");
