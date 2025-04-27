@@ -14,6 +14,7 @@
 
 <p>
   <label>
+    <span>{{$fieldname or $name}}</span>
     <input 
       @switch($type)
         @case('radio')
@@ -29,7 +30,6 @@
       value="{{$value}}"
       @if (isset($checked)) checked @endif
     />
-    <span>{{$fieldname or $name}}</span>
   </label>
 </p>
 

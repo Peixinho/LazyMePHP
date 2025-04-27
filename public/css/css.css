@@ -83,40 +83,106 @@ checkbox {
   border-radius: 0.25rem;
   transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
-/* achor to look like a button */
-a {
-  display: inline-block;
-  font-weight: 400;
-  text-align: center;
-  white-space: nowrap;
-  vertical-align: middle;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-  border: 1px solid transparent;
-  padding: 0.375rem 0.75rem;
-  font-size: 1rem;
-  line-height: 1.5;
-  border-radius: 0.25rem;
-  transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-  decoration: none;
-  color: #007bff;
-  background-color: #fff;
-  border-color: #007bff;
-  text-decoration: none;
-  min-width: 300px;
-  max-width: 300px;
+.nav-menu {
+    --menu-bg: #212529;
+    --menu-text: #ffffff;
+    --menu-hover-text: #e9ecef;
+    --menu-active-text: #007bff;
+    --menu-disabled-text: #6c757d;
+    --menu-font-size: 16px;
+    --menu-padding: 12px 16px;
+    --menu-underline: #007bff;
+
+    display: flex;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    background-color: var(--menu-bg);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: var(--menu-font-size);
+    flex-wrap: wrap;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
-ul {
-  list-style-type: none;
-  padding: 0;
-  margin: 0;
+
+/* Menu item */
+.nav-menu li {
+    display: inline-flex;
+    align-items: center;
+    position: relative;
 }
-li {
-  display: inline-block;
-  margin-right: 10px;
+
+/* Links */
+.nav-menu li a {
+    text-decoration: none;
+    color: var(--menu-text);
+    padding: var(--menu-padding);
+    transition: color 0.2s ease-in-out;
 }
+
+/* Hover effect */
+.nav-menu li a:hover {
+    color: var(--menu-hover-text);
+}
+
+/* Focus state for accessibility */
+.nav-menu li a:focus {
+    outline: 2px solid var(--menu-active-text);
+    outline-offset: 2px;
+}
+
+/* Active/current page */
+.nav-menu li.active a {
+    color: var(--menu-active-text);
+    font-weight: 600;
+}
+
+.nav-menu li.active a::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 16px;
+    right: 16px;
+    height: 3px;
+    background-color: var(--menu-underline);
+}
+
+/* Disabled state */
+.nav-menu li.disabled span {
+    color: var(--menu-disabled-text);
+    padding: var(--menu-padding);
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .nav-menu {
+        flex-direction: column;
+        align-items: center;
+        --menu-padding: 10px 12px;
+        --menu-font-size: 14px;
+    }
+    .nav-menu li {
+        width: 100%;
+        justify-content: center;
+    }
+    .nav-menu li a,
+    .nav-menu li.disabled span {
+        width: 100%;
+        text-align: center;
+    }
+    .nav-menu li.active a::after {
+        left: 12px;
+        right: 12px;
+    }
+}
+
+
 table {
   border-collapse: collapse;
   width: 100%;
@@ -128,4 +194,81 @@ th, td {
 }
 th {
   background-color: #f2f2f2;
+}
+.pagination {
+    --pagination-bg: #f8f9fa;
+    --pagination-text: #212529;
+    --pagination-hover-bg: #e9ecef;
+    --pagination-active-bg: #007bff;
+    --pagination-active-text: #ffffff;
+    --pagination-disabled-text: #6c757d;
+    --pagination-border: #dee2e6;
+    --pagination-radius: 4px;
+    --pagination-padding: 8px 12px;
+    --pagination-font-size: 16px;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    padding: 10px;
+    background-color: var(--pagination-bg);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: var(--pagination-font-size);
+    line-height: 1.5;
+}
+
+/* Style for each pagination item (span) */
+.pagination > span {
+    display: inline-flex;
+    align-items: center;
+}
+
+/* Style for links */
+.pagination > span > a {
+    text-decoration: none;
+    color: var(--pagination-text);
+    padding: var(--pagination-padding);
+    border: 1px solid var(--pagination-border);
+    border-radius: var(--pagination-radius);
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+
+/* Hover effect for links */
+.pagination > span > a:hover {
+    background-color: var(--pagination-hover-bg);
+    border-color: var(--pagination-border);
+    color: var(--pagination-text);
+}
+
+/* Focus state for accessibility */
+.pagination > span > a:focus {
+    outline: 2px solid var(--pagination-active-bg);
+    outline-offset: 2px;
+}
+
+/* Current page (no link) */
+.pagination > span:not(:has(a)) {
+    background-color: var(--pagination-active-bg);
+    color: var(--pagination-active-text);
+    padding: var(--pagination-padding);
+    border: 1px solid var(--pagination-active-bg);
+    border-radius: var(--pagination-radius);
+    font-weight: 600;
+}
+
+/* Disabled state (<< or >> when not clickable) */
+.pagination > span:not(:has(a)):not(.active) {
+    color: var(--pagination-disabled-text);
+    background-color: transparent;
+    border: 1px solid var(--pagination-border);
+    font-weight: normal;
+}
+
+@media (max-width: 576px) {
+    .pagination {
+        gap: 4px;
+        --pagination-padding: 6px 10px;
+        --pagination-font-size: 14px;
+    }
 }

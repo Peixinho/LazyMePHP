@@ -15,6 +15,7 @@
 ?>
 
 <div>
+  <label>{{$fieldname}}</label>
   <select
     id="{{$id or $name}}" 
     name="{{$name}}"
@@ -29,5 +30,4 @@
       <option value="{{$o->GetPrimaryKey()}}" @if (isset($selected) && $selected==$o->GetPrimaryKey()) selected @endif>{{$o->Getdescriptor()}}</option> 
     @endforeach
   </select>
-  <label>{{$fieldname}}</label>
 </div>

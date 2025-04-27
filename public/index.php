@@ -22,8 +22,11 @@
     </head>
     <body onload="LazyMePHP.Init()">
       <?= \LazyMePHP\Config\Internal\GetErrors();?>
-
-      <ul><?php foreach (glob(__DIR__."/../src/Routes/" . '/*.php') as $r) { if (substr($r, strrpos($r, "/")+1, strlen($r)) != "Routes.php") { echo "<li><a href=\"/".substr($r,strrpos($r,"/")+1, -4)."\">".substr($r,strrpos($r,"/")+1, -4)."</a>"; } } ?></ul>
+      <nav aria-label="Main navigation">
+        <ul class="nav-menu">
+          <?php foreach (glob(__DIR__."/../src/Routes/" . '/*.php') as $r) { if (substr($r, strrpos($r, "/")+1, strlen($r)) != "Routes.php") { echo "<li><a href=\"/".substr($r,strrpos($r,"/")+1, -4)."\">".substr($r,strrpos($r,"/")+1, -4)."</a>"; } } ?>
+        </ul>
+    </nav>
 
       <div>
         <div>

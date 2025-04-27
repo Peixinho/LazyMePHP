@@ -117,7 +117,7 @@ class BuildTableForms
           fwrite($routerFile, "\n");
           fwrite($routerFile, "SimpleRouter::get('/".$db->GetTableName()."', function() {");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\t\$data = ".$db->GetTableName()."::Default(true, \$_GET['page']??1, APP::APP_NRESULTS());");
+          fwrite($routerFile, "\t\$data = ".$db->GetTableName()."::Default(true, (int)(\$_GET['page']??1), APP::APP_NRESULTS());");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\tglobal \$blade;");
           fwrite($routerFile, "\n");

@@ -16,6 +16,7 @@
 ?>
 
 <div>
+  <label for="{{$name}}">{{$fieldname or $name}}</label>
   <input 
     @switch($type)
     @case("number")
@@ -44,5 +45,4 @@
     @if (isset($maxlength)) maxlength="{{$maxlength}}" @endif
     @if (isset($validation)) aria-describedby="validation{{$id or $name}}Feedback" @endif
    />
-  <label for="{{$name}}">{{$fieldname or $name}}</label>
 </div>
