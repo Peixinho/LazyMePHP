@@ -23,6 +23,7 @@ function appendUrl($key, $value)
 
 // $_GET to $_GET
 foreach($_POST as $k => $p) $_GET[$k]=$p;
+var_dump($_GET);
 
 if ((!array_key_exists('username', $_SESSION) || !array_key_exists('password', $_SESSION)) && ($_GET && $_GET['username'] && $_GET['password'] && $_GET['username'] == APP::DB_USER() && $_GET['password'] == APP::DB_PASSWORD()))
 {
@@ -79,8 +80,9 @@ if ($_GET['initialValue'] ?? null) {
 }
 if ($_GET['changedTo'] ?? null) {
   $level3 = true;
-  $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LD.dataAfter='".$_GET['initialValue']."'";
+  $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LD.dataAfter='".$_GET['changedTo']."'";
 }
+var_dump($sqlFilter);
 
 echo "<h3>Logging</h3>";
 $count = 0;
@@ -110,7 +112,7 @@ FROM (
   (strlen($sqlFilter)>0?" WHERE $sqlFilter ":"")
 .") LOGGING
 ";
-APP::DB_CONNECTION()->Query($sql, $rtn);
+$rtn = APP::DB_CONNECTION()->Query($sql);
 while($o = $rtn->FetchObject()) {
   $countLogActivity = $o->LOG_ACTIVITY_NR;
   $countLogActivityOptions = $o->LOG_ACTIVITY_OPTIONS_NR;
@@ -202,7 +204,7 @@ FROM
   ORDER BY LA_ID DESC
   LIMIT ".($page-1)*$limit.", $limit
   ";
-APP::DB_CONNECTION()->Query($sql, $rtn);
+$rtn = APP::DB_CONNECTION()->Query($sql);
 
 echo "<form method='POST' action=''>";
 // Filter
