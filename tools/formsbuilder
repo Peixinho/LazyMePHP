@@ -334,6 +334,8 @@ class BuildTableForms
         }
         fwrite($viewFile, "\t<br/>");
         fwrite($viewFile, "\n");
+        fwrite($viewFile, "@component('_Components.CSRF') @endcomponent");
+        fwrite($viewFile, "\n");
         fwrite($viewFile, "@component('_Components.Button',array('type' => 'submit', 'name' => 'Save'))");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "@endcomponent");
@@ -637,30 +639,34 @@ class BuildTableForms
           fwrite($controllerFile, "\t\t];");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\$validatedData = \\LazyMePHP\Validations\ValidateFormData(\$validationRules);");
+          fwrite($controllerFile, "\t\tif (\\LazyMePHP\\Security\\CsrfProtection::verifyToken(\$_POST['_token'])) {");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\tif (\$validatedData['success']) {");
+          fwrite($controllerFile, "\t\t\t\$validatedData = \\LazyMePHP\Validations\\ValidateFormData(\$validationRules);");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\tforeach (\$validatedData['validated_data'] as \$field => \$value) {");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\t\t\$obj->\$field = \$value;");
+          fwrite($controllerFile, "\t\t\tif (\$validatedData['success']) {");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\t\t\tforeach (\$validatedData['validated_data'] as \$field => \$value) {");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\t\t\t\t\$obj->\$field = \$value;");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\t\t\t}");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\t\t\t\$obj->Save();");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\t\t\treturn \$obj;");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\t}");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\t\$obj->Save();");
-          fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\treturn \$obj;");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t}");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\treturn false;");
           fwrite($controllerFile, "\n");
-
-
           fwrite($controllerFile, "\t}");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\n");
+
           fwrite($controllerFile, "\tstatic function Delete(?int \$".$primaryKey->GetName()." = null) {");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\tif (\$".$primaryKey->GetName().") {");

@@ -11,9 +11,9 @@ declare(strict_types=1);
 use LazyMePHP\Config\Internal\APP;
 
 /*
- * Session
+ * CSRF Protection And Session Starter
  */
-session_start();
+require_once __DIR__."/Security/CSRFProtection.php";
 
 // APP URL
 $urlFiles = filter_input(INPUT_SERVER, "SERVER_NAME");
