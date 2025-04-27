@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * LazyMePHP
 * @copyright This file is part of the LazyMePHP developed by Duarte Peixinho
@@ -42,7 +44,7 @@ class Select {
    * @table (String) table name
    * @return (NULL)
    */
-  public function From($table) {
+  public function From((string)$table) {
     $this->getFields($table);
     $this->queryTables .= (!empty($this->queryTables)?",":"").$table." ".$this->tableAliases;
     $this->tableAliases++;
@@ -60,7 +62,7 @@ class Select {
    * @operator (Enum) operator for the join, default is =
    * @return (NULL)
    */
- public function LJoin($table1, $table2, $field1, $field2, $operator = Operator::Equal) {
+ public function LJoin((string)$table1, (string)$table2, (string)$field1, (string)$field2, (string)$operator = Operator::Equal) {
    $this->_Join("LEFT JOIN", $table1, $table2, $field1, $field2, $operator);
  }
 
@@ -76,7 +78,7 @@ class Select {
    * @operator (Enum) operator for the join, default is =
    * @return (NULL)
    */
- public function RJoin($table1, $table2, $field1, $field2, $operator = Operator::Equal) {
+ public function RJoin((string)$table1, (string)$table2, (string)$field1, (string)$field2, (string)$operator = Operator::Equal) {
    $this->_Join("RIGHT JOIN", $table1, $table2, $field1, $field2, $operator);
  }
 
@@ -92,7 +94,7 @@ class Select {
    * @operator (Enum) operator for the join, default is =
    * @return (NULL)
    */
- public function Join($table1, $table2, $field1, $field2, $operator = Operator::Equal) {
+ public function Join((string)$table1, (string)$table2, (string)$field1, (string)$field2, (string)$operator = Operator::Equal) {
    $this->_Join("JOIN", $table1, $table2, $field1, $field2, $operator);
  }
  /**
@@ -107,7 +109,7 @@ class Select {
   * @operator (Enum) operator for the join, default is =
   * @return (NULL)
   */
- public function IJoin($table1, $table2, $field1, $field2, $operator = Operator::Equal) {
+ public function IJoin((string)$table1, (string)$table2, (string)$field1, (string)$field2, (string)$operator = Operator::Equal) {
    $this->_Join("INNER JOIN", $table1, $table2, $field1, $field2, $operator);
  }
 
@@ -123,7 +125,7 @@ class Select {
   * @operator (Enum) operator for the join, default is =
   * @return (NULL)
   */
- public function OJoin($table1, $table2, $field1, $field2, $operator = Operator::Equal) {
+ public function OJoin((string)$table1, (string)$table2, (string)$field1, (string)$field2, (string)$operator = Operator::Equal) {
    $this->_Join("OUTTER JOIN", $table1, $table2, $field1, $field2, $operator);
  }
 
@@ -132,7 +134,7 @@ class Select {
   * Private function to run our JOINs
   *
   */
- public function _Join($type, $table1, $table2, $field1, $field2, $operator = Operator::Equal) {
+ public function _Join((string)$type, (string)$table1, (string)$table2, (string)$field1, (string)$field2, (string)$operator = Operator::Equal) {
    $this->getFields($table2);
    switch($operator) {
      case Operator::IsNull:
@@ -157,7 +159,7 @@ class Select {
   * already a previous condition
   * @return (NULL)
   */
-   public function Where($table, $field, $operator, $value = NULL, $aggregator = "AND") {
+   public function Where((string)$table, (string)$field, (string)$operator, (?string)$value = NULL, (string)$aggregator = "AND") {
      switch($operator) {
      case Operator::IsNull:
        $this->queryWhere .= ($this->hasWhereCondition?" $aggregator ":"").$this->getTableAlias($table).".$field ".$operator->value;
@@ -203,7 +205,7 @@ class Select {
   * @order (String) order (ASC, DESC)
   * @return (NULL)
   */
-  public function Order($table, $field, $order = "ASC") {
+  public function Order((string)$table, (string)$field, (string)$order = "ASC") {
     $this->queryOrder .= (!empty($this->queryOrder)?",":"").$this->getTableAlias($table).".$field $order";
   }
 
@@ -244,7 +246,7 @@ class Select {
   * @table (NULL)
   * @return (array)
   */
-  private function getFields($table) {
+  private function getFields((string)$table) {
     $fields = array();
     foreach(get_class_methods("\\LazyMePHP\\Classes\\Priv\\__$table") as $method) {
       if (substr($method,0,4) == "_Set") {
@@ -264,7 +266,7 @@ class Select {
   * @table (NULL)
   * @return (array)
   */
-  private function getTableAlias($table) {
+  private function getTableAlias((string)$table) {
     // We reverse search so our where conditions could be added after left join
     foreach(array_reverse($this->tables) as $t) {
       if ($t["table"]==$table) return $t["alias"];
