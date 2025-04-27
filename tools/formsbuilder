@@ -294,7 +294,7 @@ class BuildTableForms
             break;
           } else $primaryKey = NULL;
         }
-        fwrite($viewFile, "@if (\$".$db->GetTableName()."->".$field->GetName().") <form method='POST' action='/".$db->GetTableName()."/{!!\$".$db->GetTableName()."->".$field->GetName()."!!}/save' onsubmit='return LazyMePHP.ValidateForm(this);'>");
+        fwrite($viewFile, "@if (\$".$db->GetTableName()."->".$field->GetName().") <form id='".$db->GetTableName()."Form' method='POST' action='/".$db->GetTableName()."/{!!\$".$db->GetTableName()."->".$field->GetName()."!!}/save'>");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "@else <form method='POST' action='/".$db->GetTableName()."/save' onsubmit='return LazyMePHP.ValidateForm(this);'>");
         fwrite($viewFile, "\n");
@@ -343,6 +343,13 @@ class BuildTableForms
         fwrite($viewFile, "@endcomponent");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "</form>");
+        fwrite($viewFile, "\n");
+        fwrite($viewFile, "\n");
+        fwrite($viewFile, "<script>");
+        fwrite($viewFile, "\n");
+        fwrite($viewFile, "function Init() { LazyMePHP.InitFormValidation('#".$db->GetTableName()."Form'); }");
+        fwrite($viewFile, "\n");
+        fwrite($viewFile, "</script>");
         fclose($viewFile);
 
         // Show List
@@ -577,36 +584,6 @@ class BuildTableForms
           {
             if (!$field->IsPrimaryKey())
             {
-            #  if (!$field->AllowNull())
-            #  {
-            #    fwrite($controllerFile, "\t\tif (!\LazyMePHP\Validations\ValidateNotNull(filter_input(INPUT_POST, \"".$field->GetName()."\"))) \$fieldsNull .= (!is_null(\$fieldsNull)?\",\":\"\").\"".$field->GetName()."\";");
-            #    fwrite($controllerFile, "\n");
-            #  }
-            #  fwrite($controllerFile, "\t\t".(!$field->AllowNull()?"else ":"")."\$obj->".$field->GetName()."=");
-            #  switch($field->GetDataType()) {
-            #    case "bool":
-            #    case "bit":
-            #      fwrite($controllerFile, "(bool)");
-            #      fwrite($controllerFile, "\LazyMePHP\Validations\ValidateBoolean(filter_input(INPUT_POST, \"".$field->GetName()."\"))".($field->AllowNull()?"??null":"").";");
-            #      break;
-            #    case "int":
-            #      fwrite($controllerFile, "(int)");
-            #      fwrite($controllerFile, "\LazyMePHP\Validations\ValidateInteger(filter_input(INPUT_POST, \"".$field->GetName()."\"))".($field->AllowNull()?"??null":"").";");
-            #      break;
-            #    case "float":
-            #      fwrite($controllerFile, "(float)");
-            #      fwrite($controllerFile, "\LazyMePHP\Validations\ValidateFloat(filter_input(INPUT_POST, \"".$field->GetName()."\"))".($field->AllowNull()?"??null":"").";");
-            #      break;
-            #    case "date":
-            #    case "string":
-            #    default:
-            #      fwrite($controllerFile, "(string)");
-            #      fwrite($controllerFile, "\LazyMePHP\Validations\ValidateString(filter_input(INPUT_POST, \"".$field->GetName()."\"))".($field->AllowNull()?"??null":"").";");
-            #      break;
-            #  }
-            #  fwrite($controllerFile, "\n");
-            #}
-
               fwrite($controllerFile, "\t\t\t'".$field->GetName()."' => [");
               fwrite($controllerFile, "\n");
               fwrite($controllerFile, "\t\t\t\t'validations' => [");
@@ -632,7 +609,7 @@ class BuildTableForms
               if (!$field->AllowNull()) fwrite($controllerFile, "\LazyMePHP\Validations\ValidationsMethod::NOTNULL");
               fwrite($controllerFile, "],");
               fwrite($controllerFile, "\n");
-              fwrite($controllerFile, "\t\t\t\t'required' => '".$field->AllowNull()."',");
+              fwrite($controllerFile, "\t\t\t\t'required' => '".!$field->AllowNull()."',");
               fwrite($controllerFile, "\n");
               fwrite($controllerFile, "\t\t\t\t'type' => ");
               switch($field->GetDataType()) {

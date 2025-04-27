@@ -31,7 +31,7 @@ enum ValidationsMethod: string {
 class ValidationPatterns {
     public const FLOAT = '/^[+-]?\d*\.?\d+$/';
     public const INT = '/^[+-]?\d+$/';
-    public const STRING = '/^^[a-zA-Z0-9][a-zA-Z0-9\s.,;:!?=\'"\-()]*$/';
+    public const STRING = '/^[a-zA-Z0-9\s.,;:!?=\'"\-()A-zÀ-ú ]*$/';
     public const DATE = '/^\d{2}\/\d{2}\/\d{4}$/';
     public const ISO_DATE = '/^\d{4}-\d{2}-\d{2}(?:\s\d{2}:\d{2}:\d{2})?$/';
     public const EMAIL = '/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/';
@@ -162,7 +162,7 @@ function ValidateNotNull(mixed $value): bool
  */
 function ValidateFloat(mixed $value): bool
 {
-    return is_numeric($value) && ValidateRegExp((string)$value, ValidationPatterns::FLOAT);
+    return (is_numeric($value) && ValidateRegExp((string)$value, ValidationPatterns::FLOAT)) || empty($value);
 }
 
 /**
@@ -173,7 +173,7 @@ function ValidateFloat(mixed $value): bool
  */
 function ValidateInteger(mixed $value): bool
 {
-    return is_numeric($value) && ValidateRegExp((string)$value, ValidationPatterns::INT);
+    return (is_numeric($value) && ValidateRegExp((string)$value, ValidationPatterns::INT)) || empty($value);
 }
 
 /**
@@ -200,7 +200,7 @@ function ValidateString(mixed $value, array $params = []): bool
         return false;
     }
 
-    return ValidateRegExp($value, $regex);
+    return ValidateRegExp($value, $regex) || empty($value);
 }
 
 /**
@@ -227,7 +227,7 @@ function ValidateDate(mixed $value): bool
         return false;
     }
     $parts = explode('/', $value);
-    return checkdate((int)$parts[1], (int)$parts[0], (int)$parts[2]);
+    return checkdate((int)$parts[1], (int)$parts[0], (int)$parts[2]) || empty($value);
 }
 
 /**
@@ -257,7 +257,7 @@ function ValidateISODate(mixed $value): bool
  */
 function ValidateEmail(mixed $value): bool
 {
-    return is_string($value) && ValidateRegExp($value, ValidationPatterns::EMAIL);
+    return (is_string($value) && ValidateRegExp($value, ValidationPatterns::EMAIL)) || empty($value);
 }
 
 /**
@@ -268,7 +268,7 @@ function ValidateEmail(mixed $value): bool
  */
 function ValidateBoolean(mixed $value): bool
 {
-    return is_bool($value) || in_array($value, [0, 1, '0', '1'], true);
+    return (is_bool($value) || in_array($value, [0, 1, '0', '1'], true)) || empty($value);
 }
 
 /**
@@ -283,7 +283,7 @@ function ValidateRegExp(mixed $value, string $regexp): bool
     if ($value === null || $value === '') {
         return false;
     }
-    return is_string($value) && preg_match($regexp, $value) === 1;
+    return (is_string($value) && preg_match($regexp, $value) === 1) || empty($value);
 }
 function ValidateFormData(array $validationRules): array
 {
