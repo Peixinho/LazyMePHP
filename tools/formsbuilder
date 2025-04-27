@@ -296,7 +296,7 @@ class BuildTableForms
         }
         fwrite($viewFile, "@if (\$".$db->GetTableName()."->".$field->GetName().") <form id='".$db->GetTableName()."Form' method='POST' action='/".$db->GetTableName()."/{!!\$".$db->GetTableName()."->".$field->GetName()."!!}/save'>");
         fwrite($viewFile, "\n");
-        fwrite($viewFile, "@else <form method='POST' action='/".$db->GetTableName()."/save' onsubmit='return LazyMePHP.ValidateForm(this);'>");
+        fwrite($viewFile, "@else <form id='".$db->GetTableName()."Form' method='POST' action='/".$db->GetTableName()."/save' onsubmit='return LazyMePHP.ValidateForm(this);'>");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "@endif");
         foreach ($db->GetTableFields() as $field) {
