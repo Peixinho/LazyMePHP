@@ -194,7 +194,7 @@ class BuildTableForms
           fwrite($routerFile, "\n");
           fwrite($routerFile, "SimpleRouter::get('/".$db->GetTableName()."/{id}/delete', function (\$".$db->GetPrimaryFieldName().") {");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\t".$db->GetTableName()."::Delete(\$".$db->GetPrimaryFieldName().");");
+          fwrite($routerFile, "\t".$db->GetTableName()."::Delete((int)\$".$db->GetPrimaryFieldName().");");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\t\\LazyMePHP\\Helper\\redirect('/".$db->GetTableName()."?success=2');");
           fwrite($routerFile, "\n");
@@ -495,7 +495,6 @@ class BuildTableForms
         fwrite($controllerFile, "\n");
         fwrite($controllerFile, "\n");
         fwrite($controllerFile, "namespace LazyMePHP\Forms;\n");
-        fwrite($controllerFile, "use \\LazyMePHP\Config\Internal\APP;\n");
         fwrite($controllerFile, "use \\eftec\bladeone\BladeOne;\n");
         fwrite($controllerFile, "\$views = __DIR__ . '/../Views/';");
         fwrite($controllerFile, "\n");
@@ -571,49 +570,117 @@ class BuildTableForms
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\$obj = new \LazyMePHP\Classes\\".$db->GetTableName()."(\$".$primaryKey->GetName().");");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\$fieldsNull = NULL;");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\t\$validationRules = [");
           fwrite($controllerFile, "\n");
           foreach($db->GetTableFields() as $field)
           {
             if (!$field->IsPrimaryKey())
             {
-              if (!$field->AllowNull())
-              {
-                fwrite($controllerFile, "\t\tif (empty(filter_input(INPUT_POST, \"".$field->GetName()."\"))) \$fieldsNull .= (!is_null(\$fieldsNull)?\",\":\"\").\"".$field->GetName()."\";");
-                fwrite($controllerFile, "\n");
-              }
-              fwrite($controllerFile, "\t\t".(!$field->AllowNull()?"else ":"")."\$obj->".$field->GetName()."=");
+            #  if (!$field->AllowNull())
+            #  {
+            #    fwrite($controllerFile, "\t\tif (!\LazyMePHP\Validations\ValidateNotNull(filter_input(INPUT_POST, \"".$field->GetName()."\"))) \$fieldsNull .= (!is_null(\$fieldsNull)?\",\":\"\").\"".$field->GetName()."\";");
+            #    fwrite($controllerFile, "\n");
+            #  }
+            #  fwrite($controllerFile, "\t\t".(!$field->AllowNull()?"else ":"")."\$obj->".$field->GetName()."=");
+            #  switch($field->GetDataType()) {
+            #    case "bool":
+            #    case "bit":
+            #      fwrite($controllerFile, "(bool)");
+            #      fwrite($controllerFile, "\LazyMePHP\Validations\ValidateBoolean(filter_input(INPUT_POST, \"".$field->GetName()."\"))".($field->AllowNull()?"??null":"").";");
+            #      break;
+            #    case "int":
+            #      fwrite($controllerFile, "(int)");
+            #      fwrite($controllerFile, "\LazyMePHP\Validations\ValidateInteger(filter_input(INPUT_POST, \"".$field->GetName()."\"))".($field->AllowNull()?"??null":"").";");
+            #      break;
+            #    case "float":
+            #      fwrite($controllerFile, "(float)");
+            #      fwrite($controllerFile, "\LazyMePHP\Validations\ValidateFloat(filter_input(INPUT_POST, \"".$field->GetName()."\"))".($field->AllowNull()?"??null":"").";");
+            #      break;
+            #    case "date":
+            #    case "string":
+            #    default:
+            #      fwrite($controllerFile, "(string)");
+            #      fwrite($controllerFile, "\LazyMePHP\Validations\ValidateString(filter_input(INPUT_POST, \"".$field->GetName()."\"))".($field->AllowNull()?"??null":"").";");
+            #      break;
+            #  }
+            #  fwrite($controllerFile, "\n");
+            #}
+
+              fwrite($controllerFile, "\t\t\t'".$field->GetName()."' => [");
+              fwrite($controllerFile, "\n");
+              fwrite($controllerFile, "\t\t\t\t'validations' => [");
+
+              // Define validations
               switch($field->GetDataType()) {
                 case "bool":
                 case "bit":
-                  fwrite($controllerFile, "(bool)");
+                  fwrite($controllerFile, "\LazyMePHP\Validations\ValidationsMethod::BOOLEAN,");
+                  break;
+                case "int":
+                  fwrite($controllerFile, "\LazyMePHP\Validations\ValidationsMethod::INT,");
                   break;
                 case "float":
-                case "int":
-                  fwrite($controllerFile, "(int)");
+                  fwrite($controllerFile, "\LazyMePHP\Validations\ValidationsMethod::FLOAT,");
                   break;
                 case "date":
                 case "string":
                 default:
-                  fwrite($controllerFile, "(string)");
+                  fwrite($controllerFile, "\LazyMePHP\Validations\ValidationsMethod::STRING,");
                   break;
               }
-              fwrite($controllerFile, "(filter_input(INPUT_POST, \"".$field->GetName()."\"))".($field->AllowNull()?"??null":"").";");
+              if (!$field->AllowNull()) fwrite($controllerFile, "\LazyMePHP\Validations\ValidationsMethod::NOTNULL");
+              fwrite($controllerFile, "],");
+              fwrite($controllerFile, "\n");
+              fwrite($controllerFile, "\t\t\t\t'required' => '".$field->AllowNull()."',");
+              fwrite($controllerFile, "\n");
+              fwrite($controllerFile, "\t\t\t\t'type' => ");
+              switch($field->GetDataType()) {
+                case "bool":
+                case "bit":
+                  fwrite($controllerFile, "'bool'");
+                  break;
+                case "int":
+                  fwrite($controllerFile, "'int'");
+                  break;
+                case "float":
+                  fwrite($controllerFile, "'float'");
+                  break;
+                case "date":
+                case "string":
+                default:
+                  fwrite($controllerFile, "'string'");
+                  break;
+              }
+              fwrite($controllerFile, "\n");
+              fwrite($controllerFile, "\t\t\t],");
               fwrite($controllerFile, "\n");
             }
           }
-          fwrite($controllerFile, "\t\tif (\$fieldsNull) {");
+          fwrite($controllerFile, "\t\t];");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\t\\LazyMePHP\\Config\\Internal\\trigger_error(\"NULL value not allowed!\\nFields: \$fieldsNull\", E_USER_ERROR);");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\treturn false;");
+          fwrite($controllerFile, "\t\t\$validatedData = \\LazyMePHP\Validations\ValidateFormData(\$validationRules);");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\tif (\$validatedData['success']) {");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\t\tforeach (\$validatedData['validated_data'] as \$field => \$value) {");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\t\t\t\$obj->\$field = \$value;");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\t\t}");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\t\t\$obj->Save();");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\t\treturn \$obj;");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t}");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\telse");
+          fwrite($controllerFile, "\t\treturn false;");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\treturn \$obj->Save();");
-          fwrite($controllerFile, "\n");
+
+
           fwrite($controllerFile, "\t}");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\n");

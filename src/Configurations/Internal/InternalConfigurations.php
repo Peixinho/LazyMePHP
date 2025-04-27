@@ -547,8 +547,9 @@ class APP
           }
         }
       }
+var_dump($queryStringData);
       if ($count>0)
-      APP::DB_CONNECTION()->Query($queryString, $obj,$queryStringData);
+      $obj = APP::DB_CONNECTION()->Query($queryString, $queryStringData);
     }
   }
 }
