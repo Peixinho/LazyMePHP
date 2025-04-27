@@ -58,7 +58,7 @@ function enableLogging() {
     ALTER TABLE `__LOG_DATA`
     ADD CONSTRAINT `__LOG_DATA_ibfk_1` FOREIGN KEY (`id_log_activity`) REFERENCES `__LOG_ACTIVITY` (`id`);
     ";
-    APP::DB_CONNECTION()->Query($queryString, $sqlObj);
+    $sqlObj = APP::DB_CONNECTION()->Query($queryString);
     APP::DB_CONNECTION()->Close();
     echo "Done enabling logging, press enter to continue...";
     \LazyMePHP\Helper\read();
@@ -81,7 +81,7 @@ switch (APP::DB_TYPE())
 }
 
 // Fetch all tables descriptors
-APP::DB_CONNECTION()->Query($queryString, $sqlObj);
+$sqlObj = APP::DB_CONNECTION()->Query($queryString);
 $tables = array();
 $tablesDescriptors = array();
 $i = 1;

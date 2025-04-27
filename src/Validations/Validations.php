@@ -6,6 +6,8 @@
 * @author Duarte Peixinho
 */
 
+declare(strict_types=1);
+
 namespace LazyMePHP\Validations;
 
 enum ValidationsMethod {

@@ -6,6 +6,8 @@
 * @author Duarte Peixinho
 */
 
+declare(strict_types=1);
+
 use LazyMePHP\Config\Internal\APP;
 
 /*
@@ -89,5 +91,6 @@ ob_clean();
  * Runs logging activity
  */
 APP::LOG_ACTIVITY();
+APP::DB_CONNECTION()->Close();
 
 ?>

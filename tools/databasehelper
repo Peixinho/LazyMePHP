@@ -392,7 +392,7 @@ class _DB_TABLE {
               $queryString = "PRAGMA table_info(".$this->_Tablename.")";
             break;
         }
-        APP::DB_CONNECTION()->Query($queryString, $sqlObj2);
+        $sqlObj2 = APP::DB_CONNECTION()->Query($queryString);
         while ($f=$sqlObj2->FetchObject())
 		{
 			$__type = $f->Type??$f->type;
@@ -419,7 +419,7 @@ class _DB_TABLE {
 						case "uniqueidentifier":
 						case "sysname":
 						case "image":
-							$__type = "varchar";
+							$__type = "string";
 							break;
 						case "numeric":
 						case "decimal":
@@ -429,12 +429,12 @@ class _DB_TABLE {
 							$__type = "float";
 							break;
 						case "bit":
-							$__type = "bit";
+							$__type = "bool";
 							break;
 						case "datetime":
 						case "smalldatetime":
 						case "timestamp":
-							$__type = "date";
+							$__type = "string";
 					}
 					break;
 				case 2:
@@ -458,7 +458,7 @@ class _DB_TABLE {
 						case "longblob":
 						case "longtext":
 						case "enum":
-							$__type = "varchar";
+							$__type = "string";
 							break;
 						case "float":
 						case "double":
@@ -466,14 +466,14 @@ class _DB_TABLE {
 							$__type = "float";
 							break;
 						case "bit":
-							$__type = "bit";
+							$__type = "bool";
 							break;
 						case "date":
 						case "datetime":
 						case "timestamp":
 						case "time":
 						case "year":
-							$__type = "date";
+							$__type = "string";
 					}
 					break;
 				case 3:
@@ -485,7 +485,7 @@ class _DB_TABLE {
           $f->FK = null;
           // Check if is foreign key
           $queryStringFK = "PRAGMA foreign_key_list(".$this->_Tablename.")";
-          APP::DB_CONNECTION()->Query($queryStringFK, $sqlObj3);
+          $sqlObj3 = APP::DB_CONNECTION()->Query($queryStringFK);
           while ($_fk=$sqlObj3->FetchObject()) {
             if ($_fk->from == $f->name) {
               // There is a fk
@@ -497,8 +497,8 @@ class _DB_TABLE {
             case "integer":
               $__type = "int";
             break;
-            case "varchar":
-              $__type = "varchar";
+            case "text":
+              $__type = "string";
             break;
             case "real":
               $__type = "float";
@@ -557,7 +557,7 @@ class _DB_TABLE {
                       $queryString = "PRAGMA table_info(".$this->_Tablename.")";
                     break;
                 }
-                APP::DB_CONNECTION()->Query($queryStringFK, $sqlObj3);
+                $sqlObj3 = APP::DB_CONNECTION()->Query($queryStringFK);
                 while($fk = $sqlObj3->FetchObject())
                 {
                   switch (APP::DB_TYPE()) {

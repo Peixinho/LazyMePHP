@@ -87,7 +87,7 @@ switch($db_db['name'])
   fwrite($file, "\n");
   fwrite($file, "// DATABASE\n");
   if ($db_db['name'] == "sqlite")
-    fwrite($file, "\$CONFIG['DB_FILE_PATH']\t\t\t\t=\"/../../\"".$db_file_path."\";\n");
+    fwrite($file, "\$CONFIG['DB_FILE_PATH']\t\t\t\t=\"".$db_file_path."\";\n");
   else {
     fwrite($file, "\$CONFIG['DB_NAME']\t\t\t\t=\"".$db_name."\";\n");
     fwrite($file, "\$CONFIG['DB_USER']\t\t\t\t=\"".$db_user."\";\n");
@@ -103,7 +103,7 @@ switch($db_db['name'])
   fwrite($file, "\$CONFIG['APP_VERSION']\t\t\t=\"".$app_version."\";\n");
   fwrite($file, "\$CONFIG['APP_DESCRIPTION']\t\t=\"".$app_description."\";\n");
   fwrite($file, "\$CONFIG['APP_TIMEZONE']\t\t\t=\"".$app_timezone."\";\n");
-  fwrite($file, "\$CONFIG['APP_NRESULTS']\t\t\t=\"".$app_nresults."\";\n");
+  fwrite($file, "\$CONFIG['APP_NRESULTS']\t\t\t=".$app_nresults.";\n");
   fwrite($file, "\$CONFIG['APP_ENCRYPTION']\t\t\t=\"".$app_encryption."\";\n");
   fwrite($file, "\n");
   fwrite($file, "// ACTIVITY LOG\n");
@@ -127,7 +127,7 @@ switch($db_db['name'])
   require_once __DIR__."/../src/Configurations/Configurations.php";
 
   // Create compiled directory for bladeone
-  \LazyMePHP\Helper\MKDIR(__DIR__."/../src/Views/compiled");
+  \LazyMePHP\Helper\MKDIR(__DIR__."/../src/Views/_compiled");
 
   // Add Javacript File
   file_put_contents(__DIR__.'/../public/index.php',str_replace('<script src="/js/app.js"></script>','<script src="/js/'.$app_name.'.js"></script>',file_get_contents(__DIR__.'/../public/index.php')));

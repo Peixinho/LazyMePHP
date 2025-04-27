@@ -6,6 +6,8 @@
 * @author Duarte Peixinho
 */
 
+declare(strict_types=1);
+
 namespace LazyMePHP\ClassesBuilder;
 
 /**
@@ -23,7 +25,7 @@ interface IDB_CLASS
 interface IDB_CLASS_LIST
 {
     public function FindAll();
-    public function GetList($buildForeignMembers = true);
+    public function GetList(bool $buildForeignMembers = true, bool $serialize = false, array $mask = array());
 }
 
 ?>

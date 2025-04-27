@@ -10,7 +10,7 @@ use \eftec\bladeone\BladeOne;
 
 class PageNotFoundController {
 	private static $views = __DIR__ . '/../Views/';
-	private static $cache = __DIR__ . '/../Views/compiled/';
+	private static $cache = __DIR__ . '/../Views/_compiled/';
 
 	static function Default() {
 		$blade = new BladeOne(PageNotFoundController::$views,PageNotFoundController::$cache);
