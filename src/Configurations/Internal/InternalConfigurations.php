@@ -517,12 +517,12 @@ class APP
   static function LOG_ACTIVITY() {
     if (APP::APP_ACTIVITY_LOG()) {
       $queryString = "INSERT INTO __LOG_ACTIVITY (`date`,`user`,`method`) VALUES (?,?,?)";
-      APP::DB_CONNECTION()->Query($queryString, $obj, array(date("Y-m-d H:i"),APP::$_app_activity_auth,$_SERVER['REQUEST_METHOD']));
+      $obj = APP::DB_CONNECTION()->Query($queryString, array(date("Y-m-d H:i"),APP::$_app_activity_auth,$_SERVER['REQUEST_METHOD']));
       $id = APP::DB_CONNECTION()->GetLastInsertedID('__LOG_ACTIVITY');
       $queryString = "INSERT INTO __LOG_ACTIVITY_OPTIONS (`id_log_activity`, `subOption`, `value`) VALUES ";
       $count = 0;
       $queryStringData = array();
-      foreach(explode('/',\LazyMePHP\Helper\url()) as $kArg => $arg) {
+      foreach(explode('/',(string)\LazyMePHP\Helper\url()) as $kArg => $arg) {
         if ($arg) {
           $queryString.=($count>0?",":"")."(?,?,?)";
           array_push($queryStringData,$id, $kArg, $arg);
@@ -530,7 +530,7 @@ class APP
         }
       }
       if ($count>0)
-      APP::DB_CONNECTION()->Query($queryString, $obj, $queryStringData);
+      $obj = APP::DB_CONNECTION()->Query($queryString, $queryStringData);
 
       $count = 0;
       $queryString = "INSERT INTO __LOG_DATA (`id_log_activity`, `table`, `pk`, `method`, `field`, `dataBefore`, `dataAfter`) VALUES ";

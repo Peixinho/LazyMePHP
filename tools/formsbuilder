@@ -499,7 +499,7 @@ class BuildTableForms
         fwrite($controllerFile, "use \\eftec\bladeone\BladeOne;\n");
         fwrite($controllerFile, "\$views = __DIR__ . '/../Views/';");
         fwrite($controllerFile, "\n");
-        fwrite($controllerFile, "\$cache = __DIR__ . '/../Views/compiled/';");
+        fwrite($controllerFile, "\$cache = __DIR__ . '/../Views/_compiled/';");
         fwrite($controllerFile, "\n");
         fwrite($controllerFile, "\$blade = new BladeOne(\$views,\$cache);");
         fwrite($controllerFile, "\n");
