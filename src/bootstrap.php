@@ -92,5 +92,4 @@ ob_clean();
  */
 APP::LOG_ACTIVITY();
 APP::DB_CONNECTION()->Close();
-
 ?>
