@@ -337,7 +337,6 @@ function ValidateFormData(array $validationRules): array
     $fieldErrors = ValidateField($value, $validations);
     if ($fieldErrors) {
       $errors[$field] = $fieldErrors;
-      var_dump($value,$field, $fieldErrors);
       continue;
     }
 
