@@ -195,80 +195,99 @@ th, td {
 th {
   background-color: #f2f2f2;
 }
+/* Pagination Styling */
 .pagination {
     --pagination-bg: #f8f9fa;
     --pagination-text: #212529;
     --pagination-hover-bg: #e9ecef;
     --pagination-active-bg: #007bff;
     --pagination-active-text: #ffffff;
+    --pagination-disabled-bg: #f1f3f5;
     --pagination-disabled-text: #6c757d;
     --pagination-border: #dee2e6;
     --pagination-radius: 4px;
-    --pagination-padding: 8px 12px;
-    --pagination-font-size: 16px;
+    --pagination-padding: 6px 0px;
+    --pagination-font-size: 12px;
 
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 8px;
-    padding: 10px;
-    background-color: var(--pagination-bg);
+    list-style: none;
+    margin: 20px 0;
+    padding: 0;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-size: var(--pagination-font-size);
-    line-height: 1.5;
+    gap: 6px;
 }
 
-/* Style for each pagination item (span) */
-.pagination > span {
+/* Base styling for spans (wrapping buttons or text) */
+.pagination span {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
+    min-width: 28px; /* Uniform width for all buttons */
+    text-align: center;
 }
 
-/* Style for links */
-.pagination > span > a {
+/* Styling for navigable buttons (Previous, Next, Pages) */
+.pagination span a {
     text-decoration: none;
     color: var(--pagination-text);
-    padding: var(--pagination-padding);
+    background-color: var(--pagination-bg);
     border: 1px solid var(--pagination-border);
     border-radius: var(--pagination-radius);
+    padding: var(--pagination-padding);
     transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+    cursor: pointer;
+    width: 100%;
 }
 
-/* Hover effect for links */
-.pagination > span > a:hover {
+/* Hover effect for navigable buttons */
+.pagination span a:hover {
     background-color: var(--pagination-hover-bg);
-    border-color: var(--pagination-border);
     color: var(--pagination-text);
 }
 
 /* Focus state for accessibility */
-.pagination > span > a:focus {
+.pagination span a:focus {
     outline: 2px solid var(--pagination-active-bg);
     outline-offset: 2px;
 }
 
-/* Current page (no link) */
-.pagination > span:not(:has(a)) {
+/* Active page (current page) */
+.pagination span.active {
     background-color: var(--pagination-active-bg);
     color: var(--pagination-active-text);
-    padding: var(--pagination-padding);
     border: 1px solid var(--pagination-active-bg);
     border-radius: var(--pagination-radius);
+    padding: var(--pagination-padding);
     font-weight: 600;
 }
 
-/* Disabled state (<< or >> when not clickable) */
-.pagination > span:not(:has(a)):not(.active) {
+/* Disabled state (Previous/Next when unavailable) */
+.pagination span.disabled {
     color: var(--pagination-disabled-text);
-    background-color: transparent;
+    background-color: var(--pagination-disabled-bg);
     border: 1px solid var(--pagination-border);
-    font-weight: normal;
+    border-radius: var(--pagination-radius);
+    padding: var(--pagination-padding);
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
 }
 
-@media (max-width: 576px) {
+/* Responsive adjustments */
+@media (max-width: 768px) {
     .pagination {
+        flex-wrap: wrap;
         gap: 4px;
-        --pagination-padding: 6px 10px;
-        --pagination-font-size: 14px;
+        --pagination-padding: 5px 7px;
+        --pagination-font-size: 11px;
+    }
+    .pagination span {
+        min-width: 24px; /* Uniform width for all buttons */
     }
 }
