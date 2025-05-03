@@ -23,7 +23,6 @@ function appendUrl($key, $value)
 
 // $_GET to $_GET
 foreach($_POST as $k => $p) $_GET[$k]=$p;
-var_dump($_GET);
 
 if ((!array_key_exists('username', $_SESSION) || !array_key_exists('password', $_SESSION)) && ($_GET && $_GET['username'] && $_GET['password'] && $_GET['username'] == APP::DB_USER() && $_GET['password'] == APP::DB_PASSWORD()))
 {

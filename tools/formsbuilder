@@ -75,8 +75,11 @@ class BuildTableForms
             fwrite($routerFile, "\n");
             fwrite($routerFile," */");
             fwrite($routerFile, "\n");
+            fwrite($routerFile, "\n");
             fwrite($routerFile, "declare(strict_types=1);");
             fwrite($routerFile, "\n");
+            fwrite($routerFile, "\n");
+            fwrite($routerFile, "namespace LazyMePHP\Routes;\n");
             fwrite($routerFile, "\n");
             fwrite($routerFile, "use Pecee\SimpleRouter\SimpleRouter;");
             fwrite($routerFile, "\n");
@@ -111,13 +114,13 @@ class BuildTableForms
           fwrite($routerFile, "\n");
           fwrite($routerFile, " */");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "use LazyMePHP\Views\\".$db->GetTableName().";");
+          fwrite($routerFile, "use LazyMePHP\Router\\".$db->GetTableName().";");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "require_once __DIR__.\"/../Controllers/".$db->GetTableName().".php\";");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "SimpleRouter::get('/".$db->GetTableName()."', function() {");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\t\$data = ".$db->GetTableName()."::Default(true, (int)(\$_GET['page']??1), APP::APP_NRESULTS());");
+          fwrite($routerFile, "\t\$data = \\LazyMePHP\\Controllers\\".$db->GetTableName()."::Default(true, (int)(\$_GET['page']??1), APP::APP_NRESULTS());");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\tglobal \$blade;");
           fwrite($routerFile, "\n");
@@ -134,7 +137,7 @@ class BuildTableForms
           fwrite($routerFile, "\n");
           fwrite($routerFile, "SimpleRouter::get('/".$db->GetTableName()."/{".$db->GetPrimaryFieldName()."}/edit', function (\$".$db->GetPrimaryFieldName().") {");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\t\$data = ".$db->GetTableName()."::Edit((int)\$".$db->GetPrimaryFieldName().");");
+          fwrite($routerFile, "\t\$data = \\LazyMePHP\\Controllers\\".$db->GetTableName()."::Edit((int)\$".$db->GetPrimaryFieldName().");");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\tglobal \$blade;");
           fwrite($routerFile, "\n");
@@ -152,7 +155,7 @@ class BuildTableForms
           fwrite($routerFile, "\n");
           fwrite($routerFile, "SimpleRouter::get('/".$db->GetTableName()."/new', function () {");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\t\$data = ".$db->GetTableName()."::Edit();");
+          fwrite($routerFile, "\t\$data = \\LazyMePHP\\Controllers\\".$db->GetTableName()."::Edit();");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\tglobal \$blade;");
           fwrite($routerFile, "\n");
@@ -170,7 +173,7 @@ class BuildTableForms
           fwrite($routerFile, "\n");
           fwrite($routerFile, "SimpleRouter::post('/".$db->GetTableName()."/{id}/save', function (\$".$db->GetPrimaryFieldName().") {");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\tif (".$db->GetTableName()."::Save((int)\$".$db->GetPrimaryFieldName()."))");
+          fwrite($routerFile, "\tif (\\LazyMePHP\\Controllers\\".$db->GetTableName()."::Save((int)\$".$db->GetPrimaryFieldName()."))");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\t\t\\LazyMePHP\\Helper\\redirect('/".$db->GetTableName()."?success=1');");
           fwrite($routerFile, "\n");
@@ -182,7 +185,7 @@ class BuildTableForms
           fwrite($routerFile, "\n");
           fwrite($routerFile, "SimpleRouter::post('/".$db->GetTableName()."/save', function () {");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\tif(".$db->GetTableName()."::Save())");
+          fwrite($routerFile, "\tif(\\LazyMePHP\\Controllers\\".$db->GetTableName()."::Save())");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\t\t\\LazyMePHP\\Helper\\redirect('/".$db->GetTableName()."?success=1');");
           fwrite($routerFile, "\n");
@@ -194,7 +197,7 @@ class BuildTableForms
           fwrite($routerFile, "\n");
           fwrite($routerFile, "SimpleRouter::get('/".$db->GetTableName()."/{id}/delete', function (\$".$db->GetPrimaryFieldName().") {");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\t".$db->GetTableName()."::Delete((int)\$".$db->GetPrimaryFieldName().");");
+          fwrite($routerFile, "\t\\LazyMePHP\\Controllers\\".$db->GetTableName()."::Delete((int)\$".$db->GetPrimaryFieldName().");");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\t\\LazyMePHP\\Helper\\redirect('/".$db->GetTableName()."?success=2');");
           fwrite($routerFile, "\n");
@@ -503,8 +506,12 @@ class BuildTableForms
         fwrite($controllerFile," */");
         fwrite($controllerFile, "\n");
         fwrite($controllerFile, "\n");
-        fwrite($controllerFile, "namespace LazyMePHP\Views;\n");
-        fwrite($controllerFile, "use \\eftec\bladeone\BladeOne;\n");
+        fwrite($controllerFile, "namespace LazyMePHP\Controllers;");
+        fwrite($controllerFile, "\n");
+        fwrite($controllerFile, "\n");
+        fwrite($controllerFile, "use \\eftec\bladeone\BladeOne;");
+        fwrite($controllerFile, "\n");
+        fwrite($controllerFile, "\n");
         fwrite($controllerFile, "\$views = __DIR__ . '/../Views/';");
         fwrite($controllerFile, "\n");
         fwrite($controllerFile, "\$cache = __DIR__ . '/../Views/_compiled/';");

@@ -2,13 +2,15 @@
 
 /**
  * LazyMePHP
-* @copyright This file is part of the LazyMePHP developed by Duarte Peixinho
-* @author Duarte Peixinho
-*/
+ * @copyright This file is part of the LazyMePHP developed by Duarte Peixinho
+ * @author Duarte Peixinho
+ */
 
 declare(strict_types=1);
 
 namespace LazyMePHP\Security;
+
+use LazyMePHP\Session\Session;
 
 class CsrfProtection
 {
@@ -21,18 +23,15 @@ class CsrfProtection
      */
     public static function getToken()
     {
-        // Start session if not already started (customize for LazyMePHP)
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        $session = Session::getInstance();
 
         // Generate new token if none exists or expired
-        if (empty($_SESSION[self::TOKEN_KEY]) || self::isTokenExpired()) {
-            $_SESSION[self::TOKEN_KEY] = bin2hex(random_bytes(32));
-            $_SESSION['csrf_created_at'] = time();
+        if (!$session->has(self::TOKEN_KEY) || self::isTokenExpired()) {
+            $session->put(self::TOKEN_KEY, bin2hex(random_bytes(32)));
+            $session->put('csrf_created_at', time());
         }
 
-        return $_SESSION[self::TOKEN_KEY];
+        return $session->get(self::TOKEN_KEY);
     }
 
     /**
@@ -41,13 +40,11 @@ class CsrfProtection
      * @param string $token
      * @return bool
      */
-    public static function verifyToken(string $token):bool
+    public static function verifyToken(string $token): bool
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        $session = Session::getInstance();
 
-        $storedToken = $_SESSION[self::TOKEN_KEY] ?? null;
+        $storedToken = $session->get(self::TOKEN_KEY, null);
 
         if (!$storedToken || self::isTokenExpired()) {
             return false;
@@ -57,8 +54,7 @@ class CsrfProtection
 
         // Regenerate token after successful verification to prevent reuse
         if ($isValid) {
-            unset($_SESSION[self::TOKEN_KEY]);
-            unset($_SESSION['csrf_created_at']);
+            $session->forget([self::TOKEN_KEY, 'csrf_created_at']);
             self::getToken(); // Generate new token
         }
 
@@ -70,9 +66,10 @@ class CsrfProtection
      *
      * @return bool
      */
-    protected static function isTokenExpired():bool
+    protected static function isTokenExpired(): bool
     {
-        $createdAt = $_SESSION['csrf_created_at'] ?? 0;
+        $session = Session::getInstance();
+        $createdAt = $session->get('csrf_created_at', 0);
         $expiryTime = 3600; // 1 hour in seconds
         return (time() - $createdAt) > $expiryTime;
     }
@@ -82,9 +79,9 @@ class CsrfProtection
      *
      * @return string
      */
-    public static function renderInput():string
+    public static function renderInput(): string
     {
-        return \htmlspecialchars(self::getToken());
+        return htmlspecialchars(self::getToken());
     }
 }
 ?>
