@@ -5,7 +5,7 @@
  * @author Duarte Peixinho
  */
 
-namespace LazyMePHP\Forms;
+namespace LazyMePHP\Views;
 use \eftec\bladeone\BladeOne;
 
 class DefaultController {

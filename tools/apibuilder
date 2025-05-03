@@ -150,7 +150,7 @@ class BuildTableAPI
               fwrite($routerFile, "\n");
               fwrite($routerFile, " */");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "use LazyMePHP\Forms\\".$o->Table.";");
+              fwrite($routerFile, "use LazyMePHP\Views\\".$o->Table.";");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "require_once __DIR__.\"/../Controllers/".$o->Table.".php\";");
               fwrite($routerFile, "\n");

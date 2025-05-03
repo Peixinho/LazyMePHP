@@ -111,7 +111,7 @@ class BuildTableForms
           fwrite($routerFile, "\n");
           fwrite($routerFile, " */");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "use LazyMePHP\Forms\\".$db->GetTableName().";");
+          fwrite($routerFile, "use LazyMePHP\Views\\".$db->GetTableName().";");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "require_once __DIR__.\"/../Controllers/".$db->GetTableName().".php\";");
           fwrite($routerFile, "\n");
@@ -503,7 +503,7 @@ class BuildTableForms
         fwrite($controllerFile," */");
         fwrite($controllerFile, "\n");
         fwrite($controllerFile, "\n");
-        fwrite($controllerFile, "namespace LazyMePHP\Forms;\n");
+        fwrite($controllerFile, "namespace LazyMePHP\Views;\n");
         fwrite($controllerFile, "use \\eftec\bladeone\BladeOne;\n");
         fwrite($controllerFile, "\$views = __DIR__ . '/../Views/';");
         fwrite($controllerFile, "\n");
