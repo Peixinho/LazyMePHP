@@ -521,6 +521,8 @@ class BuildTableForms
         fwrite($controllerFile, "\n");
         fwrite($controllerFile, "require_once __DIR__.\"/../Classes/".$db->GetTableName().".php\";");
         fwrite($controllerFile, "\n");
+        fwrite($controllerFile, "require_once __DIR__.\"/../Validations/Validations.php\";");
+        fwrite($controllerFile, "\n");
         fwrite($controllerFile, "\n");
 
         // reload page with _get params from filter post
@@ -581,7 +583,7 @@ class BuildTableForms
         if ($primaryKey)
         {
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\tstatic function Save(?int \$".$primaryKey->GetName()." = null) {");
+          fwrite($controllerFile, "\tstatic function Save(?int \$".$primaryKey->GetName()." = null, \$api = false) {");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\$obj = new \LazyMePHP\Classes\\".$db->GetTableName()."(\$".$primaryKey->GetName().");");
           fwrite($controllerFile, "\n");
@@ -645,28 +647,29 @@ class BuildTableForms
           fwrite($controllerFile, "\t\t];");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\tif (\\LazyMePHP\\Security\\CsrfProtection::verifyToken(\$_POST['_token'])) {");
-          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\tif (!\$api && \\LazyMePHP\\Security\\CsrfProtection::verifyToken(\$_POST['_token']))");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\t\$validatedData = \\LazyMePHP\Validations\\ValidateFormData(\$validationRules);");
           fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\telse");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\tif (\$validatedData['success']) {");
+          fwrite($controllerFile, "\t\t\t\$validatedData = \\LazyMePHP\Validations\\ValidateJsonData(file_get_contents('php://input'),\$validationRules);");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\t\tforeach (\$validatedData['validated_data'] as \$field => \$value) {");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\t\t\t\$obj->\$field = \$value;");
+          fwrite($controllerFile, "\t\tif (\$validatedData['success']) {");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\t\t}");
+          fwrite($controllerFile, "\t\t\tforeach (\$validatedData['validated_data'] as \$field => \$value) {");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\t\t\$obj->Save();");
-          fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\t\treturn \$obj;");
+          fwrite($controllerFile, "\t\t\t\t\$obj->\$field = \$value;");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\t}");
           fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\t\t\$obj->Save();");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\t\treturn \$obj;");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t}");
+          fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\treturn false;");
           fwrite($controllerFile, "\n");

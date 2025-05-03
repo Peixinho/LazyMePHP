@@ -394,4 +394,127 @@ function ValidateFormData(array $validationRules): array
     ]
   ];
 }
+
+function ValidateJsonData($jsonInput, array $validationRules): array
+{
+    $validatedData = [];
+    $errors = [];
+    $missingFields = [];
+    $validatedFields = [];
+
+    // Handle JSON input (string or array)
+    $inputData = is_string($jsonInput) ? json_decode($jsonInput, true) : $jsonInput;
+    if (!is_array($inputData)) {
+        throw new InvalidArgumentException('JSON input must be a valid JSON string or an array.');
+    }
+
+    // Validate rule structure
+    foreach ($validationRules as $field => $rule) {
+        if (!isset($rule['validations']) || !is_array($rule['validations'])) {
+            throw new InvalidArgumentException("Validation rule for '$field' must include a 'validations' array.");
+        }
+        if (!isset($rule['type']) || !in_array($rule['type'], ['int', 'float', 'bool', 'string', 'iso_date'], true)) {
+            throw new InvalidArgumentException("Validation rule for '$field' must specify a valid 'type' (int, float, bool, string, iso_date).");
+        }
+    }
+
+    // Validate each field
+    foreach ($validationRules as $field => $rule) {
+        // Get value from JSON input
+        $value = isset($inputData[$field]) ? $inputData[$field] : null;
+        $trim = $rule['trim'] ?? true;
+
+        // Apply trimming if applicable
+        if ($value !== null && $trim && is_string($value)) {
+            $value = trim($value);
+        }
+
+        // Check for missing field
+        if ($value === null && !array_key_exists($field, $inputData)) {
+            if ($rule['required'] ?? true) {
+                $errors[$field] = ['Field is required.'];
+                $missingFields[] = $field;
+            } else {
+                $validatedData[$field] = null;
+                $validatedFields[] = $field;
+            }
+            continue;
+        }
+
+        // Apply validations
+        $validations = $rule['validations'];
+        if (isset($rule['params'])) {
+            // Merge params into validations (e.g., min_length for STRING)
+            $validations = array_merge($validations, [$rule['params']]);
+        }
+        $fieldErrors = ValidateField($value, $validations);
+        if ($fieldErrors) {
+            $errors[$field] = $fieldErrors;
+            continue;
+        }
+
+        // Handle empty values
+        if ($value === '' || ($rule['type'] === 'string' && $value === null)) {
+            if ($rule['required'] ?? true) {
+                $errors[$field] = ['Field cannot be empty.'];
+            } else {
+                $validatedData[$field] = null;
+                $validatedFields[] = $field;
+            }
+            continue;
+        }
+
+        // Cast to the appropriate type
+        try {
+            switch ($rule['type']) {
+                case 'int':
+                    if (is_numeric($value) && floor(floatval($value)) == $value) {
+                        $validatedData[$field] = (int)$value;
+                    } else {
+                        $errors[$field] = ['Value must be an integer.'];
+                        continue 2;
+                    }
+                    break;
+                case 'float':
+                    if (is_numeric($value)) {
+                        $validatedData[$field] = (float)$value;
+                    } else {
+                        $errors[$field] = ['Value must be a number.'];
+                        continue 2;
+                    }
+                    break;
+                case 'bool':
+                    // Handle JSON booleans, strings, and integers (0/1)
+                    $validatedData[$field] = in_array($value, [true, '1', 1, 'true', 'on'], true) ? 1 : 0;
+                    break;
+                case 'string':
+                    $validatedData[$field] = (string)$value;
+                    break;
+                case 'iso_date':
+                    // Verify ISO 8601 date format
+                    $date = DateTime::createFromFormat('Y-m-d|', $value) ?: DateTime::createFromFormat('Y-m-d H:i:s|', $value);
+                    if (!$date) {
+                        $errors[$field] = ['Invalid ISO 8601 date format.'];
+                        continue 2;
+                    }
+                    $validatedData[$field] = $value;
+                    break;
+            }
+            $validatedFields[] = $field;
+        } catch (\Exception $e) {
+            $errors[$field] = ["Type casting error: {$e->getMessage()}"];
+            continue;
+        }
+    }
+
+    return [
+        'success' => empty($errors),
+        'validated_data' => $validatedData,
+        'errors' => $errors,
+        'metadata' => [
+            'missing_fields' => $missingFields,
+            'validated_fields' => $validatedFields
+        ]
+    ];
+}
 ?>

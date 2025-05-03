@@ -170,19 +170,19 @@ class BuildTableAPI
               fwrite($routerFile, "\n");
               fwrite($routerFile, "});");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "SimpleRouter::post('/api/".$o->Table."/{$db->GetPrimaryFieldName()}', function (\$".$db->GetPrimaryFieldName().") {");
+              fwrite($routerFile, "SimpleRouter::post('/api/".$o->Table."/{".$db->GetPrimaryFieldName()."}', function (\$".$db->GetPrimaryFieldName().") {");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "\t\\LazyMePHP\\Controllers\\".$o->Table."::Save((int)\$".$db->GetPrimaryFieldName().");");
+              fwrite($routerFile, "\t\$data = \\LazyMePHP\\Controllers\\".$o->Table."::Save((int)\$".$db->GetPrimaryFieldName().", true);");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "\techo json_encode(array('status' => 1));");
+              fwrite($routerFile, "\techo json_encode(\$data ?? array('status' => 1));");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "});");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "SimpleRouter::post('/api/".$o->Table."', function () {");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "\t\\LazyMePHP\\Controllers\\".$o->Table."::Save();");
+              fwrite($routerFile, "\t\$data = \\LazyMePHP\\Controllers\\".$o->Table."::Save(null, true);");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "\techo json_encode(array('status' => 1));");
+              fwrite($routerFile, "\techo json_encode(\$data ?? array('status' => 1));");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "});");
               fwrite($routerFile, "\n");
@@ -193,8 +193,6 @@ class BuildTableAPI
               fwrite($routerFile, "\techo json_encode(array('status' => 1));");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "});");
-              fwrite($routerFile, "\n");
-              fwrite($routerFile, "\n");
             }
             fwrite($routerFile, "\n");
             fwrite($routerFile, "?>");
