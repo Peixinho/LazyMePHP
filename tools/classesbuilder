@@ -43,46 +43,10 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
      * @param (string) (path)
      * @return (null)
      */
-	function __construct($classesPath, $tablesList, $replaceInclude, $tableDescriptors)
+	function __construct($classesPath, $tablesList, $tableDescriptors)
 	{
     // Create Folder if doesn't exist
     if (!is_dir($classesPath)) \LazyMePHP\Helper\MKDIR($classesPath);
-
-    $failedIncludeFile = false;
-
-    // Create Last File to Help on Requires
-		if ($replaceInclude) {
-			if (\LazyMePHP\Helper\UNLINK($classesPath."/includes.php"))
-			{
-				if (\LazyMePHP\Helper\TOUCH($classesPath."/includes.php"))
-				{
-          $classFile = fopen($classesPath."/includes.php","w+");
-          fwrite($classFile,"<?php");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\n");
-          fwrite($classFile,"/**");
-          fwrite($classFile, "\n");
-          fwrite($classFile," * @copyright This file is part of the LazyMePHP Framework developed by Duarte Peixinho");
-          fwrite($classFile, "\n");
-          fwrite($classFile," * @author Duarte Peixinho");
-          fwrite($classFile," *");
-          fwrite($classFile, "\n");
-          fwrite($classFile," * Source File Generated Automatically");
-          fwrite($classFile, "\n");
-          fwrite($classFile," */");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "use \LazyMePHP\Config\Internal\APP;\n");
-        }
-        else {
-          echo "ERROR: Check your permissions to write ".$classesPath."/includes.php\n";
-          $failedIncludeFile = true;
-        }
-      }
-      else {
-        echo "ERROR: Check your permissions to write ".$classesPath."/includes.php\n";
-        $failedIncludeFile = true;
-      }
-    }
 
     // SELECT Tables
     $queryString = "";
@@ -106,17 +70,6 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         $db = new \LazyMePHP\DatabaseHelper\_DB_TABLE($o->Table);
         $this->ConstructClass($classesPath,$db,$tableDescriptors);
       }
-
-      if ($replaceInclude && !$failedIncludeFile) {
-        fwrite($classFile, "\n");
-        fwrite($classFile, "require_once __DIR__.'/".$o->Table.".php';");
-      }
-    }
-
-    // Close Include file
-    if ($replaceInclude && !$failedIncludeFile) {
-      fwrite($classFile, "\n");
-      fwrite($classFile,"?>");
     }
   }
 
@@ -153,9 +106,14 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "use \LazyMePHP\ClassesBuilder\IDB_CLASS_LIST;\n");
         fwrite($classFile, "use \LazyMePHP\Config\Internal\APP;\n");
         fwrite($classFile, "\n");
+        foreach($db->GetTableFields() as $field)
+        {
+          if ($field->HasForeignKey()) {
+            fwrite($classFile, "require_once __DIR__.\"/../Classes/".$field->GetForeignTable().".php\";");
+            fwrite($classFile, "\n");
+          }
+        }
         fwrite($classFile, "require_once __DIR__.\"/../DB/IDB.php\";");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "require_once \"includes.php\";");
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
         fwrite($classFile, "class ".$db->_Tablename." implements IDB_CLASS {");
@@ -1348,9 +1306,9 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile,"?>");
         fclose($classFile);
       }
-			else echo "ERROR: Check your permissions to write ".$classesPath."/includes.php\n";
+			else echo "ERROR: Check your permissions to write ".$classesPath."/".$db->_Tablename.".php\n";
 		}
-		else echo "ERROR: Check your permissions to remove ".$classesPath."/includes.php\n";
+		else echo "ERROR: Check your permissions to remove ".$classesPath."/".$db->_Tablename.".php\n";
 	}
 }
 ?>

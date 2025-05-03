@@ -156,7 +156,7 @@ class BuildTableAPI
               fwrite($routerFile, "\n");
               fwrite($routerFile, "SimpleRouter::get('/api/".$o->Table."', function() {");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "\t\$data = ".$o->Table."::Default(false, \$_GET['page']??1, \$_GET['itemsPerPage']??APP::APP_NRESULTS());");
+              fwrite($routerFile, "\t\$data = \\LazyMePHP\\Controllers\\".$o->Table."::Default(false, \$_GET['page']??1, \$_GET['itemsPerPage']??APP::APP_NRESULTS());");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "\techo json_encode(array('data' => \$data['".$o->Table."']->Serialize(\$GLOBALS['API_FOREIGN_DATA'], \$GLOBALS['API_FIELDS_AVAILABLE']), 'length' => \$data['length'], 'filters' => \$data['filters']));");
               fwrite($routerFile, "\n");
@@ -164,7 +164,7 @@ class BuildTableAPI
               fwrite($routerFile, "\n");
               fwrite($routerFile, "SimpleRouter::get('/api/".$o->Table."/{".$db->GetPrimaryFieldName()."}', function (\$".$db->GetPrimaryFieldName().") {");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "\t\$data = ".$o->Table."::Edit((int)\$".$db->GetPrimaryFieldName().");");
+              fwrite($routerFile, "\t\$data = \\LazyMePHP\\Controllers\\".$o->Table."::Edit((int)\$".$db->GetPrimaryFieldName().");");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "\techo json_encode(\$data['".$o->Table."']->Serialize(\$GLOBALS['API_FOREIGN_DATA'], \$GLOBALS['API_FIELDS_AVAILABLE']));");
               fwrite($routerFile, "\n");
@@ -172,7 +172,7 @@ class BuildTableAPI
               fwrite($routerFile, "\n");
               fwrite($routerFile, "SimpleRouter::post('/api/".$o->Table."/{$db->GetPrimaryFieldName()}', function (\$".$db->GetPrimaryFieldName().") {");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "\t".$o->Table."::Save((int)\$".$db->GetPrimaryFieldName().");");
+              fwrite($routerFile, "\t\\LazyMePHP\\Controllers\\".$o->Table."::Save((int)\$".$db->GetPrimaryFieldName().");");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "\techo json_encode(array('status' => 1));");
               fwrite($routerFile, "\n");
@@ -180,7 +180,7 @@ class BuildTableAPI
               fwrite($routerFile, "\n");
               fwrite($routerFile, "SimpleRouter::post('/api/".$o->Table."', function () {");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "\t".$o->Table."::Save();");
+              fwrite($routerFile, "\t\\LazyMePHP\\Controllers\\".$o->Table."::Save();");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "\techo json_encode(array('status' => 1));");
               fwrite($routerFile, "\n");
@@ -188,7 +188,7 @@ class BuildTableAPI
               fwrite($routerFile, "\n");
               fwrite($routerFile, "SimpleRouter::delete('/api/".$o->Table."/{".$db->GetPrimaryFieldName()."}}', function (\$".$db->GetPrimaryFieldName().") {");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "\t".$o->Table."::Delete((int)\$".$db->GetPrimaryFieldName().");");
+              fwrite($routerFile, "\t\\LazyMePHP\\Controllers\\".$o->Table."::Delete((int)\$".$db->GetPrimaryFieldName().");");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "\techo json_encode(array('status' => 1));");
               fwrite($routerFile, "\n");

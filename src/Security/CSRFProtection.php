@@ -11,6 +11,7 @@ declare(strict_types=1);
 namespace LazyMePHP\Security;
 
 use LazyMePHP\Session\Session;
+require_once __DIR__."/../Session/Session.php";
 
 class CsrfProtection
 {

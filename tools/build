@@ -179,14 +179,12 @@ function buildClasses() {
     echo "Tables selected for building classes:\n\n";
     echo "\nTable name\n";
     foreach($classes as $c) echo $c['name']."\n";
-    $replaceI = null;
-    while($replaceI === null) $replaceI = \LazyMePHP\Helper\promptYesNo("\nReplace includes.php");
     $proceed = null;
     while($proceed === null) $proceed = \LazyMePHP\Helper\promptYesNo("Do you want to continue");
     if ($proceed) {
       $tablesList = array();
       foreach($classes as $c) $tablesList[] = $c['name'];
-      new \LazyMePHP\ClassesBuilder\BuildTableClasses('src/Classes', $tablesList, $replaceI, $tablesDescriptors);
+      new \LazyMePHP\ClassesBuilder\BuildTableClasses('src/Classes', $tablesList, $tablesDescriptors);
     }
   }
   echo "\nDone, press enter to finish...";
