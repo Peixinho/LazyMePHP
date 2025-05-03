@@ -57,12 +57,6 @@ require_once __DIR__."/Ext/vendor/autoload.php";
 require_once __DIR__."/Routes/Routes.php";
 
 /*
- * Include Generated Class Files
- */
-if(file_exists(__DIR__."/Classes/includes.php"))
-    require_once __DIR__."/Classes/includes.php";
-
-/*
  * Routing
  */
 ob_start();
