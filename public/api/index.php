@@ -16,6 +16,7 @@ namespace LazyMePHP\API;
 require_once __DIR__."/../../src/Configurations/Configurations.php";
 require_once __DIR__."/../../src/Configurations/Internal/InternalConfigurations.php";
 require_once __DIR__."/../../src/Helpers/Helper.php";
+require_once __DIR__."/../../src/Security/JWT.php";
 
 use \LazyMePHP\Config\Internal\APP;
 

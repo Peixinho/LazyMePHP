@@ -15,6 +15,11 @@ use LazyMePHP\Config\Internal\APP;
  */
 require_once __DIR__."/Security/CSRFProtection.php";
 
+/*
+ * JWT Authentication
+ */
+require_once __DIR__."/Security/JWT.php";
+
 // APP URL
 $urlFiles = filter_input(INPUT_SERVER, "SERVER_NAME");
 
