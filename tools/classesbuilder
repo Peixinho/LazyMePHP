@@ -173,15 +173,15 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
           fwrite($classFile, "\n");
           fwrite($classFile, "\t/** @var ".$field->GetName()."*/");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\tpublic ?".$field->GetDataType()." \$".$field->GetName()." = null {");
+            fwrite($classFile, "\tpublic ".($field->AllowNull() || $field->IsPrimaryKey()?"?":"").$field->GetDataType()." \$".$field->GetName()."".($field->AllowNull() || $field->IsPrimaryKey()?" = null":($field->GetDefaultValue()?' = '.$field->GetDefaultValue():''))." {");
           fwrite($classFile, "\n");
           fwrite($classFile, "\t\tget {");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\t\t\treturn \$this->".$field->GetName().";");
+          fwrite($classFile, "\t\t\treturn (".$field->GetDataType().")\$this->".$field->GetName().";");
           fwrite($classFile, "\n");
           fwrite($classFile, "\t\t}");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\t\tset(?".$field->GetDataType()." \$".$field->GetName().") {");
+          fwrite($classFile, "\t\tset(".($field->AllowNull()||$field->IsPrimaryKey()?"?":"")."".$field->GetDataType()." \$".$field->GetName().") {");
           fwrite($classFile, "\n");
             if ($field->HasForeignKey() && $field->GetForeignField())
             {
@@ -198,16 +198,25 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
               case "bool":
               case "float":
               case "int":
-                fwrite($classFile, "\t\t\tif (!empty(\$this->".$field->GetName().") && APP::APP_ACTIVITY_LOG() && \$this->".$field->GetName()."!=\$".$field->GetName().")\n\t\t\t\t\$this->__log['".$field->GetName()."']=array((\$this->".$field->GetName()."?\$this->".$field->GetName().":''), (\$".$field->GetName()."?\$".$field->GetName().":''));");
+                if ($field->AllowNull())
+                  fwrite($classFile, "\t\t\tif (!empty(\$this->".$field->GetName().") && APP::APP_ACTIVITY_LOG() && \$this->".$field->GetName()."!=\$".$field->GetName().")\n\t\t\t\t\$this->__log['".$field->GetName()."']=array((\$this->".$field->GetName()."?\$this->".$field->GetName().":''), (\$".$field->GetName()."?\$".$field->GetName().":''));");
+                else
+                  fwrite($classFile, "\t\t\tif (APP::APP_ACTIVITY_LOG() && \$this->".$field->GetName()."!=\$".$field->GetName().")\n\t\t\t\t\$this->__log['".$field->GetName()."']=array((\$this->".$field->GetName()."?\$this->".$field->GetName().":''), (\$".$field->GetName()."?\$".$field->GetName().":''));");
                 break;
                 case "string":
-                fwrite($classFile, "\t\t\tif (!empty(\$this->".$field->GetName().") && APP::APP_ACTIVITY_LOG() && \$this->".$field->GetName()."!=\$".$field->GetName().")\n\t\t\t\t\$this->__log['".$field->GetName()."']=array((\$this->".$field->GetName()."?substr(\$this->".$field->GetName().",0,255):''), (\$".$field->GetName()."?substr(\$".$field->GetName().",0,255):''));");
+                if ($field->AllowNull())
+                  fwrite($classFile, "\t\t\tif (!empty(\$this->".$field->GetName().") && APP::APP_ACTIVITY_LOG() && \$this->".$field->GetName()."!=\$".$field->GetName().")\n\t\t\t\t\$this->__log['".$field->GetName()."']=array((\$this->".$field->GetName()."?substr((".$field->GetDataType().")\$this->".$field->GetName().",0,255):''), (\$".$field->GetName()."?substr(\$".$field->GetName().",0,255):''));");
+                else
+                  fwrite($classFile, "\t\t\tif (APP::APP_ACTIVITY_LOG() && \$this->".$field->GetName()."!=\$".$field->GetName().")\n\t\t\t\t\$this->__log['".$field->GetName()."']=array((\$this->".$field->GetName()."?substr((".$field->GetDataType().")\$this->".$field->GetName().",0,255):''), (\$".$field->GetName()."?substr(\$".$field->GetName().",0,255):''));");
                 break;
             }
             fwrite($classFile, "\n");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\t\$this->".$field->GetName()."=(!empty(\$".$field->GetName().")?".($field->GetDataLength()>0?"substr(\$".$field->GetName().",0,".$field->GetDataLength().")":"\$".$field->GetName()).":null);");
-            fwrite($classFile, "\n");
+            if ($field->AllowNull())
+              fwrite($classFile, "\t\t\t\$this->".$field->GetName()."=(!empty(\$".$field->GetName().")?".($field->GetDataLength()>0?"substr(\$".$field->GetName().",0,".$field->GetDataLength().")":"\$".$field->GetName()).":".($field->GetDefaultValue??($field->Allownull()?"null":"''")).");");
+            else
+              fwrite($classFile, "\t\t\t\$this->".$field->GetName()."=\$".$field->GetName().";");
+          fwrite($classFile, "\n");
           fwrite($classFile, "\t\t}");
           fwrite($classFile, "\n");
           fwrite($classFile, "\t}");
@@ -450,7 +459,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
                     fwrite($classFile, "\n");
             fwrite($classFile, "\t\t} else {");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\tif (isset(\$this->".$field->GetName().")) {");
+            fwrite($classFile, "\t\t\tif (\$this->".$field->GetName().") {");
             // Update
             fwrite($classFile, "\n");
             fwrite($classFile, "\t\t\t\t\$sql = \"UPDATE ".$db->_Tablename." SET ");
@@ -985,11 +994,11 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
           fwrite($classFile, "\n");
           fwrite($classFile, "\t */");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\tpublic function FindBy".$field->GetName()."(string \$var, string \$operator = '=', string \$operator2 = 'AND') {");
+          fwrite($classFile, "\tpublic function FindBy".$field->GetName()."(".$field->GetDataType()." \$var, string \$operator = '=', string \$operator2 = 'AND') {");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\t\tif (!empty(\$var)) \$this->_args[]=\$var;");
+          fwrite($classFile, "\t\t\$this->_args[]=\$var;");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\t\t\$this->_sql .= \" \".(!empty(\$this->_listHasCondition)?\"\$operator2\":\"\").\" \".\$this->_sqlToAdd.\" ".$db->GetTableName().".".$field->GetName()." \$operator \".(\$var || \$operator=='='?\"?\":\"\").\"\";");
+          fwrite($classFile, "\t\t\$this->_sql .= \" \".(!empty(\$this->_listHasCondition)?\"\$operator2\":\"\").\" \".\$this->_sqlToAdd.\" ".$db->GetTableName().".".$field->GetName()." \$operator \".(isset(\$var) || \$operator=='='?\"?\":\"\");");
           fwrite($classFile, "\n");
           fwrite($classFile, "\t\t\$this->_listHasCondition = true;");
           fwrite($classFile, "\n");
@@ -998,7 +1007,58 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
           fwrite($classFile, "\t}");
           fwrite($classFile, "\n");
 
-          fwrite($classFile, "\n");
+          if ($field->AllowNull()) {
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t/**");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t * ".$field->GetName()."IsNULL");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t *");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t * Finds result where ".$db->GetTableName().".".$field->GetName()." IS NULL");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t *");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t * @return (null)");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t */");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\tpublic function ".$field->GetName()."IsNULL(string \$operator = 'AND') {");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t\t\$this->_sql .= \" \".(!empty(\$this->_listHasCondition)?\"\$operator\":\"\").\" \".\$this->_sqlToAdd.\" ".$db->GetTableName().".".$field->GetName()." IS NULL\";");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t\t\$this->_listHasCondition = true;");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t}");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\n");
+
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t/**");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t * ".$field->GetName()."IsNotNULL");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t *");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t * Finds result where ".$db->GetTableName().".".$field->GetName()." IS NOT NULL");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t *");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t * @return (null)");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t */");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\tpublic function ".$field->GetName()."IsNotNULL(string \$operator = 'AND') {");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t\t\$this->_sql .= \" \".(!empty(\$this->_listHasCondition)?\"\$operator\":\"\").\" \".\$this->_sqlToAdd.\" ".$db->GetTableName().".".$field->GetName()." IS NOT NULL\";");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t\t\$this->_listHasCondition = true;");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t}");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\n");
+          }
+
           fwrite($classFile, "\t/**");
           fwrite($classFile, "\n");
           fwrite($classFile, "\t * FindBy".$field->GetName()."Like");

@@ -19,13 +19,16 @@ class _DB_FIELD {
 	/** @var string Field Name */
 	protected $_Field_Name;
 
-    /** @var string Field Data Type */
+  /** @var string Field Data Type */
 	protected $_Field_Data_Type;
 
-    /** @var bool Allow Null */
+  /** @var string Field Default Value */
+	protected $_Field_Default_Value;
+
+  /** @var bool Allow Null */
 	protected $_Field_Allow_Null;
 
-    /** @var bool AutoIncrement */
+  /** @var bool AutoIncrement */
 	protected $_Field_Auto_Increment;
 
 	/** @var int Index */
@@ -55,6 +58,7 @@ class _DB_FIELD {
 	function __construct($fieldname, $fielddatatype = NULL)
 	{
 		$this->_Field_Data_Type 		= ($fielddatatype!=NULL?$fielddatatype:NULL);
+		$this->_Field_Default_Value 		= NULL;
 		$this->_Field_Name 				= $fieldname;
 		$this->_Field_Allow_Null		= false;
 		$this->_Field_Primary_Key		= false;
@@ -173,6 +177,26 @@ class _DB_FIELD {
      * @return (string) (data)
      */
 	function GetDataType() { return $this->_Field_Data_Type; }
+
+	/**
+     * SetDefaultValue
+     *
+     * Set Field's Default Value
+     *
+     * @param (?)
+     * @return (NULL)
+     */
+	function SetDefaultValue($value) { $this->_Field_Default_Value = $value; }
+
+    /**
+     * GetDefaultValue
+     *
+     * Get Field's Default Value
+     *
+     * @param (NULL)
+     * @return (?)
+     */
+	function GetDefaultValue() { return $this->_Field_Default_Value; }
 
 	/**
      * SetDataLength
@@ -511,6 +535,7 @@ class _DB_TABLE {
             $field->SetAllowNull($f->Null);
             $field->SetAutoIncrement($f->Identity);
             $field->SetDataLength($f->Data_Length);
+            $field->SetDefaultValue($f->Default);
             if ($f->PK)
             {
                 $field->SetPrimaryKey(true);

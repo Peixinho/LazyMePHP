@@ -159,7 +159,7 @@ class BuildTableForms
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\tglobal \$blade;");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\techo \$blade->run(\"".$db->GetTableName().".edit\", ['controller' => '".$db->GetTableName()."', '".$db->GetTableName()."' => \$data['".$db->GetTableName()."']");
+          fwrite($routerFile, "\techo \$blade->run(\"".$db->GetTableName().".new\", ['controller' => '".$db->GetTableName()."', '".$db->GetTableName()."' => \$data['".$db->GetTableName()."']");
           foreach ($db->GetTableFields() as $field)
           {
             if ($field->GetForeignField()) {
@@ -221,12 +221,14 @@ class BuildTableForms
     if (
     \LazyMePHP\Helper\UNLINK($viewsPath."/".$db->GetTableName()."/template.blade.php") &&
       \LazyMePHP\Helper\UNLINK($viewsPath."/".$db->GetTableName()."/list.blade.php") &&
-      \LazyMePHP\Helper\UNLINK($viewsPath."/".$db->GetTableName()."/edit.blade.php")
+      \LazyMePHP\Helper\UNLINK($viewsPath."/".$db->GetTableName()."/edit.blade.php") &&
+      \LazyMePHP\Helper\UNLINK($viewsPath."/".$db->GetTableName()."/new.blade.php")
   ) {
       if (
       \LazyMePHP\Helper\TOUCH($viewsPath."/".$db->GetTableName()."/template.blade.php") &&
         \LazyMePHP\Helper\TOUCH($viewsPath."/".$db->GetTableName()."/list.blade.php") &&
-        \LazyMePHP\Helper\TOUCH($viewsPath."/".$db->GetTableName()."/edit.blade.php")
+        \LazyMePHP\Helper\TOUCH($viewsPath."/".$db->GetTableName()."/edit.blade.php") &&
+        \LazyMePHP\Helper\TOUCH($viewsPath."/".$db->GetTableName()."/new.blade.php")
     ) {
 
         $viewFile = fopen($viewsPath."/".$db->GetTableName()."/template.blade.php","w+");
@@ -297,11 +299,7 @@ class BuildTableForms
             break;
           } else $primaryKey = NULL;
         }
-        fwrite($viewFile, "@if (\$".$db->GetTableName()."->".$field->GetName().") <form id='".$db->GetTableName()."Form' method='POST' action='/".$db->GetTableName()."/{!!\$".$db->GetTableName()."->".$field->GetName()."!!}/save'>");
-        fwrite($viewFile, "\n");
-        fwrite($viewFile, "@else <form id='".$db->GetTableName()."Form' method='POST' action='/".$db->GetTableName()."/save' onsubmit='return LazyMePHP.ValidateForm(this);'>");
-        fwrite($viewFile, "\n");
-        fwrite($viewFile, "@endif");
+        fwrite($viewFile, "<form id='".$db->GetTableName()."Form' method='POST' action='/".$db->GetTableName()."/{!!\$".$db->GetTableName()."->".$field->GetName()."!!}/save'>");
         foreach ($db->GetTableFields() as $field) {
           if (!$field->IsAutoIncrement() || !$field->IsPrimaryKey())
           {
@@ -327,6 +325,99 @@ class BuildTableForms
                 case "string":
                 default:
                   fwrite($viewFile, "\t@component('_Components.TextInput',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'placeholder' => '".$field->GetName()."', 'type' => 'text', 'value' => \$".$db->GetTableName()."->".$field->GetName()." ".(!$field->AllowNull()?", 'validation' => 'NOTNULL', 'validationfail' => '".$field->GetName()." cannot be empty'":"")."".($field->GetDataLength()?", 'maxlength' => '".$field->GetDataLength()."'":"")."))");
+                  break;
+              }
+            }
+            fwrite($viewFile, "\n");
+            fwrite($viewFile, "\t@endcomponent");
+            fwrite($viewFile, "\n");
+          }
+        }
+        fwrite($viewFile, "\t<br/>");
+        fwrite($viewFile, "\n");
+        fwrite($viewFile, "@component('_Components.CSRF') @endcomponent");
+        fwrite($viewFile, "\n");
+        fwrite($viewFile, "@component('_Components.Button',array('type' => 'submit', 'name' => 'Save'))");
+        fwrite($viewFile, "\n");
+        fwrite($viewFile, "@endcomponent");
+        fwrite($viewFile, "\n");
+        fwrite($viewFile, "@component('_Components.Button',array('type' => 'button', 'name' => 'Cancel', 'onclick' => 'window.open(\"/".$db->GetTableName()."\",\"_self\");'))");
+        fwrite($viewFile, "\n");
+        fwrite($viewFile, "@endcomponent");
+        fwrite($viewFile, "\n");
+        fwrite($viewFile, "</form>");
+        fwrite($viewFile, "\n");
+        fwrite($viewFile, "\n");
+        fwrite($viewFile, "<script>");
+        fwrite($viewFile, "\n");
+        fwrite($viewFile, "function Init() { LazyMePHP.InitFormValidation('#".$db->GetTableName()."Form'); }");
+        fwrite($viewFile, "\n");
+        fwrite($viewFile, "</script>");
+        fclose($viewFile);
+
+        $viewFile = fopen($viewsPath."/".$db->GetTableName()."/new.blade.php","w+");
+        fwrite($viewFile,"<?php");
+        fwrite($viewFile, "\n");
+        fwrite($viewFile, "\n");
+        fwrite($viewFile,"/**");
+        fwrite($viewFile, "\n");
+        fwrite($viewFile," * @copyright This file is part of the LazyMePHP Framework developed by Duarte Peixinho");
+        fwrite($viewFile, "\n");
+        fwrite($viewFile," * @author Duarte Peixinho");
+        fwrite($viewFile, "\n");
+        fwrite($viewFile," *");
+        fwrite($viewFile, "\n");
+        fwrite($viewFile," * Source File Generated Automatically");
+        fwrite($viewFile, "\n");
+        fwrite($viewFile," */");
+        fwrite($viewFile, "\n");
+        fwrite($viewFile, "declare(strict_types=1);");
+        fwrite($viewFile, "\n");
+        fwrite($viewFile, "\n");
+        fwrite($viewFile," ?>");
+        fwrite($viewFile, "\n");
+        fwrite($viewFile, "\n");
+        fwrite($viewFile, "@include('".$db->GetTableName().".template')");
+        fwrite($viewFile, "\n");
+        fwrite($viewFile, "\n");
+
+        // Get Primary Key
+        $primaryKey = NULL;
+        foreach($db->GetTableFields() as $field)
+        {
+          if ($field->IsPrimaryKey())
+          {
+            $primaryKey = $field;
+            break;
+          } else $primaryKey = NULL;
+        }
+        fwrite($viewFile, "\n");
+        fwrite($viewFile, "<form id='".$db->GetTableName()."Form' method='POST' action='/".$db->GetTableName()."/save' onsubmit='return LazyMePHP.ValidateForm(this);'>");
+        foreach ($db->GetTableFields() as $field) {
+          if (!$field->IsAutoIncrement() || !$field->IsPrimaryKey())
+          {
+            if ($field->HasForeignKey() && !is_null($field->GetForeignField()))
+            {
+              fwrite($viewFile, "\n");
+              fwrite($viewFile, "\t@component('_Components.Select',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'defaultValueEmpty' => true, 'options' => \$".$field->GetForeignTable()."->GetList(false), ".(!$field->AllowNull()?", 'validation' => 'NOTNULL', 'validationfail' => '".$field->GetName()." cannot be empty'":"")." ))");
+            } else {
+              fwrite($viewFile, "\n");
+              switch ($field->GetDataType())
+              {
+                case "bool":
+                case "bit":
+                  fwrite($viewFile, "\t@component('_Components.Checkbox',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'placeholder' => '".$field->GetName()."', 'type' => 'checkbox', 'value' => '1'))");
+                  break;
+                case "date":
+                  fwrite($viewFile, "\t@component('_Components.TextInput',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'placeholder' => '".$field->GetName()."', 'type' => 'date', 'value' => '' ".(!$field->AllowNull()?", 'validation' => 'NOTNULL', 'validationfail' => '".$field->GetName()." cannot be empty'":"")." ))");
+                  break;
+                case "float":
+                case "int":
+                  fwrite($viewFile, "\t@component('_Components.TextInput',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'placeholder' => '".$field->GetName()."', 'type' => 'number', 'value' => '' ".(!$field->AllowNull()?", 'validation' => 'NOTNULL', 'validationfail' => '".$field->GetName()." cannot be empty'":"")." ".($field->GetDataLength()?", 'maxlength' => '".$field->GetDataLength()."'":"")."))");
+                  break;
+                case "string":
+                default:
+                  fwrite($viewFile, "\t@component('_Components.TextInput',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'placeholder' => '".$field->GetName()."', 'type' => 'text', 'value' => '' ".(!$field->AllowNull()?", 'validation' => 'NOTNULL', 'validationfail' => '".$field->GetName()." cannot be empty'":"")."".($field->GetDataLength()?", 'maxlength' => '".$field->GetDataLength()."'":"")."))");
                   break;
               }
             }
