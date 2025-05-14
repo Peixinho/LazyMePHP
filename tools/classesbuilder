@@ -102,6 +102,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
         fwrite($classFile, "namespace LazyMePHP\Classes;\n");
+        fwrite($classFile, "use \LazyMePHP\ClassesBuilder\DB_CLASS;\n");
         fwrite($classFile, "use \LazyMePHP\ClassesBuilder\IDB_CLASS;\n");
         fwrite($classFile, "use \LazyMePHP\ClassesBuilder\IDB_CLASS_LIST;\n");
         fwrite($classFile, "use \LazyMePHP\Config\Internal\APP;\n");
@@ -116,7 +117,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "require_once __DIR__.\"/../DB/IDB.php\";");
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
-        fwrite($classFile, "class ".$db->_Tablename." implements IDB_CLASS {");
+        fwrite($classFile, "class ".$db->_Tablename." extends DB_CLASS implements IDB_CLASS {");
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t/**");
@@ -173,7 +174,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
           fwrite($classFile, "\n");
           fwrite($classFile, "\t/** @var ".$field->GetName()."*/");
           fwrite($classFile, "\n");
-            fwrite($classFile, "\tpublic ".($field->AllowNull() || $field->IsPrimaryKey()?"?":"").$field->GetDataType()." \$".$field->GetName()."".($field->AllowNull() || $field->IsPrimaryKey()?" = null":($field->GetDefaultValue()?' = '.$field->GetDefaultValue():''))." {");
+            fwrite($classFile, "\tpublic ".($field->AllowNull()?"?":"").$field->GetDataType()." \$".$field->GetName()."".($field->AllowNull()?" = null":($field->GetDefaultValue()?' = '.$field->GetDefaultValue():''))." {");
           fwrite($classFile, "\n");
           fwrite($classFile, "\t\tget {");
           fwrite($classFile, "\n");
@@ -181,7 +182,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
           fwrite($classFile, "\n");
           fwrite($classFile, "\t\t}");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\t\tset(".($field->AllowNull()||$field->IsPrimaryKey()?"?":"")."".$field->GetDataType()." \$".$field->GetName().") {");
+          fwrite($classFile, "\t\tset(".($field->AllowNull()?"?":"")."".$field->GetDataType()." \$".$field->GetName().") {");
           fwrite($classFile, "\n");
             if ($field->HasForeignKey() && $field->GetForeignField())
             {
@@ -274,6 +275,10 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
             fwrite($classFile,"\t\t// Get Elements from DB using Primary Key");
             fwrite($classFile, "\n");
             fwrite($classFile,"\t\tif (isset(\$".$field->GetName().")) {");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\n");
+            fwrite($classFile,"\t\t\t\$this->__initialized = true;");
+            fwrite($classFile, "\n");
             fwrite($classFile, "\n");
             fwrite($classFile,"\t\t\t\$sql = \"SELECT ");
             $countFields = 0;
@@ -459,7 +464,7 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
                     fwrite($classFile, "\n");
             fwrite($classFile, "\t\t} else {");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\tif (\$this->".$field->GetName().") {");
+            fwrite($classFile, "\t\t\tif (\$this->__initialized) {");
             // Update
             fwrite($classFile, "\n");
             fwrite($classFile, "\t\t\t\t\$sql = \"UPDATE ".$db->_Tablename." SET ");
