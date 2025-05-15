@@ -405,16 +405,16 @@ function ValidateJsonData($jsonInput, array $validationRules): array
     // Handle JSON input (string or array)
     $inputData = is_string($jsonInput) ? json_decode($jsonInput, true) : $jsonInput;
     if (!is_array($inputData)) {
-        throw new InvalidArgumentException('JSON input must be a valid JSON string or an array.');
+        throw new \InvalidArgumentException('JSON input must be a valid JSON string or an array.');
     }
 
     // Validate rule structure
     foreach ($validationRules as $field => $rule) {
         if (!isset($rule['validations']) || !is_array($rule['validations'])) {
-            throw new InvalidArgumentException("Validation rule for '$field' must include a 'validations' array.");
+            throw new \InvalidArgumentException("Validation rule for '$field' must include a 'validations' array.");
         }
         if (!isset($rule['type']) || !in_array($rule['type'], ['int', 'float', 'bool', 'string', 'iso_date'], true)) {
-            throw new InvalidArgumentException("Validation rule for '$field' must specify a valid 'type' (int, float, bool, string, iso_date).");
+            throw new \InvalidArgumentException("Validation rule for '$field' must specify a valid 'type' (int, float, bool, string, iso_date).");
         }
     }
 
