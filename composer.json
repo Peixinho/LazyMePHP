@@ -1,10 +1,33 @@
 {
+    "name": "lazyme/framework",
+    "description": "LazyMePHP is a PHP framework designed for rapid development with a focus on class, form, and REST API generation from database tables.",
+    "type": "project",
+    "keywords": ["php", "framework", "rest", "api", "orm", "database", "rad"],
+    "homepage": "https://github.com/Peixinho/LazyMePHP",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Duarte Peixinho",
+            "homepage": "https://github.com/Peixinho",
+            "role": "Original Creator"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/Peixinho/LazyMePHP/issues",
+        "source": "https://github.com/Peixinho/LazyMePHP"
+    },
     "require": {
         "eftec/bladeone": "^4.9",
         "pecee/simple-router": "5.3.0.5",
-        "adhocore/jwt": "^1.1.3"
+        "adhocore/jwt": "^1.1.3",
+        "vlucas/phpdotenv": "^5.6"
     },
     "config": {
         "vendor-dir": "src/Ext/vendor"
+    },
+    "autoload": {
+        "psr-4": {
+            "LazyMePHP\\": "src/"
+        }
     }
 }

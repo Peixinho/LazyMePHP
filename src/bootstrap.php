@@ -1,4 +1,4 @@
-<?php
+<?php // Ensure this is at the very top if not already
 
 /**
  * LazyMePHP
@@ -8,6 +8,32 @@
 
 declare(strict_types=1);
 
+/*
+ * Load Composer Autoloader (for Dotenv and other dependencies)
+ */
+require_once __DIR__.'/Ext/vendor/autoload.php';
+
+/*
+ * Load Environment Variables
+ */
+if (file_exists(__DIR__.'/../.env')) {
+    $dotenv = Dotenv\Dotenv::createImmutable(__DIR__.'/../');
+    $dotenv->load();
+}
+
+/*
+ * Add LazyMePHP Internal Configuration File
+ */
+require_once __DIR__."/Configurations/Internal/InternalConfigurations.php";
+
+/*
+ * Initialize APP Configuration
+ */
+new LazyMePHP\Config\Internal\APP();
+
+// Continue with other require_once statements for the framework
+// Ensure use LazyMePHP\Config\Internal\APP; is present if APP::LOG_ACTIVITY() etc. are called directly without full namespace
+// However, new LazyMePHP\Config\Internal\APP() is explicit.
 use LazyMePHP\Config\Internal\APP;
 
 /*
@@ -22,11 +48,6 @@ require_once __DIR__."/Security/JWT.php";
 
 // APP URL
 $urlFiles = filter_input(INPUT_SERVER, "SERVER_NAME");
-
-/*
- * Add LazyMePHP Configuration File
- */
-require_once __DIR__."/Configurations/Configurations.php";
 
 /*
  * Validations
@@ -56,7 +77,7 @@ require_once __DIR__."/Values/Values.php";
 /*
  * Router
  */
-require_once __DIR__."/Ext/vendor/autoload.php";
+// require_once __DIR__."/Ext/vendor/autoload.php"; // Already loaded at the top
 
 /* Load external routes file */
 require_once __DIR__."/Routes/Routes.php";

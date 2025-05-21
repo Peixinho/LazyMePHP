@@ -12,543 +12,557 @@ namespace LazyMePHP\Config\Internal;
 use \LazyMePHP\DB\MYSQL;
 use \LazyMePHP\DB\MSSQL;
 use \LazyMePHP\DB\SQLITE;
+use LazyMePHP\Helpers\ErrorUtil; // Added for error handling utilities
+use LazyMePHP\Security\EncryptionUtil; // Added for encryption utilities
 
 /**
- * Trigger error custom function
+ * APP Class
  *
- * Replaces trigger default function
- */
-function trigger_error($message, $type = E_USER_NOTICE) {
-  $_SESSION['APP']['ERROR']['INTERNAL']['TYPE'] = $type;
-  $_SESSION['APP']['ERROR']['INTERNAL']['MESSAGE'] = $message;
-}
-
-/*
- * Show last error
- */
-function GetErrors() {
-  if (isset($_SESSION['APP']) && isset($_SESSION['APP']['ERROR']) && isset($_SESSION['APP']['ERROR']['INTERNAL']))
-    echo $_SESSION['APP']['ERROR']['INTERNAL']['MESSAGE'];
-  if (isset($_SESSION['APP']) && isset($_SESSION['APP']['ERROR']) && isset($_SESSION['APP']['ERROR']['DB']))
-    echo $_SESSION['APP']['ERROR']['DB']['MESSAGE'];
-  unset($_SESSION['APP']['ERROR']);
-}
-
-/*
- * Check if there are errors
- */
-function HasErrors() {
-  return (isset($_SESSION['APP']) && isset($_SESSION['APP']['ERROR']) && isset($_SESSION['APP']['ERROR']['INTERNAL'])
-  ||   
-  (isset($_SESSION['APP']) && isset($_SESSION['APP']['ERROR']) && isset($_SESSION['APP']['ERROR']['DB'])));
-}
-
-/*
- * Encrypt string
- */
-function encrypt($plaintext) {
-  return openssl_encrypt($plaintext, 'aes-128-ecb',APP::APP_ENCRYPTION());
-}
-
-/*
- * Decrypt string
- */
-function decrypt($cipherText) {
-  if ($cipherText) return openssl_decrypt($cipherText, 'aes-128-ecb',APP::APP_ENCRYPTION());
-}
-
-/**
- * ErrorHandler
+ * The APP class is the core of the LazyMePHP configuration and utility hub.
+ * It initializes database connections, application settings from environment variables,
+ * and provides static methods to access these configurations throughout the application.
+ * It also handles activity logging if enabled.
  *
- * Replaces User Error
- *
- * @param (string) (errno)
- * @param (string) (errstr)
- * @param (string) (errfile)
- * @param (string) (errline)
- * @return (NULL)
+ * @internal This class is intended for internal use by the LazyMePHP framework.
  */
-function ErrorHandler($errno, $errstr, $errfile, $errline)
-{
-  if ($errno!=8) // Avoid Undefined Errors
-  {
-    $errorMsg =
-    "<div style=\"margin:5px;z-index:10000;position:absolute;background-color:#A31919;padding:10px;color:#FFFF66;font-family:sans-serif;font-size:8pt;\">
-      <b><u>ERROR:</u></b>
-      <ul type=\"none\">
-      <li><b>ERROR NR:</b> $errno</li>
-      <li><b>DESCRIPTION:</b> $errstr</li>
-      <li><b>FILE:</b> $errfile</li>
-      <li><b>LINE:</b> $errline<br/></li>
-      <li><b>PHP VERSION:</b> ".phpversion()."
-      </ul>
-      An email with this message was sent to the developer.
-      </div>";
-
-    $to_mail=APP::APP_SUPPORT_EMAIL();
-    $from_mail="noreply@email.com";
-    $subject="Application ".APP::APP_NAME()." thrown an error.";
-    $message=$errorMsg;
-
-    $message.="<br>";
-    $message.="<br><b>Data</b>";
-    if (isset($_SESSION)) $message.="<br>".json_encode($_SESSION);
-    if (isset($_POST)) $message.="<br>".json_encode($_POST);
-    if (isset($_GET)) $message.="<br>".json_encode($_GET);
-    @Sendmail($from_mail, $to_mail, $subject, $message);
-    echo $errorMsg;
-    die();
-  }
-}
-
-/**
- * fatalErrorShutdownHandler
- *
- * Replaces Fatal Error
- *
- * @return (NULL)
- */
-function FatalErrorShutdownHandler()
-{
-  $last_error = error_get_last();
-  if (is_array($last_error) && array_key_exists('type', $last_error) && $last_error['type'] === E_ERROR) {
-    // fatal error
-    ErrorHandler(E_ERROR, $last_error['message'], $last_error['file'], $last_error['line']);
-  }
-}
-
-/**
- * SendMail
- *
- * Send Email obviously
- *
- * @param (string) (from_mail)
- * @param (string) (to_mail)
- * @param (string) (subject)
- * @param (string) (message)
- * @return (bool) (send)
- */
-function SendMail($from_mail,$to_mail,$subject,$message) {
-  $headers = "Content-Type: text/html; charset=iso-8859-1\n";
-  $headers.="From: $from_mail\n";
-  $send=mail("$to_mail", "$subject", "$message", "$headers");
-  return $send;
-}
-
 class APP
 {
-  // DATABASE
+  //region Database Configuration Properties
+  /** 
+   * @var ?string Database name.
+   * @internal
+   */
+  private static ?string $_db_name = null;
 
-  /** @var _db_name */
-  private static $_db_name;
+  /** 
+   * @var ?object Database connection instance (MYSQL, MSSQL, or SQLITE object).
+   * @internal
+   */
+  private static ?object $_db_connection = null;
+
+  /** 
+   * @var ?string Database username.
+   * @internal
+   */
+  private static ?string $_db_user = null;
+
+  /** 
+   * @var ?string Database password.
+   * @internal
+   */
+  private static ?string $_db_password = null;
+
+  /** 
+   * @var ?string Database type ('mysql', 'mssql', 'sqlite').
+   * @internal
+   */
+  private static ?string $_db_type = null;
+
+  /** 
+   * @var ?string Database host.
+   * @internal
+   */
+  private static ?string $_db_host = null;
+
+  /** 
+   * @var ?string Database driver file name (e.g., "MYSQL.php").
+   * @internal
+   */
+  private static ?string $_db_file = null;
+
+  /** 
+   * @var ?string Filesystem path to the SQLite database file, if using SQLite.
+   * @internal
+   */
+  private static ?string $_db_file_path = null;
+  //endregion
+
+  //region Application Configuration Properties
+  /** 
+   * @var ?string Application name.
+   * @internal
+   */
+  private static ?string $_app_name = null;
+
+  /** 
+   * @var ?string Application title (used in HTML titles, etc.).
+   * @internal
+   */
+  private static ?string $_app_title = null;
+
+  /** 
+   * @var ?string Application version.
+   * @internal
+   */
+  private static ?string $_app_version = null;
+
+  /** 
+   * @var ?string Application description.
+   * @internal
+   */
+  private static ?string $_app_description = null;
+
+  /** 
+   * @var ?string Application timezone.
+   * @internal
+   */
+  private static ?string $_app_timezone = null;
+
+  /** 
+   * @var ?string Email address for application support.
+   * @internal
+   */
+  private static ?string $_support_email = null;
+
+  /** 
+   * @var ?int Default number of results to show in paginated lists.
+   * @internal
+   */
+  private static ?int $_app_nresults = null;
+
+  /** 
+   * @var ?string Encryption key used for data encryption/decryption.
+   * @internal
+   */
+  private static ?string $_app_encryption = null;
+
+  /** 
+   * @var ?bool Flag indicating whether activity logging is enabled.
+   * @internal
+   */
+  private static ?bool $_app_activity_log = null;
+
+  /** 
+   * @var ?string Identifier for the user/process performing actions when activity logging is enabled.
+   * @internal
+   */
+  private static ?string $_app_activity_auth = null;
+
+  /** 
+   * @var array Holds data to be logged for the current request when activity logging is enabled.
+   * Structure: [$table_name => [['log' => $data, 'pk' => $pk, 'method' => $method], ...]]
+   * @internal
+   */
+  private static array $_app_logdata = [];
+
+  /** 
+   * @var ?bool Flag indicating whether URL rewriting (e.g., mod_rewrite) is enabled.
+   * @internal
+   */
+  private static ?bool $_app_modrewrite = null;
+  //endregion
+
+  //region Database Accessor Methods
   /**
-     * DB_NAME
-     *
-     * Returns Database Name
-     *
-     * @param (NULL)
-     * @return (string) (db_name)
-     */
-  static function DB_NAME()
+   * Returns the configured database name.
+   *
+   * @return ?string The database name, or null if not set.
+   */
+  static function DB_NAME(): ?string
   {
     return APP::$_db_name;
   }
 
-  /** @var _db_connection */
-  private static $_db_connection;
   /**
-     * DB_CONNECTION
-     *
-     * Returns Database Instance
-     *
-     * @param (NULL)
-     * @return (object) (db_instance)
-     */
-  static function DB_CONNECTION()
+   * Establishes and/or returns the active database connection instance.
+   *
+   * This method determines the database type from the configuration and instantiates
+   * the appropriate database driver class (MYSQL, MSSQL, or SQLITE).
+   * It uses a singleton pattern for the connection instance.
+   *
+   * @return ?object The database connection object (MYSQL, MSSQL, or SQLITE instance), or null on failure.
+   */
+  static function DB_CONNECTION(): ?object
   {
     if (!APP::$_db_connection) {
-      if (APP::$_db_type == 1) // MSSQL
-      {
+      // Ensure $_db_type is a string before strtolower, defaulting to 'mysql' if not set.
+      $db_type_check = strtolower((string)(APP::$_db_type ?? 'mysql')); 
+
+      if ($db_type_check == 'mssql') {
         APP::$_db_connection = MSSQL::getInstance(APP::$_db_name, APP::$_db_user, APP::$_db_password, APP::$_db_host);
-      }
-
-      else if (APP::$_db_type == 2) // MYSQL
-      {
+      } elseif ($db_type_check == 'mysql') {
         APP::$_db_connection = MYSQL::getInstance(APP::$_db_name, APP::$_db_user, APP::$_db_password, APP::$_db_host);
-      }
-
-      else if (APP::$_db_type == 3) // SQLITE
-      {
+      } elseif ($db_type_check == 'sqlite') {
         APP::$_db_connection = SQLITE::getInstance(APP::$_db_file_path);
+      } else {
+        // If the DB type is unsupported, trigger an error and return null.
+        // ErrorUtil::trigger_error is used if available, otherwise fallback to PHP's trigger_error.
+        if (class_exists(ErrorUtil::class)) {
+            ErrorUtil::trigger_error("Unsupported DB_TYPE configured: " . APP::$_db_type, E_USER_ERROR);
+        } else {
+            trigger_error("Unsupported DB_TYPE configured: " . APP::$_db_type, E_USER_ERROR);
+        }
+        return null;
       }
     }
-
     return APP::$_db_connection;
   }
 
-  /** @var _db_user */
-  private static $_db_user;
   /**
-     * DB_USER
-     *
-     * Returns Database User Credentials
-     *
-     * @param (NULL)
-     * @return (object) (db_user)
-     */
-  static function DB_USER()
+   * Returns the configured database username.
+   *
+   * @return ?string The database username, or null if not set.
+   */
+  static function DB_USER(): ?string
   {
     return APP::$_db_user;
   }
 
-  /** @var _db_password */
-  private static $_db_password;
   /**
-     * DB_PASSWORD
-     *
-     * Returns Database Password Credentials
-     *
-     * @param (NULL)
-     * @return (object) (db_password)
-     */
-  static function DB_PASSWORD()
+   * Returns the configured database password.
+   *
+   * @return ?string The database password, or null if not set.
+   */
+  static function DB_PASSWORD(): ?string
   {
     return APP::$_db_password;
   }
 
-  /** @var _db_type */
-  private static $_db_type;
   /**
-     * DB_TYPE
-     *
-     * Returns Database Type
-     *
-     * @param (NULL)
-     * @return (object) (db_host)
-     */
-  static function DB_TYPE()
+   * Returns the configured database type.
+   *
+   * @return ?string The database type (e.g., 'mysql', 'mssql', 'sqlite'), or null if not set.
+   */
+  static function DB_TYPE(): ?string
   {
     return APP::$_db_type;
   }
 
-  /** @var _db_host */
-  private static $_db_host;
   /**
-     * DB_HOST
-     *
-     * Returns Database Host
-     *
-     * @param (NULL)
-     * @return (object) (db_host)
-     */
-  static function DB_HOST()
+   * Returns the configured database host.
+   *
+   * @return ?string The database host, or null if not set.
+   */
+  static function DB_HOST(): ?string
   {
     return APP::$_db_host;
   }
 
-  /** @var _db_file */
-  private static $_db_file;
   /**
-     * DB_DRIVER
-     *
-     * Returns Database File
-     *
-     * @param (NULL)
-     * @return (object) (db_file)
-     */
-  static function DB_FILE()
+   * Returns the database driver file name.
+   *
+   * @return ?string The database driver file name (e.g., "MYSQL.php"), or null if not set.
+   */
+  static function DB_FILE(): ?string
   {
     return APP::$_db_file;
   }
 
-  /** @var _db_file_path */
-  private static $_db_file_path;
   /**
-     * DB_PATH - SQLITE
-     *
-     * Returns Database File Path
-     *
-     * @param (NULL)
-     * @return (string) (db_file_path)
-     */
-  static function DB_FILE_PATH()
+   * Returns the filesystem path to the SQLite database file.
+   * Relevant only if `DB_TYPE` is 'sqlite'.
+   *
+   * @return ?string The path to the SQLite database file, or null if not applicable/set.
+   */
+  static function DB_FILE_PATH(): ?string
   {
     return APP::$_db_file_path;
   }
+  //endregion
 
-  // APPLICATION
-
-  /** @var _app_name */
-  private static $_app_name;
+  //region Application Settings Accessor Methods
   /**
-     * APP_NAME
-     *
-     * Returns Application Name
-     *
-     * @param (NULL)
-     * @return (object) (app_name)
-     */
-  static function APP_NAME()
+   * Returns the configured application name.
+   *
+   * @return ?string The application name, or null if not set.
+   */
+  static function APP_NAME(): ?string
   {
     return APP::$_app_name;
   }
 
-  /** @var _app_title */
-  private static $_app_title;
   /**
-     * APP_TITLE
-     *
-     * Returns Application Title
-     *
-     * @param (NULL)
-     * @return (object) (app_title)
-     */
-  static function APP_TITLE()
+   * Returns the configured application title.
+   *
+   * @return ?string The application title, or null if not set.
+   */
+  static function APP_TITLE(): ?string
   {
     return APP::$_app_title;
   }
 
-  /** @var _app_version */
-  private static $_app_version;
   /**
-     * APP_VERSION
-     *
-     * Returns Application Version
-     *
-     * @param (NULL)
-     * @return (object) (app_version)
-     */
-  static function APP_VERSION()
+   * Returns the configured application version.
+   *
+   * @return ?string The application version, or null if not set.
+   */
+  static function APP_VERSION(): ?string
   {
     return APP::$_app_version;
   }
 
-  /** @var _app_description */
-  private static $_app_description;
   /**
-     * APP_DESCRIPTION
-     *
-     * Returns Application Description
-     *
-     * @param (NULL)
-     * @return (object) (app_description)
-     */
-  static function APP_DESCRIPTION()
+   * Returns the configured application description.
+   *
+   * @return ?string The application description, or null if not set.
+   */
+  static function APP_DESCRIPTION(): ?string
   {
     return APP::$_app_description;
   }
 
-  /** @var _app_timezone */
-  private static $_app_timezone;
   /**
-     * APP_TIMEZONE
-     *
-     * Returns Application Timezone
-     *
-     * @param (NULL)
-     * @return (object) (app_timezone)
-     */
-  static function APP_TIMEZONE()
+   * Returns the configured application timezone.
+   *
+   * @return ?string The application timezone, or null if not set.
+   */
+  static function APP_TIMEZONE(): ?string
   {
     return APP::$_app_timezone;
   }
 
-  // SUPPORT EMAIL
-
-  /** @var _support_email */
-  private static $_support_email;
   /**
-     * SUPPORT_EMAIL
-     *
-     * Returns Support Emails
-     *
-     * @param (NULL)
-     * @return (object) (support_email)
-     */
-  static function APP_SUPPORT_EMAIL()
+   * Returns the configured support email address.
+   *
+   * @return ?string The support email address, or null if not set.
+   */
+  static function APP_SUPPORT_EMAIL(): ?string
   {
     return APP::$_support_email;
   }
 
-  /** @var _app_nresults */
-  private static $_app_nresults;
   /**
-     * NUMBER OF RESULTS
-     *
-     * Returns Number of Results
-     *
-     * @param (null)
-     * @return (string) (url)
-     */
-  static function APP_NRESULTS()
+   * Returns the default number of results for paginated lists.
+   *
+   * @return ?int The number of results, or null if not set.
+   */
+  static function APP_NRESULTS(): ?int
   {
     return APP::$_app_nresults;
   }
 
-  /** @var _app_encryption */
-  private static $_app_encryption;
   /**
-     * Encryption
-     *
-     * Returns encryption word
-     *
-     * @param (null)
-     * @return (string) (url)
-     */
-  static function APP_ENCRYPTION()
+   * Returns the configured encryption key.
+   *
+   * @return ?string The encryption key, or null if not set.
+   */
+  static function APP_ENCRYPTION(): ?string
   {
     return APP::$_app_encryption;
   }
 
-  /** @var _app_activity_log */
-  private static $_app_activity_log;
   /**
-     * APP_ACTIVITY_LOG
-     *
-     * Returns If Activity Log is enabled
-     *
-     * @param (null)
-     * @return (bool)
-     */
-  static function APP_ACTIVITY_LOG()
+   * Checks if activity logging is enabled.
+   *
+   * @return ?bool True if activity logging is enabled, false otherwise, or null if not set.
+   */
+  static function APP_ACTIVITY_LOG(): ?bool
   {
     return APP::$_app_activity_log;
   }
 
-  /** @var _app_activity_auth */
-  private static $_app_activity_auth;
   /**
-     * APP_ACTIVITY_LOG
-     *
-     * Returns Activity Auth to be Used
-     *
-     * @param (null)
-     * @return (string) (possibly, username)
-     */
-  static function APP_ACTIVITY_AUTH()
+   * Returns the identifier for the user/process for activity logging.
+   *
+   * @return ?string The activity log auth identifier, or null if not set.
+   */
+  static function APP_ACTIVITY_AUTH(): ?string
   {
     return APP::$_app_activity_auth;
   }
-
-  /** @var _logdata */
-  private static $_app_logdata = array();
+  
   /**
-     * APP_LOGDATA
-     *
-     * Sets LOG DATA
-     *
-     * @param (string) table
-     * @param (array) log
-     * @return (null)
-     */
-  static function APP_LOGDATA($table,$log,$pk=NULL,$method=NULL)
-  {
-    if (!array_key_exists($table, APP::$_app_logdata)) APP::$_app_logdata[$table] = array();
-    array_push(APP::$_app_logdata[$table], array("log" => $log, "pk" => $pk, "method" => $method));
+   * Checks if URL rewriting is enabled.
+   *
+   * @return ?bool True if URL rewriting is enabled, false otherwise, or null if not set.
+   */
+  static function APP_MOD_REWRITE(): ?bool 
+  { 
+    return APP::$_app_modrewrite; 
   }
-
-  /** @var _modrewrite */
-  private static $_app_modrewrite;
+  //endregion
+  
   /**
-     * APP_LOGDATA
-     *
-     * Sets LOG DATA
-     *
-     * @param (string) table
-     * @param (array) log
-     * @return (null)
-     */
-  static function APP_MOD_REWRITE() { return APP::$_app_modrewrite; }
-
-  /**
-     * Constructor
-     *
-     * Class Constructor
-     *
-     * @param (array) (CONFIG)
-     * @return (NULL)
-     */
-  public function __construct($CONFIG)
+   * Stores data to be logged for the current request if activity logging is enabled.
+   * This data is processed by the `LOG_ACTIVITY` method at the end of the request.
+   *
+   * @param string $table The name of the database table related to the log entry.
+   * @param array $log An array containing the data changes. Typically `['field_name' => ['before_value', 'after_value']]`.
+   * @param ?string $pk The primary key value of the record being logged.
+   * @param ?string $method The method that initiated the change (e.g., 'INSERT', 'UPDATE', 'DELETE').
+   * @return void
+   */
+  static function APP_LOGDATA(string $table, array $log, ?string $pk = null, ?string $method = null): void
   {
-
-    // GET DB FILE AND Include IT
-    APP::$_db_file            = __DIR__."/../../DB/".$CONFIG['DB_FILE'];
-
-    require_once APP::$_db_file;
-    // END
-
-    APP::$_db_type            = $CONFIG['DB_TYPE'];
-    if (APP::$_db_type == 3) // SQLITE
-      APP::$_db_file_path       = $CONFIG['DB_FILE_PATH'];
-    else {
-      APP::$_db_user            = $CONFIG['DB_USER'];
-      APP::$_db_password        = $CONFIG['DB_PASSWORD'];
-      APP::$_db_host            = $CONFIG['DB_HOST'];
-      APP::$_db_name            = $CONFIG['DB_NAME'];
+    // Ensure the entry for the table exists.
+    if (!array_key_exists($table, APP::$_app_logdata)) {
+        APP::$_app_logdata[$table] = [];
     }
-    APP::$_app_name           = $CONFIG['APP_NAME'];
-    APP::$_app_title          = $CONFIG['APP_TITLE'];
-    APP::$_app_version        = $CONFIG['APP_VERSION'];
-    APP::$_app_description    = $CONFIG['APP_DESCRIPTION'];
-    APP::$_app_timezone       = $CONFIG['APP_TIMEZONE'];
-    APP::$_support_email      = $CONFIG['APP_EMAIL_SUPPORT'];
-    APP::$_app_activity_log   = $CONFIG['APP_ACTIVITY_LOG'];
-    APP::$_app_activity_auth  = $CONFIG['APP_ACTIVITY_AUTH'];
-    APP::$_app_nresults 	    = $CONFIG['APP_NRESULTS'];
-    APP::$_app_encryption     = $CONFIG['APP_ENCRYPTION'];
+    // Add the log data to the array for this table.
+    APP::$_app_logdata[$table][] = ["log" => $log, "pk" => $pk, "method" => $method];
+  }
 
-    // Set Timezone
+
+  /**
+   * Initializes the application configuration by loading settings from environment variables,
+   * setting up database parameters, and registering error handlers.
+   * This constructor is typically called once during the application bootstrap process.
+   */
+  public function __construct()
+  {
+    // --- Database Configuration ---
+    // Determine DB_TYPE from environment, default to 'mysql'.
+    APP::$_db_type = strtolower($_ENV['DB_TYPE'] ?? 'mysql');
+
+    // Configure database parameters based on DB_TYPE.
+    if (APP::$_db_type === 'sqlite') {
+        APP::$_db_file = "SQLITE.php"; // DB driver file name for SQLite.
+        // Default path for SQLite database file if not specified in .env.
+        APP::$_db_file_path = $_ENV['DB_FILE_PATH'] ?? __DIR__.'/../../database/database.sqlite'; 
+    } elseif (APP::$_db_type === 'mssql') {
+        APP::$_db_file = "MSSQL.php"; // DB driver file name for MSSQL.
+        // Load MSSQL specific connection details from .env, with defaults.
+        APP::$_db_user = $_ENV['DB_USER'] ?? '';
+        APP::$_db_password = $_ENV['DB_PASSWORD'] ?? '';
+        APP::$_db_host = $_ENV['DB_HOST'] ?? 'localhost';
+        APP::$_db_name = $_ENV['DB_NAME'] ?? '';
+    } else { // Default to MySQL for any other DB_TYPE or if unspecified.
+        APP::$_db_file = "MYSQL.php"; // DB driver file name for MySQL.
+        // Load MySQL specific connection details from .env, with defaults.
+        APP::$_db_user = $_ENV['DB_USER'] ?? '';
+        APP::$_db_password = $_ENV['DB_PASSWORD'] ?? '';
+        APP::$_db_host = $_ENV['DB_HOST'] ?? 'localhost';
+        APP::$_db_name = $_ENV['DB_NAME'] ?? '';
+        if (APP::$_db_type !== 'mysql') { // Log if defaulting due to unrecognized type
+            if (class_exists(ErrorUtil::class)) {
+                ErrorUtil::trigger_error("Unrecognized DB_TYPE '" . ($_ENV['DB_TYPE'] ?? 'null') . "', defaulting to mysql.", E_USER_NOTICE);
+            } else {
+                trigger_error("Unrecognized DB_TYPE '" . ($_ENV['DB_TYPE'] ?? 'null') . "', defaulting to mysql.", E_USER_NOTICE);
+            }
+        }
+    }
+
+    // Construct the full path to the database driver file and require it.
+    $db_file_full_path = __DIR__."/../../DB/".APP::$_db_file;
+    if (file_exists($db_file_full_path)) {
+        require_once $db_file_full_path;
+        // Optionally, store the full path if needed later, though typically just the name is fine for identification.
+        // APP::$_db_file = $db_file_full_path; 
+    } else {
+        // Trigger a fatal error if the database driver file is not found.
+         if (class_exists(ErrorUtil::class)) {
+            ErrorUtil::trigger_error("Database driver file not found: " . $db_file_full_path, E_USER_ERROR);
+        } else {
+            trigger_error("Database driver file not found: " . $db_file_full_path, E_USER_ERROR);
+        }
+    }
+
+    // --- Application Settings ---
+    // Load various application settings from .env, providing defaults.
+    APP::$_app_name = $_ENV['APP_NAME'] ?? 'LazyMePHP';
+    APP::$_app_title = $_ENV['APP_TITLE'] ?? 'LazyMePHP Application';
+    APP::$_app_version = $_ENV['APP_VERSION'] ?? '1.0';
+    APP::$_app_description = $_ENV['APP_DESCRIPTION'] ?? 'A LazyMePHP application.';
+    APP::$_app_timezone = $_ENV['APP_TIMEZONE'] ?? 'UTC';
+    APP::$_support_email = $_ENV['APP_EMAIL_SUPPORT'] ?? 'noreply@example.com';
+    APP::$_app_activity_log = ($_ENV['APP_ACTIVITY_LOG'] ?? 'false') === 'true';
+    APP::$_app_activity_auth = $_ENV['APP_ACTIVITY_AUTH'] ?? ''; // E.g., default system user for logs
+    APP::$_app_nresults = (int)($_ENV['APP_NRESULTS'] ?? 100);
+    APP::$_app_encryption = $_ENV['APP_ENCRYPTION'] ?? 'your-default-strong-encryption-key'; // IMPORTANT: Change this default!
+    APP::$_app_modrewrite = ($_ENV['APP_MOD_REWRITE'] ?? 'true') === 'true';
+
+    // --- System Setup ---
+    // Set the default timezone for all date/time functions.
     date_default_timezone_set(APP::$_app_timezone);
-    // Registers User Error Function Replacement
-    @set_error_handler('\LazyMePHP\Config\Internal\ErrorHandler');
-    // Registers Fatal Error Function Replacement */
-    @register_shutdown_function('\LazyMePHP\Config\Internal\FatalErrorShutdownHandler');
+    
+    // Register custom error and shutdown handlers using ErrorUtil.
+    // The @ suppresses errors from these functions themselves, which ErrorUtil should handle.
+    @set_error_handler([ErrorUtil::class, 'ErrorHandler']);
+    @register_shutdown_function([ErrorUtil::class, 'FatalErrorShutdownHandler']);
   }
 
   /**
-     * Log Activity
-     *
-     * Records Activity
-     *
-     * @param (string) (controller)
-     * @param (string) (multiple arguments)
-     * @return (null)
-     */
-  static function LOG_ACTIVITY() {
-    if (APP::APP_ACTIVITY_LOG()) {
-      $queryString = "INSERT INTO __LOG_ACTIVITY (`date`,`user`,`method`) VALUES (?,?,?)";
-      $obj = APP::DB_CONNECTION()->Query($queryString, array(date("Y-m-d H:i"),APP::$_app_activity_auth,$_SERVER['REQUEST_METHOD']));
-      $id = APP::DB_CONNECTION()->GetLastInsertedID('__LOG_ACTIVITY');
-      $queryString = "INSERT INTO __LOG_ACTIVITY_OPTIONS (`id_log_activity`, `subOption`, `value`) VALUES ";
-      $count = 0;
-      $queryStringData = array();
-      foreach(explode('/',(string)\LazyMePHP\Helper\url()) as $kArg => $arg) {
-        if ($arg) {
-          $queryString.=($count>0?",":"")."(?,?,?)";
-          array_push($queryStringData,$id, $kArg, $arg);
-          $count++;
-        }
-      }
-      if ($count>0)
-      $obj = APP::DB_CONNECTION()->Query($queryString, $queryStringData);
+   * Logs activities performed during the request if activity logging is enabled.
+   * This method inserts records into `__LOG_ACTIVITY`, `__LOG_ACTIVITY_OPTIONS`,
+   * and `__LOG_DATA` tables based on data collected via `APP_LOGDATA`.
+   *
+   * @return void
+   */
+  static function LOG_ACTIVITY(): void 
+  {
+    // Proceed only if activity logging is enabled and a database connection exists.
+    if (APP::APP_ACTIVITY_LOG() && APP::DB_CONNECTION()) {
+      // --- Log main activity ---
+      $logActivityQuery = "INSERT INTO __LOG_ACTIVITY (`date`, `user`, `method`) VALUES (?, ?, ?)";
+      $currentDateTime = date("Y-m-d H:i:s"); // Use standard SQL datetime format
+      $requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'CLI'; // Default to CLI if not an HTTP request
+      
+      APP::DB_CONNECTION()->Query($logActivityQuery, [$currentDateTime, APP::$_app_activity_auth, $requestMethod]);
+      $logActivityId = APP::DB_CONNECTION()->GetLastInsertedID('__LOG_ACTIVITY');
 
-      $count = 0;
-      $queryString = "INSERT INTO __LOG_DATA (`id_log_activity`, `table`, `pk`, `method`, `field`, `dataBefore`, `dataAfter`) VALUES ";
-      $queryStringData = array();
-      if (is_array(APP::$_app_logdata)) {
-        foreach(APP::$_app_logdata as $table => $d) 
-        foreach($d as $data) {
-          if (is_array($data['log'])) {
-            foreach($data['log'] as $field => $values) {
-              $queryString.=($count>0?",":"")."(?,?,?,?,?,?,?)";
-              array_push($queryStringData,$id,$table,(array_key_exists('pk',$data)?$data['pk']:''), (array_key_exists('method',$data)?$data['method']:''), $field, $values[0], $values[1]);
-              $count++;
-            }
+      // If $logActivityId is not valid, we cannot proceed with logging details.
+      if (!$logActivityId) {
+          if (class_exists(ErrorUtil::class)) {
+            ErrorUtil::trigger_error("Failed to retrieve last insert ID for __LOG_ACTIVITY.", E_USER_WARNING);
+          } else {
+            trigger_error("Failed to retrieve last insert ID for __LOG_ACTIVITY.", E_USER_WARNING);
           }
-        }
+          return;
       }
-      if ($count>0)
-      $obj = APP::DB_CONNECTION()->Query($queryString, $queryStringData);
+
+      // --- Log URL/Route parameters for the activity ---
+      $urlParts = [];
+      if (function_exists('\LazyMePHP\Helper\url')) { // Check if helper function exists
+          $urlParts = explode('/', (string)\LazyMePHP\Helper\url());
+      }
+      
+      if (!empty($urlParts)) {
+          $logOptionsQueryParts = [];
+          $logOptionsQueryData = [];
+          foreach ($urlParts as $key => $part) {
+              if (!empty($part)) { // Log only non-empty parts
+                  $logOptionsQueryParts[] = "(?, ?, ?)";
+                  array_push($logOptionsQueryData, $logActivityId, $key, $part);
+              }
+          }
+
+          if (!empty($logOptionsQueryParts)) {
+              $logOptionsQuery = sprintf(
+                  "INSERT INTO __LOG_ACTIVITY_OPTIONS (`id_log_activity`, `subOption`, `value`) VALUES %s",
+                  implode(", ", $logOptionsQueryParts)
+              );
+              APP::DB_CONNECTION()->Query($logOptionsQuery, $logOptionsQueryData);
+          }
+      }
+
+      // --- Log detailed data changes ---
+      if (!empty(APP::$_app_logdata)) {
+          $logDataQueryParts = [];
+          $logDataQueryData = [];
+          foreach (APP::$_app_logdata as $tableName => $entries) {
+              foreach ($entries as $entry) {
+                  if (is_array($entry['log'])) {
+                      foreach ($entry['log'] as $fieldName => $values) {
+                          // Ensure values has at least two elements (before and after)
+                          $dataBefore = $values[0] ?? null;
+                          $dataAfter = $values[1] ?? null;
+                          
+                          $logDataQueryParts[] = "(?, ?, ?, ?, ?, ?, ?)";
+                          array_push(
+                              $logDataQueryData,
+                              $logActivityId,
+                              $tableName,
+                              (string)($entry['pk'] ?? ''), // Ensure PK is a string
+                              (string)($entry['method'] ?? ''), // Ensure method is a string
+                              (string)$fieldName, // Ensure field name is a string
+                              $dataBefore,
+                              $dataAfter
+                          );
+                      }
+                  }
+              }
+          }
+
+          if (!empty($logDataQueryParts)) {
+              $logDataQuery = sprintf(
+                  "INSERT INTO __LOG_DATA (`id_log_activity`, `table`, `pk`, `method`, `field`, `dataBefore`, `dataAfter`) VALUES %s",
+                  implode(", ", $logDataQueryParts)
+              );
+              APP::DB_CONNECTION()->Query($logDataQuery, $logDataQueryData);
+          }
+      }
+      // Clear log data for the current request after processing.
+      APP::$_app_logdata = [];
     }
   }
 }

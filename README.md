@@ -23,29 +23,41 @@ git clone https://github.com/Peixinho/LazyMePHP myAwesomeProject
 
 #optional, but I advise to start your own git repository, for many reasons...
 cd myAwesomeProject && rm -rf .git
-cd src/Ext
-composer update (to get dependencies)
-
-# run initial config
-php LazyMePHP config
-
 ```
-It will now run the initial configurator in command line, where you have to fill the following items:
 
- - **Database Name** (*string*): 'myDatabase'
- - **Database User** (*string*): 'myDatabase_User'
- - **Database Password** (*string*): 'myDatabase_Password'
-filling the form again .. so, to be lazy in the end)
- - **Database Host** (*string*): 'localhost'
- - **Database** (*int*): Select between MySQL, MSSQL and SQLite
- - **Application Name** (*string*): 'MyAwesomeApplication'
- - **Application Title** (*string*): 'My Awesome Application'
- - **Application Version** (*string*): '1.0'
- - **Application Description** (*string*): 'My application is gonna be awesome'
- - **Application Time Zone** (*string*): 'Europe/Lisbon'
- - **Email Support** (*string*): 'myemail@myawesomeproject.com'
- - **Nr Results In Each Collection** (*int*): 100 (All generated forms will have a paginated list, in here you define a default list count for each page)
- - **Enable Activity Log:** (*bit*): 'check or uncheck' (this will enable logging for all database changes)
+### Configuration
+
+Configuration for LazyMePHP is handled through environment variables. This method replaces the old interactive `php LazyMePHP config` script.
+
+1.  **Set up Composer**: If you haven't already, install project dependencies:
+    ```bash
+    composer update # Run from the project root
+    ```
+
+2.  **Create `.env` file**: Copy the example environment file to `.env`:
+    ```bash
+    cp .env.example .env
+    ```
+3.  **Edit `.env`**: Open the `.env` file in the project root and update the variables to match your environment.
+
+Key environment variables:
+- `DB_TYPE`: Your database system. Supported values: `"mysql"`, `"mssql"`, `"sqlite"`.
+- `DB_HOST`: Database host (e.g., `"localhost"`). (Not used for SQLite)
+- `DB_NAME`: Database name. (Not used for SQLite)
+- `DB_USER`: Database username. (Not used for SQLite)
+- `DB_PASSWORD`: Database password. (Not used for SQLite)
+- `DB_FILE_PATH`: Absolute or relative path to your SQLite database file (e.g., `"database/mydb.sqlite"`). **Required if `DB_TYPE="sqlite"`**.
+- `APP_NAME`: Your application's name (e.g., `"MyAwesomeApp"`).
+- `APP_TITLE`: The title for HTML pages (e.g., `"My Awesome App Title"`).
+- `APP_VERSION`: Your application's version (e.g., `"1.0.1"`).
+- `APP_DESCRIPTION`: A short description of your application.
+- `APP_TIMEZONE`: The timezone for your application (e.g., `"UTC"`, `"Europe/Lisbon"`). See PHP supported timezones.
+- `APP_NRESULTS`: Default number of results for paginated lists (e.g., `"100"`).
+- `APP_ENCRYPTION`: A secret key used for data encryption (e.g., `openssl_encrypt`). **Choose a strong, random key.**
+- `APP_EMAIL_SUPPORT`: Email address for support or error notifications (e.g., `"support@example.com"`).
+- `APP_ACTIVITY_LOG`: Set to `"true"` to enable activity logging, `"false"` to disable.
+- `APP_ACTIVITY_AUTH`: Identifier for the user performing actions when activity logging is enabled. This can be a static string or you might set this dynamically in your application based on logged-in user, e.g. `$_SESSION['user_id']`. The `.env` value serves as a default or fallback.
+- `APP_MOD_REWRITE`: Set to `"true"` if URL rewriting (like Apache's mod_rewrite) is enabled, `"false"` otherwise.
 
 # LazyMePHP Auto Generation Tools
 Next, you can run
@@ -68,7 +80,7 @@ After this it will list all tables, and you can select all, by using 'a', or sel
  - **API**: it will build a RestAPI for each selected table, that allows you to GET (could be by id, or by list, POST, PUT, DELETE...). If you've ran this utiity before, and this API already exists for this table and you've made changes, don't check this option for this table, otherwise, you will loose all your changes.
  - **CSS Button, Input, Anchor and Table**: Aftert selecting the tables, you could set a css class name for each input, button, anchor and table generated automatically by the FORM option. This option is mainly to make it easier to integrate some frontend framework such as bootstrap or whatever.
  - **Replace includes, RouterForms and RouteAPI**: If you dont make any changes on these files, there isn't any reason to not let it overwrite
- - **Enable Logging**: its a feature that keeps all changed data in 3 tables, so when using this option, it will create 3 tables in your database, and keep all records there. You need to enable this in the config aswell
+ - **Enable Logging**: its a feature that keeps all changed data in 3 tables, so when using this option, it will create 3 tables in your database, and keep all records there. You need to enable this in the .env file aswell (`APP_ACTIVITY_LOG="true"`)
  
 # Success
 If everything went well, you will have a working index with some basic functionality.
@@ -195,18 +207,14 @@ And this way, you can control what data is exposed.
 (It does not override what was predefined in MaskAPI)
 
 ### Logging
- When this option is enabled, 3 tables are added to your database that will register every change made to the database. The only configuration that its needed to be done is to edit
- ```
- /src/Configuration/Configurations.php
+When this option is enabled (by setting `APP_ACTIVITY_LOG="true"` in your `.env` file), three tables (`__LOG_ACTIVITY`, `__LOG_ACTIVITY_OPTIONS`, `__LOG_DATA`) are added to your database to register database changes.
+The user or process triggering these changes can be identified by the `APP_ACTIVITY_AUTH` environment variable. You can set this in your `.env` file:
+```dotenv
+APP_ACTIVITY_LOG="true"
+APP_ACTIVITY_AUTH="system_user" 
 ```
-and define whats the user auth to be registered as the owner of the change in the database
- ```
-// ACTIVITY LOG
-$CONFIG['APP_ACTIVITY_LOG']=1;
-$CONFIG['APP_ACTIVITY_AUTH']=$_SESSION['user_logged'];
-```
-Viewer is under /logging and shows the list of requests ordered by date desc, and there are some filters that can be used.
-This is not a full featured viewer, you can see it as an example to expand on (but it does work quite well)
+If you need a dynamic user identifier (e.g., from a session), you would typically handle that within your application logic by potentially overriding or using the value from `APP::APP_ACTIVITY_AUTH()` and `APP::APP_LOGDATA()` accordingly. The `.env` value provides a default.
+The log viewer is available under the `/logging` path and shows a list of requests with some filtering capabilities.
 
 # License
 MIT
