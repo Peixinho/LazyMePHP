@@ -6,8 +6,8 @@
  * Source File Generated Automatically
  */
 
-namespace LazyMePHP\Forms;
-use \LazyMePHP\Config\Internal\APP;
+namespace Logging;
+use Config\Internal\APP;
 session_start();
 
 require_once __DIR__."/../src/Configurations/Configurations.php";
@@ -81,7 +81,6 @@ if ($_GET['changedTo'] ?? null) {
   $level3 = true;
   $sqlFilter .= (strlen($sqlFilter)>0?" AND ":"")."LD.dataAfter='".$_GET['changedTo']."'";
 }
-var_dump($sqlFilter);
 
 echo "<h3>Logging</h3>";
 $count = 0;

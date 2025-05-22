@@ -6,8 +6,8 @@
 * @author Duarte Peixinho
 */
 
-  require_once __DIR__."/../src/bootstrap.php";
-  use LazyMePHP\Config\Internal\APP;
+  require_once __DIR__."/../App/bootstrap.php";
+  use Core\LazyMePHP;
 ?>
 
 <?php if (filter_input(INPUT_GET, "render")!="no") : ?>
@@ -18,13 +18,12 @@
       <link rel="icon" type="image/png" href="/img/logo.png">
       <!-- CSS -->
       <link rel="stylesheet" href="/css/css.css">
-      <title><?php echo APP::APP_TITLE(); ?></title>
+      <title><?php echo LazyMePHP::TITLE(); ?></title>
     </head>
     <body onload="LazyMePHP.Init()">
-      <?= \LazyMePHP\Config\Internal\GetErrors();?>
       <nav aria-label="Main navigation">
         <ul class="nav-menu">
-          <?php foreach (glob(__DIR__."/../src/Routes/" . '/*.php') as $r) { if (substr($r, strrpos($r, "/")+1, strlen($r)) != "Routes.php") { echo "<li><a href=\"/".substr($r,strrpos($r,"/")+1, -4)."\">".substr($r,strrpos($r,"/")+1, -4)."</a>"; } } ?>
+          <?php foreach (glob(__DIR__."/../App/Routes/" . '/*.php') as $r) { if (substr($r, strrpos($r, "/")+1, strlen($r)) != "Routes.php") { echo "<li><a href=\"/".substr($r,strrpos($r,"/")+1, -4)."\">".substr($r,strrpos($r,"/")+1, -4)."</a>"; } } ?>
         </ul>
     </nav>
 
@@ -41,11 +40,11 @@
     //Error And Success Messages Generator
     if (array_key_exists('success', $_GET) && strlen($_GET['success'])>0) foreach (explode(',',$_GET['success']) as $s) {
       $s = "S$s";
-      $showMessage_S = (strlen($showMessage_S)>0?$showMessage_S."\\n".constant("\LazyMePHP\Messages\SuccessMessages::{$s}")->value:constant("\LazyMePHP\Messages\SuccessMessages::{$s}")->value);
+      $showMessage_S = (strlen($showMessage_S)>0?$showMessage_S."\\n".constant("Messages\SuccessMessages::{$s}")->value:constant("Messages\SuccessMessages::{$s}")->value);
     }
     if (array_key_exists('error', $_GET) && strlen($_GET['error'])>0) foreach (explode(',',$_GET['error']) as $e) {
       $e = "E$e";
-      $showMessage_E = (strlen($showMessage_E)>0?$showMessage_E."\\n".constant("\LazyMePHP\Messages\ErrorMessages::{$e}")->value:constant("\LazyMePHP\Messages\ErrorMessages::{$e}")->value);
+      $showMessage_E = (strlen($showMessage_E)>0?$showMessage_E."\\n".constant("Messages\ErrorMessages::{$e}")->value:constant("Messages\ErrorMessages::{$e}")->value);
     }
     ?>
     <script src="/js/LazyMePHP.js"></script>

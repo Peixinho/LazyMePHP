@@ -2,8 +2,8 @@
 // Ensure this is at the top
 
 // CLI Bootstrapping for LazyMePHP
-if (file_exists(__DIR__.'/src/Ext/vendor/autoload.php')) {
-    require_once __DIR__.'/src/Ext/vendor/autoload.php';
+if (file_exists(__DIR__.'/App/Ext/vendor/autoload.php')) {
+    require_once __DIR__.'/App/Ext/vendor/autoload.php';
 } else {
     echo "Composer autoload file not found. Please run 'composer install' or 'composer update'.\n";
     exit(1);
@@ -21,16 +21,16 @@ if (file_exists(__DIR__.'/.env')) {
 }
 
 // Require the APP class definition itself as it's not yet autoloaded by its own definition
-if (file_exists(__DIR__.'/src/Configurations/Internal/InternalConfigurations.php')) {
-    require_once __DIR__.'/src/Configurations/Internal/InternalConfigurations.php';
+if (file_exists(__DIR__.'/App/Core/LazyMePHP.php')) {
+    require_once __DIR__.'/App/Core/LazyMePHP.php';
 } else {
-    echo "InternalConfigurations.php not found.\n";
+    echo "LazyMe.php not found.\n";
     exit(1);
 }
 
 // Initialize the APP configuration
 try {
-    new LazyMePHP\Config\Internal\APP();
+    new Core\LazyMePHP();
 } catch (Exception $e) {
     echo "Error initializing APP configuration: " . $e->getMessage() . "\n";
     exit(1);
@@ -72,17 +72,17 @@ switch($argv[1]) {
       else $port = intval($port);
     }
     if (!$port || !is_int($port)) $port = 8080;
-    // The webserver command in tools/webserver might need its own bootstrapping or use this one.
+    // The webserver command in App/Tools/webserver might need its own bootstrapping or use this one.
     // For now, we ensure this main script is bootstrapped.
-    @exec("php -S 0.0.0.0:".$port." -t ./public tools/webserver.php"); // Assuming tools/webserver is a php script
+    @exec("php -S 0.0.0.0:".$port." -t ./public App/Tools/Webserver.php"); // Assuming tools/webserver is a php script
   break;
   case "build":
     // The tools/build script will need to be updated to use the autoloader
     // and not re-bootstrap if already done.
-    if (file_exists(__DIR__.'/tools/build')) {
-        require_once __DIR__.'/tools/build';
+    if (file_exists(__DIR__.'/App/Tools/build')) {
+        require_once __DIR__.'/App/Tools/build';
     } else {
-        echo "Build script (tools/build) not found.\n";
+        Echo "Build script (App/Tools/build) not found.\n";
         exit(1);
     }
   break;

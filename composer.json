@@ -1,5 +1,5 @@
 {
-    "name": "lazyme/framework",
+    "name": "peixinho/lazymephp",
     "description": "LazyMePHP is a PHP framework designed for rapid development with a focus on class, form, and REST API generation from database tables.",
     "type": "project",
     "keywords": ["php", "framework", "rest", "api", "orm", "database", "rad"],
@@ -23,11 +23,24 @@
         "vlucas/phpdotenv": "^5.6"
     },
     "config": {
-        "vendor-dir": "src/Ext/vendor"
+        "vendor-dir": "App/Ext/vendor"
     },
     "autoload": {
         "psr-4": {
-            "LazyMePHP\\": "src/"
+            "api\\": "App/api/",
+            "Classes\\": "App/Classes/",
+            "Controllers\\": "App/Controllers/",
+            "Core\\": "App/Core/",
+            "DB\\": "App/Core/DB/",
+            "Enum\\": "App/Core/Enum/",
+            "Helpers\\": "App/Core/Helpers/",
+            "Messages\\": "App/Messages/",
+            "Routes\\": "App/Routes/",
+            "Security\\": "App/Core/Security/",
+            "Session\\": "App/Core/Session/",
+            "Tools\\": "App/Tools/",
+            "Validations\\": "App/Core/Validations/",
+            "Views\\": "App/Views/"
         }
     }
 }
