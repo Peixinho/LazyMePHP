@@ -9,7 +9,7 @@
 namespace LazyMePHP\ClassesBuilder;
 use \LazyMePHP\Config\Internal\APP;
 
-require_once 'databasehelper';
+require_once __DIR__ . '/databasehelper'; // Made path more robust
 
 /**
  * Interface for Automatic DB Classes
@@ -106,16 +106,20 @@ class BuildTableClasses extends \LazyMePHP\DatabaseHelper\_DB_TABLE
         fwrite($classFile, "use \LazyMePHP\ClassesBuilder\IDB_CLASS;\n");
         fwrite($classFile, "use \LazyMePHP\ClassesBuilder\IDB_CLASS_LIST;\n");
         fwrite($classFile, "use \LazyMePHP\Config\Internal\APP;\n");
+        // Removed require_once for foreign table classes, PSR-4 autoloader will handle them.
+        // Generated classes should use `use LazyMePHP\Classes\<ForeignTable>;` if needed,
+        // though direct usage might be through foreign key objects which are already typed.
         fwrite($classFile, "\n");
-        foreach($db->GetTableFields() as $field)
-        {
-          if ($field->HasForeignKey()) {
-            fwrite($classFile, "require_once __DIR__.\"/../Classes/".$field->GetForeignTable().".php\";");
-            fwrite($classFile, "\n");
-          }
-        }
-        fwrite($classFile, "require_once __DIR__.\"/../DB/IDB.php\";");
-        fwrite($classFile, "\n");
+        // foreach($db->GetTableFields() as $field)
+        // {
+        //   if ($field->HasForeignKey()) {
+        //     // fwrite($classFile, "require_once __DIR__.\"/../Classes/".$field->GetForeignTable().".php\";");
+        //     // fwrite($classFile, "\n");
+        //   }
+        // }
+        // Removed require_once for IDB.php, PSR-4 autoloader will handle LazyMePHP\ClassesBuilder\IDB_CLASS etc.
+        // fwrite($classFile, "require_once __DIR__.\"/../DB/IDB.php\";"); 
+        // fwrite($classFile, "\n");
         fwrite($classFile, "\n");
         fwrite($classFile, "class ".$db->_Tablename." extends DB_CLASS implements IDB_CLASS {");
         fwrite($classFile, "\n");

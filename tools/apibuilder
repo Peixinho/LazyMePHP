@@ -6,10 +6,11 @@
  * @author Duarte Peixinho
  */
 
-namespace LazyMePHP\FormsBuilder;
+namespace LazyMePHP\FormsBuilder; // TODO: Should ideally be LazyMePHP\ApiBuilder
 use \LazyMePHP\Config\Internal\APP;
 
-require_once 'databasehelper';
+require_once __DIR__ . '/databasehelper'; // Made path more robust
+require_once __DIR__ . '/helper'; // Added missing require for helper functions
 
 /**
  * Build class tables
@@ -150,9 +151,13 @@ class BuildTableAPI
               fwrite($routerFile, "\n");
               fwrite($routerFile, " */");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "use LazyMePHP\Views\\".$o->Table.";");
-              fwrite($routerFile, "\n");
-              fwrite($routerFile, "require_once __DIR__.\"/../Controllers/".$o->Table.".php\";");
+              // The use statement for Views seems incorrect here as API routes typically don't use Views directly.
+              // Will comment out for now. Controllers are what's needed.
+              // fwrite($routerFile, "use LazyMePHP\Views\\".$o->Table.";"); 
+              // fwrite($routerFile, "\n");
+              // Removed: require_once __DIR__."/../Controllers/".$o->Table.".php";
+              // Controllers should be autoloaded. Ensure FQCN is used for controllers or add use statements.
+              fwrite($routerFile, "// Ensure LazyMePHP\Controllers\\".$o->Table." is autoloadable or use FQCN.");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "SimpleRouter::get('/api/".$o->Table."', function() {");
               fwrite($routerFile, "\n");

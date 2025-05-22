@@ -1,10 +1,61 @@
 <?php
+// Ensure this is at the top
+
+// CLI Bootstrapping for LazyMePHP
+if (file_exists(__DIR__.'/src/Ext/vendor/autoload.php')) {
+    require_once __DIR__.'/src/Ext/vendor/autoload.php';
+} else {
+    echo "Composer autoload file not found. Please run 'composer install' or 'composer update'.\n";
+    exit(1);
+}
+
+if (file_exists(__DIR__.'/.env')) {
+    // For CLI, Dotenv might need to be loaded slightly differently if APP_ENV is used,
+    // but for now, standard loading is fine.
+    $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
+    $dotenv->load();
+} else {
+    echo ".env file not found. Please ensure it exists in the project root.\n";
+    // Decide if to exit or continue with defaults. For tools, config is likely essential.
+    // exit(1); // Or allow APP to use its defaults.
+}
+
+// Require the APP class definition itself as it's not yet autoloaded by its own definition
+if (file_exists(__DIR__.'/src/Configurations/Internal/InternalConfigurations.php')) {
+    require_once __DIR__.'/src/Configurations/Internal/InternalConfigurations.php';
+} else {
+    echo "InternalConfigurations.php not found.\n";
+    exit(1);
+}
+
+// Initialize the APP configuration
+try {
+    new LazyMePHP\Config\Internal\APP();
+} catch (Exception $e) {
+    echo "Error initializing APP configuration: " . $e->getMessage() . "\n";
+    exit(1);
+}
+
+// Autoload LazyMePHP Helpers (ErrorUtil) if needed for CLI error handling
+// (APP constructor already sets error handlers using ErrorUtil)
+
+// The rest of the CLI script logic follows...
 
 /**
  * LazyMePHP
  * @copyright This file is part of the LazyMePHP developed by Duarte Peixinho
  * @author Duarte Peixinho
  */
+
+if (!isset($argv[1])) {
+    echo "LazyMePHP CLI Tool\n";
+    echo "Usage: php LazyMePHP [command]\n";
+    echo "Available commands:\n";
+    echo "  serve    Start the PHP development server for the public directory.\n";
+    echo "  build    Run the build tools for classes, forms, and APIs.\n";
+    // echo "  config   (Deprecated) Configure the application.\n"; // Config case removed
+    exit(0);
+}
 
 switch($argv[1]) {
   case "serve":
@@ -21,13 +72,20 @@ switch($argv[1]) {
       else $port = intval($port);
     }
     if (!$port || !is_int($port)) $port = 8080;
-    @exec("php -S 0.0.0.0:".$port." -t ./public tools/webserver");
+    // The webserver command in tools/webserver might need its own bootstrapping or use this one.
+    // For now, we ensure this main script is bootstrapped.
+    @exec("php -S 0.0.0.0:".$port." -t ./public tools/webserver.php"); // Assuming tools/webserver is a php script
   break;
   case "build":
-    require_once "tools/build";
+    // The tools/build script will need to be updated to use the autoloader
+    // and not re-bootstrap if already done.
+    if (file_exists(__DIR__.'/tools/build')) {
+        require_once __DIR__.'/tools/build';
+    } else {
+        echo "Build script (tools/build) not found.\n";
+        exit(1);
+    }
   break;
-  case "config":
-    require_once "tools/config";
-  break;
+  // The "config" case has been removed as per instructions.
 }
 ?>

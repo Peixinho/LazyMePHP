@@ -9,8 +9,8 @@
 namespace LazyMePHP\FormsBuilder;
 use \LazyMePHP\Config\Internal\APP;
 
-require_once 'databasehelper';
-require_once 'helper';
+require_once __DIR__ . '/databasehelper'; // Made path more robust
+require_once __DIR__ . '/helper'; // Made path more robust
 
 /**
  * Build class tables
@@ -114,9 +114,9 @@ class BuildTableForms
           fwrite($routerFile, "\n");
           fwrite($routerFile, " */");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "use LazyMePHP\Router\\".$db->GetTableName().";");
-          fwrite($routerFile, "\n");
-          fwrite($routerFile, "require_once __DIR__.\"/../Controllers/".$db->GetTableName().".php\";");
+          // Use statement for the controller will be assumed to be handled by PSR-4 or already present if needed.
+          // fwrite($routerFile, "use LazyMePHP\Controllers\\".$db->GetTableName().";"); // Example, might not be needed if FQCN is used.
+          // Removed: require_once __DIR__."/../Controllers/".$db->GetTableName().".php";
           fwrite($routerFile, "\n");
           fwrite($routerFile, "SimpleRouter::get('/".$db->GetTableName()."', function() {");
           fwrite($routerFile, "\n");
@@ -609,10 +609,22 @@ class BuildTableForms
         fwrite($controllerFile, "\n");
         fwrite($controllerFile, "\$blade = new BladeOne(\$views,\$cache);");
         fwrite($controllerFile, "\n");
+        // Removed: require_once __DIR__."/../Classes/".$db->GetTableName().".php";
+        // The class LazyMePHP\Classes\<TableName> will be autoloaded.
+        // Removed: require_once __DIR__."/../Validations/Validations.php";
+        // Validation classes like LazyMePHP\Validations\ValidationsMethod will be autoloaded.
+        // Ensure use statements are present in generated controller if short names are used.
+        fwrite($controllerFile, "use LazyMePHP\Classes\\".$db->GetTableName().";");
         fwrite($controllerFile, "\n");
-        fwrite($controllerFile, "require_once __DIR__.\"/../Classes/".$db->GetTableName().".php\";");
+        fwrite($controllerFile, "use LazyMePHP\Classes\\".$db->GetTableName()."_List;");
         fwrite($controllerFile, "\n");
-        fwrite($controllerFile, "require_once __DIR__.\"/../Validations/Validations.php\";");
+        fwrite($controllerFile, "use LazyMePHP\Validations\ValidationsMethod;");
+        fwrite($controllerFile, "\n");
+        fwrite($controllerFile, "use LazyMePHP\Validations\ValidateFormData;");
+        fwrite($controllerFile, "\n");
+        fwrite($controllerFile, "use LazyMePHP\Validations\ValidateJsonData;");
+        fwrite($controllerFile, "\n");
+        fwrite($controllerFile, "use LazyMePHP\Security\CsrfProtection;");
         fwrite($controllerFile, "\n");
         fwrite($controllerFile, "\n");
 
@@ -738,13 +750,13 @@ class BuildTableForms
           fwrite($controllerFile, "\t\t];");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\tif (!\$api && \\LazyMePHP\\Security\\CsrfProtection::verifyToken(\$_POST['_token']))");
+          fwrite($controllerFile, "\t\tif (!\$api && CsrfProtection::verifyToken(\$_POST['_token']))"); // Use short name
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\t\$validatedData = \\LazyMePHP\Validations\\ValidateFormData(\$validationRules);");
+          fwrite($controllerFile, "\t\t\t\$validatedData = ValidateFormData(\$validationRules);"); // Use short name
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\telse");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\t\$validatedData = \\LazyMePHP\Validations\\ValidateJsonData(file_get_contents('php://input'),\$validationRules);");
+          fwrite($controllerFile, "\t\t\t\$validatedData = ValidateJsonData(file_get_contents('php://input'),\$validationRules);"); // Use short name
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\tif (\$validatedData['success']) {");

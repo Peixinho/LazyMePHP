@@ -7,10 +7,10 @@
  */
 
 use \LazyMePHP\Config\Internal\APP;
-use \LazyMePHP\Helper;
+// use \LazyMePHP\Helper; // This is not a class, functions are called with FQCN or are global in tools/helper's namespace.
 
 require_once __DIR__.'/databasehelper';
-require_once __DIR__.'/../src/Configurations/Configurations.php';
+// require_once __DIR__.'/../src/Configurations/Configurations.php'; // Removed, APP class is used via bootstrap
 require_once __DIR__.'/classesbuilder';
 require_once __DIR__.'/formsbuilder';
 require_once __DIR__.'/apibuilder';

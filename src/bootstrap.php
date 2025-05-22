@@ -36,43 +36,23 @@ new LazyMePHP\Config\Internal\APP();
 // However, new LazyMePHP\Config\Internal\APP() is explicit.
 use LazyMePHP\Config\Internal\APP;
 
-/*
- * CSRF Protection And Session Starter
- */
-require_once __DIR__."/Security/CSRFProtection.php";
-
-/*
- * JWT Authentication
- */
-require_once __DIR__."/Security/JWT.php";
-
 // APP URL
 $urlFiles = filter_input(INPUT_SERVER, "SERVER_NAME");
 
 /*
- * Validations
- */
-require_once __DIR__."/Enum/Enum.php";
-
-/*
  * Helper Functions to Aliviate Stress :P
+ * Contains global namespaced functions, so it needs to be required explicitly.
+ * PSR-4 autoloader handles class-based loading.
  */
 require_once __DIR__."/Helpers/Helper.php";
 
-/*
- * Validations
- */
-require_once __DIR__."/Validations/Validations.php";
-
-/*
- * Error and Success Messages
- */
-require_once __DIR__."/Messages/Messages.php";
-
-/*
- * Values
- */
-require_once __DIR__."/Values/Values.php";
+// The following class-based files are now handled by PSR-4 autoloading:
+// require_once __DIR__."/Security/CSRFProtection.php"; // Autoloaded
+// require_once __DIR__."/Security/JWT.php"; // Autoloaded
+// require_once __DIR__."/Enum/Enum.php"; // Autoloaded
+// require_once __DIR__."/Validations/Validations.php"; // Autoloaded
+// require_once __DIR__."/Messages/Messages.php"; // Autoloaded
+// require_once __DIR__."/Values/Values.php"; // Autoloaded
 
 /*
  * Router

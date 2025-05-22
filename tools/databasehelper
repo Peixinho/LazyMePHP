@@ -9,7 +9,7 @@
 namespace LazyMePHP\DatabaseHelper;
 use \LazyMePHP\Config\Internal\APP;
 
-require_once 'helper';
+require_once __DIR__ . '/helper'; // Made path more robust
 
 class _DB_FIELD {
 
