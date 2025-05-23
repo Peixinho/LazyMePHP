@@ -19,6 +19,7 @@ enum ValidationsMethod: string {
     case NOTNULL = 'notnull';
     case LENGTH = 'length';
     case DATE = 'date';
+    case DATETIME = 'datetime';
     case ISO_DATE = 'iso_date';
     case EMAIL = 'email';
     case REGEXP = 'regexp';

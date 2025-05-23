@@ -17,6 +17,7 @@ class ValidationPatterns {
     public const INT = '/^[+-]?\d+$/';
     public const STRING = '/^[a-zA-Z0-9\s.,;:!?=\'"\-()A-zÀ-ú ]*$/';
     public const DATE = '/^\d{2}\/\d{2}\/\d{4}$/';
+    public const DATETIME = '/^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/';
     public const ISO_DATE = '/^\d{4}-\d{2}-\d{2}(?:\s\d{2}:\d{2}:\d{2})?$/';
     public const EMAIL = '/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/';
 }
