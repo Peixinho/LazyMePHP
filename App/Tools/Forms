@@ -400,7 +400,7 @@ class BuildTableForms
             if ($field->HasForeignKey() && !is_null($field->GetForeignField()))
             {
               fwrite($viewFile, "\n");
-              fwrite($viewFile, "\t@component('_Components.Select',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'defaultValueEmpty' => true, 'options' => \$".$field->GetForeignTable()."->GetList(false), ".(!$field->AllowNull()?", 'validation' => 'NOTNULL', 'validationfail' => '".$field->GetName()." cannot be empty'":"")." ))");
+              fwrite($viewFile, "\t@component('_Components.Select',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'defaultValueEmpty' => true, 'options' => \$".$field->GetForeignTable()."->GetList(false) ".(!$field->AllowNull()?", 'validation' => 'NOTNULL', 'validationfail' => '".$field->GetName()." cannot be empty'":"")." ))");
             } else {
               fwrite($viewFile, "\n");
               switch ($field->GetDataType())

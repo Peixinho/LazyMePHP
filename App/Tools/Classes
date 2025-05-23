@@ -162,7 +162,7 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
           fwrite($classFile, "\n");
           fwrite($classFile, "\t/** @var ".$field->GetName()."*/");
           fwrite($classFile, "\n");
-            fwrite($classFile, "\tpublic ".($field->AllowNull()?"?":"").$field->GetDataType()." \$".$field->GetName()."".($field->AllowNull()?" = null":($field->GetDefaultValue()?' = '.$field->GetDefaultValue():''))." {");
+            fwrite($classFile, "\tpublic ?".$field->GetDataType()." \$".$field->GetName()."".($field->AllowNull()?" = null":($field->GetDefaultValue()?' = '.$field->GetDefaultValue():' = null'))." {");
           fwrite($classFile, "\n");
           fwrite($classFile, "\t\tget {");
           fwrite($classFile, "\n");
@@ -170,7 +170,7 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
           fwrite($classFile, "\n");
           fwrite($classFile, "\t\t}");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\t\tset(".($field->AllowNull()?"?":"")."".$field->GetDataType()." \$".$field->GetName().") {");
+          fwrite($classFile, "\t\tset(?".$field->GetDataType()." \$".$field->GetName().") {");
           fwrite($classFile, "\n");
             if ($field->HasForeignKey() && $field->GetForeignField())
             {
@@ -334,7 +334,7 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
                   fwrite($classFile, "\n");
                   fwrite($classFile, "\t\t\t\t{");
                   fwrite($classFile, "\n");
-                  fwrite($classFile, "\t\t\t\t\t\$this->".$field2->GetName()."_OBJ = new __".$fTable->GetTableName()."();");
+                  fwrite($classFile, "\t\t\t\t\t\$this->".$field2->GetName()."_OBJ = new \\Classes\\priv\\".$fTable->GetTableName()."();");
                   fwrite($classFile, "\n");
                   foreach($fTable->GetTableFields() as $field3)
                   {
@@ -837,7 +837,7 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\t\t{");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\t\t\t\t\$obj = new __".$db->_Tablename."(\$buildForeignMembers);");
+        fwrite($classFile, "\t\t\t\t\$obj = new \\Classes\\priv\\".$db->_Tablename."(\$buildForeignMembers);");
         fwrite($classFile, "\n");
         foreach ($db->_Tablefields as $field2)
         {
@@ -850,7 +850,7 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
             fwrite($classFile, "\n");
             fwrite($classFile, "\t\t\t\t{");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\t\t\t\$_OBJ = new __".$fTable->GetTableName()."();");
+            fwrite($classFile, "\t\t\t\t\t\$_OBJ = new \\Classes\\priv\\".$fTable->GetTableName()."();");
             fwrite($classFile, "\n");
 
             foreach($fTable->GetTableFields() as $field3)
@@ -1353,7 +1353,35 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
         fwrite($classFile, "\t}");
         fwrite($classFile, "\n");
         fwrite($classFile,"}");
+      }
+			else echo "ERROR: Check your permissions to write ".$classesPath."/".$db->_Tablename.".php\n";
+		}
+		else echo "ERROR: Check your permissions to remove ".$classesPath."/".$db->_Tablename.".php\n";
 
+    if (\Tools\Helper\UNLINK($classesPath."/priv/".$db->GetTableName().".php"))
+    {
+      if (\Tools\Helper\TOUCH($classesPath."/priv/".$db->GetTableName().".php"))
+      {
+        $classFile = fopen($classesPath."/priv/".$db->GetTableName().".php","w+");
+        fwrite($classFile,"<?php");
+        fwrite($classFile, "\n");
+        fwrite($classFile, "\n");
+        fwrite($classFile,"/**");
+        fwrite($classFile, "\n");
+        fwrite($classFile," * @copyright This file is part of the LazyMePHP Framework developed by Duarte Peixinho");
+        fwrite($classFile, "\n");
+        fwrite($classFile," * @author Duarte Peixinho");
+        fwrite($classFile, "\n");
+        fwrite($classFile," *");
+        fwrite($classFile, "\n");
+        fwrite($classFile," * Source File Generated Automatically");
+        fwrite($classFile, "\n");
+        fwrite($classFile," */");
+        fwrite($classFile, "\n");
+        fwrite($classFile, "\n");
+        fwrite($classFile, "declare(strict_types=1);");
+        fwrite($classFile, "\n");
+        fwrite($classFile, "\n");
         fwrite($classFile, "\n");
         fwrite($classFile, "/**");
         fwrite($classFile, "\n");
@@ -1361,14 +1389,12 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, " */");
         fwrite($classFile, "\n");
-        fwrite($classFile, "namespace Classes;");
+        fwrite($classFile, "namespace Classes\\priv;");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "use Classes\\".$db->_Tablename.";");
         fwrite($classFile, "\n");
         fwrite($classFile, "#[\AllowDynamicProperties]");
         fwrite($classFile, "\n");
-        fwrite($classFile, "class __".$db->_Tablename." extends ".$db->_Tablename." {");
+        fwrite($classFile, "class ".$db->_Tablename." extends \\Classes\\".$db->_Tablename." {");
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
         fwrite($classFile, "\tfunction __construct() {}");
