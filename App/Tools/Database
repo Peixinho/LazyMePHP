@@ -534,7 +534,7 @@ class _DB_TABLE {
             $field->SetAllowNull($f->Null);
             $field->SetAutoIncrement($f->Identity);
             $field->SetDataLength($f->Data_Length);
-            $field->SetDefaultValue($f->Default);
+            if (isset($f->Default)) $field->SetDefaultValue($f->Default);
             if ($f->PK)
             {
                 $field->SetPrimaryKey(true);

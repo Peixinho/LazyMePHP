@@ -11,6 +11,8 @@ use Core\LazyMePHP;
 use Tools\Database;
 use Tools\Helper;
 
+require_once(__DIR__.'/Helper');
+
 function enableLogging() {
   // Create Activity Log Structure if Needed
   if (LazyMePHP::ACTIVITY_LOG()) {
@@ -56,7 +58,7 @@ function enableLogging() {
     $sqlObj = LazyMePHP::DB_CONNECTION()->Query($queryString);
     LazyMePHP::DB_CONNECTION()->Close();
     echo "Done enabling logging, press enter to continue...";
-    Helper\read();
+    \Tools\Helper\read();
   }
 }
 
@@ -100,7 +102,7 @@ while ($o=$sqlObj->FetchObject()) {
 // Check if descriptor file exists
 if (!is_file(__DIR__."/.descriptors")) {
   // if not create one
-  Helper\TOUCH(__DIR__."/.descriptors");
+  \Tools\Helper\TOUCH(__DIR__."/.descriptors");
   // and generate first version
   $tablesDescriptorsFile = fopen(__DIR__."/.descriptors","w");
   fwrite($tablesDescriptorsFile, json_encode($tablesDescriptors));
@@ -122,7 +124,6 @@ $option = -1;
 while (strlen($option)>0) {
 
 
-  require_once(__DIR__.'/Helper');
   \Tools\Helper\printselect("Tables", $tables, null, $tablesDescriptors);
   echo "\nSelect your option:\n\n";
   echo "Build Classes: [c]\n";
