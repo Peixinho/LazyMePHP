@@ -10,22 +10,16 @@ declare(strict_types=1);
 
 namespace LazyMePHP\Messages;
 
-function ShowError($err)
-{
-	$_GET['error'] = $err;
-}
+class Messages {
 
-function ShowSuccess($succ)
-{
-	$_GET['success'] = $succ;
-}
+  static function ShowError($err)
+  {
+    $_GET['error'] = $err;
+  }
 
-enum SuccessMessages:string {
-  case S1 = "Success Message 1";
-  case S2 = "Success Message 2";
+  static function ShowSuccess($succ)
+  {
+    $_GET['success'] = $succ;
+  }
+
 }
-enum ErrorMessages:string {
-  case E1 = "Error Message 1";
-  case E2 = "Error Message 2";
-}
-?>

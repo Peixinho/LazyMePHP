@@ -82,8 +82,6 @@ class BuildTableForms
             fwrite($routerFile, "\n");
             fwrite($routerFile, "use Pecee\SimpleRouter\SimpleRouter;");
             fwrite($routerFile, "\n");
-            fwrite($routerFile, "use function Helpers\\redirect;");
-            fwrite($routerFile, "\n");
             fwrite($routerFile, "use Controllers\\".$o->Table.";");
             fwrite($routerFile, "\n");
             fwrite($routerFile, "use Core\\LazyMePHP;");
@@ -178,11 +176,11 @@ class BuildTableForms
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\tif (".$db->GetTableName()."::Save((int)\$".$db->GetPrimaryFieldName()."))");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\t\tredirect('/".$db->GetTableName()."?success=1');");
+          fwrite($routerFile, "\t\t\\Helpers\\Helper::redirect('/".$db->GetTableName()."?success=1');");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\telse");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\t\tredirect('/".$db->GetTableName()."/'.\$".$db->GetPrimaryFieldName().".'/edit?error=1');");
+          fwrite($routerFile, "\t\t\\Helpers\\Helper::redirect('/".$db->GetTableName()."/'.\$".$db->GetPrimaryFieldName().".'/edit?error=1');");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "});");
           fwrite($routerFile, "\n");
@@ -190,11 +188,11 @@ class BuildTableForms
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\tif(".$db->GetTableName()."::Save())");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\t\tredirect('/".$db->GetTableName()."?success=1');");
+          fwrite($routerFile, "\t\t\\Helpers\\Helper::redirect('/".$db->GetTableName()."?success=1');");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\telse");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\t\tredirect('/".$db->GetTableName()."?error=1');");
+          fwrite($routerFile, "\t\t\\Helpers\\Helper::redirect('/".$db->GetTableName()."?error=1');");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "});");
           fwrite($routerFile, "\n");
@@ -202,7 +200,7 @@ class BuildTableForms
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\t".$db->GetTableName()."::Delete((int)\$".$db->GetPrimaryFieldName().");");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\tredirect('/".$db->GetTableName()."?success=2');");
+          fwrite($routerFile, "\t\\Helpers\\Helper::redirect('/".$db->GetTableName()."?success=2');");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "});");
           fwrite($routerFile, "\n");
@@ -603,23 +601,10 @@ class BuildTableForms
         fwrite($controllerFile, "namespace Controllers;");
         fwrite($controllerFile, "\n");
         fwrite($controllerFile, "\n");
-        fwrite($controllerFile, "use \\eftec\bladeone\BladeOne;");
-        fwrite($controllerFile, "\n");
         fwrite($controllerFile, "use Validations\\ValidationsMethod;");
         fwrite($controllerFile, "\n");
         fwrite($controllerFile, "use Security\\CsrfProtection;");
-        fwrite($controllerFile, "\n");
-        fwrite($controllerFile, "use function Validations\\ValidateFormData;");
-        fwrite($controllerFile, "\n");
-        fwrite($controllerFile, "use function Validations\\ValidateJsonData;");
 
-        fwrite($controllerFile, "\n");
-        fwrite($controllerFile, "\n");
-        fwrite($controllerFile, "\$views = __DIR__ . '/../Views/';");
-        fwrite($controllerFile, "\n");
-        fwrite($controllerFile, "\$cache = __DIR__ . '/../Views/_compiled/';");
-        fwrite($controllerFile, "\n");
-        fwrite($controllerFile, "\$blade = new BladeOne(\$views,\$cache);");
         fwrite($controllerFile, "\n");
         fwrite($controllerFile, "\n");
 
@@ -747,11 +732,11 @@ class BuildTableForms
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\tif (!\$api && CsrfProtection::verifyToken(\$_POST['_token']))"); // Use short name
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\t\$validatedData = ValidateFormData(\$validationRules);"); // Use short name
+          fwrite($controllerFile, "\t\t\t\$validatedData = \\Validations\\Validations::ValidateFormData(\$validationRules);"); // Use short name
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\telse");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\t\$validatedData = ValidateJsonData(file_get_contents('php://input'),\$validationRules);"); // Use short name
+          fwrite($controllerFile, "\t\t\t\$validatedData = \\Validations\\Validations::ValidateJsonData(file_get_contents('php://input'),\$validationRules);"); // Use short name
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\tif (\$validatedData['success']) {");

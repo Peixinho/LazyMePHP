@@ -40,11 +40,11 @@
     //Error And Success Messages Generator
     if (array_key_exists('success', $_GET) && strlen($_GET['success'])>0) foreach (explode(',',$_GET['success']) as $s) {
       $s = "S$s";
-      $showMessage_S = (strlen($showMessage_S)>0?$showMessage_S."\\n".constant("Messages\SuccessMessages::{$s}")->value:constant("Messages\SuccessMessages::{$s}")->value);
+      $showMessage_S = (strlen($showMessage_S)>0?$showMessage_S."\\n".constant("Messages\Success::{$s}")->value:constant("Messages\Success::{$s}")->value);
     }
     if (array_key_exists('error', $_GET) && strlen($_GET['error'])>0) foreach (explode(',',$_GET['error']) as $e) {
       $e = "E$e";
-      $showMessage_E = (strlen($showMessage_E)>0?$showMessage_E."\\n".constant("Messages\ErrorMessages::{$e}")->value:constant("Messages\ErrorMessages::{$e}")->value);
+      $showMessage_E = (strlen($showMessage_E)>0?$showMessage_E."\\n".constant("\Messages\Error::{$e}")->value:constant("\Messages\Error::{$e}")->value);
     }
     ?>
     <script src="/js/LazyMePHP.js"></script>
