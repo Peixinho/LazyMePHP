@@ -9,10 +9,10 @@
 declare(strict_types=1);
 
 namespace Core;
-use Helpers\ErrorUtil;
-use DB\MSSQL as DBMSSQL;
-use DB\SQLite as DBSQLite;
-use DB\MYSQL as DBMYSQL;
+use Core\Helpers\ErrorUtil;
+use Core\DB\MSSQL as DBMSSQL;
+use Core\DB\SQLite as DBSQLite;
+use Core\DB\MYSQL as DBMYSQL;
 
 /**
  * LazyMePHP Class

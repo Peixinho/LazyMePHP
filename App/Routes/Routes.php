@@ -13,9 +13,6 @@ use Controllers;
 use Pecee\SimpleRouter\SimpleRouter;
 use \eftec\bladeone\BladeOne;
 
-require_once __DIR__."/../Controllers/_Default.Controller.php";
-require_once __DIR__."/../Controllers/_PageNotFound.Controller.php";
-
 $views = __DIR__ . '/../Views/';
 $cache = __DIR__ . '/../Views/_compiled';
 $blade = new BladeOne($views,$cache);

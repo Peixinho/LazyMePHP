@@ -105,7 +105,7 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
         fwrite($classFile, "use Helpers\ErrorUtil;\n");
 
         fwrite($classFile, "\n");
-        fwrite($classFile, "class ".$db->_Tablename." extends \\Core\\ClassBase implements \\DB\\IDB {");
+        fwrite($classFile, "class ".$db->_Tablename." extends \\Core\\ClassBase implements \\Core\\DB\\IDB {");
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t/**");
@@ -663,7 +663,7 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
 
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
-        fwrite($classFile, "class ".$db->_Tablename."_List implements \\DB\\IDB_LIST {");
+        fwrite($classFile, "class ".$db->_Tablename."_List implements \\Core\\DB\\IDB_LIST {");
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
         fwrite($classFile, "\tprotected \$_args = array();");

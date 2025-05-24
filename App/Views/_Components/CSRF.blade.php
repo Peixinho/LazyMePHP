@@ -6,4 +6,4 @@
  */
 ?>
 
-<input type="hidden" name="_token" value="<?=\Security\CsrfProtection::renderInput()?>"/>
+<input type="hidden" name="_token" value="<?=\Core\Security\CsrfProtection::renderInput()?>"/>

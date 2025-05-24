@@ -176,11 +176,11 @@ class BuildTableForms
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\tif (".$db->GetTableName()."::Save((int)\$".$db->GetPrimaryFieldName()."))");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\t\t\\Helpers\\Helper::redirect('/".$db->GetTableName()."?success=1');");
+          fwrite($routerFile, "\t\t\\Core\\Helpers\\Helper::redirect('/".$db->GetTableName()."?success=1');");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\telse");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\t\t\\Helpers\\Helper::redirect('/".$db->GetTableName()."/'.\$".$db->GetPrimaryFieldName().".'/edit?error=1');");
+          fwrite($routerFile, "\t\t\\Core\\Helpers\\Helper::redirect('/".$db->GetTableName()."/'.\$".$db->GetPrimaryFieldName().".'/edit?error=1');");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "});");
           fwrite($routerFile, "\n");
@@ -188,11 +188,11 @@ class BuildTableForms
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\tif(".$db->GetTableName()."::Save())");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\t\t\\Helpers\\Helper::redirect('/".$db->GetTableName()."?success=1');");
+          fwrite($routerFile, "\t\t\\Core\\Helpers\\Helper::redirect('/".$db->GetTableName()."?success=1');");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\telse");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\t\t\\Helpers\\Helper::redirect('/".$db->GetTableName()."?error=1');");
+          fwrite($routerFile, "\t\t\\Core\\Helpers\\Helper::redirect('/".$db->GetTableName()."?error=1');");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "});");
           fwrite($routerFile, "\n");
@@ -200,7 +200,7 @@ class BuildTableForms
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\t".$db->GetTableName()."::Delete((int)\$".$db->GetPrimaryFieldName().");");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\t\\Helpers\\Helper::redirect('/".$db->GetTableName()."?success=2');");
+          fwrite($routerFile, "\t\\Core\\Helpers\\Helper::redirect('/".$db->GetTableName()."?success=2');");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "});");
           fwrite($routerFile, "\n");
@@ -601,9 +601,9 @@ class BuildTableForms
         fwrite($controllerFile, "namespace Controllers;");
         fwrite($controllerFile, "\n");
         fwrite($controllerFile, "\n");
-        fwrite($controllerFile, "use Validations\\ValidationsMethod;");
+        fwrite($controllerFile, "use Core\\Validations\\ValidationsMethod;");
         fwrite($controllerFile, "\n");
-        fwrite($controllerFile, "use Security\\CsrfProtection;");
+        fwrite($controllerFile, "use Core\\Security\\CsrfProtection;");
 
         fwrite($controllerFile, "\n");
         fwrite($controllerFile, "\n");
@@ -732,11 +732,11 @@ class BuildTableForms
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\tif (!\$api && CsrfProtection::verifyToken(\$_POST['_token']))"); // Use short name
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\t\$validatedData = \\Validations\\Validations::ValidateFormData(\$validationRules);"); // Use short name
+          fwrite($controllerFile, "\t\t\t\$validatedData = \\Core\\Validations\\Validations::ValidateFormData(\$validationRules);"); // Use short name
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\telse");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\t\$validatedData = \\Validations\\Validations::ValidateJsonData(file_get_contents('php://input'),\$validationRules);"); // Use short name
+          fwrite($controllerFile, "\t\t\t\$validatedData = \\Core\\Validations\\Validations::ValidateJsonData(file_get_contents('php://input'),\$validationRules);"); // Use short name
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\tif (\$validatedData['success']) {");
