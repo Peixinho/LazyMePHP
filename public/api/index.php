@@ -9,34 +9,36 @@ declare(strict_types=1);
  */
 
 namespace API;
-use Config\Internal\APP as InternalAPP;
+use Core\LazyMePHP;
 
 use function LazyMePHP\Helper\response;
 
 /*
- * Add LazyMePHP Configuration File
- */
-require_once __DIR__."/../../src/Configurations/Configurations.php";
-require_once __DIR__."/../../src/Configurations/Internal/InternalConfigurations.php";
-require_once __DIR__."/../../src/Helpers/Helper.php";
-require_once __DIR__."/../../src/Security/JWT.php";
-
-/*
- * Include Generated Class Files
- */
-if(file_exists(__DIR__."/../../src/Classes/includes.php"))
-    require_once __DIR__."/../../src/Classes/includes.php";
-
-/*
  * Router
  */
-require_once __DIR__."/../../src/Ext/vendor/autoload.php";
+require_once __DIR__."/../../App/Ext/vendor/autoload.php";
+
+/*
+ * Load Environment Variables
+ */
+if (file_exists(__DIR__.'/../../.env')) {
+    $dotenv = \Dotenv\Dotenv::createImmutable(__DIR__.'/../../');
+    $dotenv->load();
+}
+
+/*
+ *
+ * Initialize LazyMePHP
+ *
+ */
+new LazyMePHP();
+
 
 /*
  * Mask API
  */
-if(file_exists(__DIR__."/../../src/api/MaskAPI.php"))
-	require_once __DIR__."/../../src/api/MaskAPI.php";
+if(file_exists(__DIR__."/../../App/api/MaskAPI.php"))
+	require_once __DIR__."/../../App/api/MaskAPI.php";
 /* Work our custom masks if sent, avoiding showing unwanted fields even if requested */
 #$mask = $GLOBALS['API_FIELDS_AVAILABLE'];
 #$customMask = (json_decode(file_get_contents('php://input'), true)); 
@@ -47,6 +49,8 @@ if(file_exists(__DIR__."/../../src/api/MaskAPI.php"))
 #  }
 #  $GLOBALS['API_FIELDS_AVAILABLE'] = $customMask;
 #}
+
+
 /*
  * Check of our request needs foreing data
  */
@@ -54,8 +58,9 @@ $GLOBALS['API_FOREIGN_DATA'] = (isset($_GET['foreignData']) && $_GET['foreignDat
 
 
 /* Load all api routes */
-foreach(glob(__DIR__."/../../src/api/" . "/*.php") as $r)
+foreach(glob(__DIR__."/../../App/api/" . "/*.php") as $r)
   require_once $r;
+
 
 /*
  * Output result
@@ -83,7 +88,7 @@ header('Access-Control-Allow-Methods: POST, GET, DELETE, PUT');
 /*
  * Runs logging activity
  */
-InternalAPP::LOG_ACTIVITY();
-InternalAPP::DB_CONNECTION()->Close();
+LazyMePHP::LOG_ACTIVITY();
+LazyMePHP::DB_CONNECTION()->Close();
 
 ?>

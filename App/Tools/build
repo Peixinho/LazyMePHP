@@ -160,6 +160,7 @@ while (strlen($option)>0) {
     BuildForms();
   }
   else if (strtolower($option) == 'a') {
+    require_once(__DIR__.'/API');
     buildAPI();
   }
   else if (strtolower($option) == 'q') {
@@ -235,7 +236,7 @@ function buildAPI() {
     if ($proceed) {
       $tablesList = array();
       foreach($api as $c) $tablesList[] = $c['name'];
-      new FormsBuilder\BuildTableAPI('App/api', $replaceA=='Y', $tablesList);
+      new Tools\API\BuildTableAPI('App/api', $replaceA=='Y', $tablesList);
 
     }
   }
