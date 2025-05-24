@@ -39,15 +39,15 @@
             "Classes\\": "App/Classes/",
             "Controllers\\": "App/Controllers/",
             "Core\\": "App/Core/",
-            "DB\\": "App/Core/DB/",
-            "Enum\\": "App/Core/Enum/",
-            "Helpers\\": "App/Core/Helpers/",
+            "Core\\DB\\": "App/Core/DB/",
+            "Core\\Enum\\": "App/Core/Enum/",
+            "Core\\Helpers\\": "App/Core/Helpers/",
             "Messages\\": "App/Messages/",
             "Routes\\": "App/Routes/",
-            "Security\\": "App/Core/Security/",
-            "Session\\": "App/Core/Session/",
+            "Core\\Security\\": "App/Core/Security/",
+            "Core\\Session\\": "App/Core/Session/",
             "Tools\\": "App/Tools/",
-            "Validations\\": "App/Core/Validations/",
+            "Core\\Validations\\": "App/Core/Validations/",
             "Views\\": "App/Views/"
         }
     }

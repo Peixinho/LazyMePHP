@@ -8,7 +8,7 @@
 
 declare(strict_types=1);
 
-namespace DB;
+namespace Core\DB;
 
 /**
  * Interface for Automatic DB Classes

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Helpers;
+namespace Core\Helpers;
 
-use Config\Internal\APP;
+use Core\LazyMePHP;
 
 class ErrorUtil
 {
@@ -37,8 +37,8 @@ class ErrorUtil
           An email with this message was sent to the developer.
           </div>";
 
-        $appName = class_exists(APP::class) && method_exists(APP::class, 'APP_NAME') ? APP::APP_NAME() : 'LazyMePHP Application';
-        $supportEmail = class_exists(APP::class) && method_exists(APP::class, 'APP_SUPPORT_EMAIL') ? APP::APP_SUPPORT_EMAIL() : 'noreply@example.com';
+        $appName = class_exists(LazyMePHP::class) && method_exists(LazyMePHP::class, 'NAME') ? LazyMePHP::NAME() : 'LazyMePHP Application';
+        $supportEmail = class_exists(LazyMePHP::class) && method_exists(LazyMePHP::class, 'SUPPORT_EMAIL') ? LazyMePHP::SUPPORT_EMAIL() : 'noreply@example.com';
 
         $to_mail = $supportEmail;
         $from_mail = "noreply@" . ($_SERVER['SERVER_NAME'] ?? 'localhost');

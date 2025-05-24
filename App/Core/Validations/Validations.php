@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace Validations;
+namespace Core\Validations;
 
 class Validations {
   

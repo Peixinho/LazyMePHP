@@ -6,7 +6,7 @@
 * @author Duarte Peixinho
 */
 
-namespace Session;
+namespace Core\Session;
 
 class Session
 {

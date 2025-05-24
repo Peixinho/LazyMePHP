@@ -8,7 +8,7 @@
 
 declare(strict_types=1);
 
-namespace Security;
+namespace Core\Security;
 
 use Ahc\Jwt\JWT;
 use Session\Session;

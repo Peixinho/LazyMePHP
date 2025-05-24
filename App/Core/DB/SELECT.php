@@ -8,7 +8,7 @@ declare(strict_types=1);
 * @author Duarte Peixinho
  */
 
-namespace DB;
+namespace Core\DB;
 use \Core\LazyMePHP;
 
 /**

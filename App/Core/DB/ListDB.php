@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace DB;
+namespace Core\DB;
 
 use \Core\LazyMePHP;
 

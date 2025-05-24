@@ -8,7 +8,7 @@
 
 declare(strict_types=1);
 
-namespace Helpers;
+namespace Core\Helper;
 
 use Pecee\SimpleRouter\SimpleRouter as Router;
 use Pecee\Http\Url;

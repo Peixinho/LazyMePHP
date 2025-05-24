@@ -9,7 +9,7 @@
 
 declare(strict_types=1);
 
-namespace Security;
+namespace Core\Security;
 
 class EncryptionUtil
 {
