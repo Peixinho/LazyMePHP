@@ -8,7 +8,10 @@ declare(strict_types=1);
  * @author Duarte Peixinho
  */
 
-namespace LazyMePHP\API;
+namespace API;
+use Config\Internal\APP as InternalAPP;
+
+use function LazyMePHP\Helper\response;
 
 /*
  * Add LazyMePHP Configuration File
@@ -17,8 +20,6 @@ require_once __DIR__."/../../src/Configurations/Configurations.php";
 require_once __DIR__."/../../src/Configurations/Internal/InternalConfigurations.php";
 require_once __DIR__."/../../src/Helpers/Helper.php";
 require_once __DIR__."/../../src/Security/JWT.php";
-
-use \LazyMePHP\Config\Internal\APP;
 
 /*
  * Include Generated Class Files
@@ -70,10 +71,10 @@ header('Access-Control-Allow-Methods: POST, GET, DELETE, PUT');
     switch($exception->getCode()) {
         // Page not found
         case 404:
-            \LazyMePHP\Helper\response()->redirect('/api/not-found');
+            response()->redirect('/api/not-found');
         // Forbidden
         case 403:
-            \LazyMePHP\Helper\response()->redirect('/api/forbidden');
+            response()->redirect('/api/forbidden');
     }
     
 });
@@ -82,7 +83,7 @@ header('Access-Control-Allow-Methods: POST, GET, DELETE, PUT');
 /*
  * Runs logging activity
  */
-APP::LOG_ACTIVITY();
-APP::DB_CONNECTION()->Close();
+InternalAPP::LOG_ACTIVITY();
+InternalAPP::DB_CONNECTION()->Close();
 
 ?>
