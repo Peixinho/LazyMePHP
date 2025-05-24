@@ -685,24 +685,24 @@ class BuildTableForms
               switch($field->GetDataType()) {
                 case "bool":
                 case "bit":
-                  fwrite($controllerFile, "ValidationsMethod::BOOLEAN,");
+                  fwrite($controllerFile, "ValidationsMethod::BOOLEAN");
                   break;
                 case "int":
-                  fwrite($controllerFile, "ValidationsMethod::INT,");
+                  fwrite($controllerFile, "ValidationsMethod::INT");
                   break;
                 case "float":
-                  fwrite($controllerFile, "ValidationsMethod::FLOAT,");
+                  fwrite($controllerFile, "ValidationsMethod::FLOAT");
                   break;
                 case "date":
                 case "string":
                 default:
-                  fwrite($controllerFile, "ValidationsMethod::STRING,");
+                  fwrite($controllerFile, "ValidationsMethod::STRING");
                   break;
               }
-              if (!$field->AllowNull()) fwrite($controllerFile, "ValidationsMethod::NOTNULL");
+              if (!$field->AllowNull() && $field->GetDataType() != "bool" && $field->GetDataType() != "bit") fwrite($controllerFile, ",ValidationsMethod::NOTNULL");
               fwrite($controllerFile, "],");
               fwrite($controllerFile, "\n");
-              fwrite($controllerFile, "\t\t\t\t'required' => '".!$field->AllowNull()."',");
+              fwrite($controllerFile, "\t\t\t\t'required' => '".(!$field->AllowNull() && $field->GetDataType() != "bool" && $field->GetDataType() != "bit")."',");
               fwrite($controllerFile, "\n");
               fwrite($controllerFile, "\t\t\t\t'type' => ");
               switch($field->GetDataType()) {

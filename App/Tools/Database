@@ -534,7 +534,16 @@ class _DB_TABLE {
             $field->SetAllowNull($f->Null);
             $field->SetAutoIncrement($f->Identity);
             $field->SetDataLength($f->Data_Length);
-            if (isset($f->Default)) $field->SetDefaultValue($f->Default);
+            if (isset($f->Default)) {
+              $field->SetDefaultValue($f->Default);
+              if ($__type == 'bool') {
+                if ($f->Default == "b'0'") {
+                  $field->SetDefaultValue('false');
+                } else if ($f->Default == "b'1'") {
+                  $field->SetDefaultValue('true');
+                }
+              }
+            }
             if ($f->PK)
             {
                 $field->SetPrimaryKey(true);
