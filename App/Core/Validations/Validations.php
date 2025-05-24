@@ -103,9 +103,11 @@ class Validations {
                   break;
 
               case ValidationsMethod::BOOLEAN:
-                  if (!self::ValidateBoolean($value)) {
-                      $errors[] = 'Value must be a valid boolean (true/false or 0/1).';
+                  // ValidateBoolean will now modify $value by reference to true/false if valid
+                  if (!self::ValidateBoolean($value)) { 
+                      $errors[] = 'Value must be a valid boolean representation (e.g., true, false, 1, 0, on, off).';
                   }
+                  // After ValidateBoolean, $value is either the original if invalid, or an actual boolean if valid.
                   $i++;
                   break;
 
@@ -240,9 +242,31 @@ class Validations {
    * @param mixed $value The value to validate.
    * @return bool True if the value is a valid boolean.
    */
-  static function ValidateBoolean(mixed $value): bool
+  static function ValidateBoolean(mixed &$value): bool // Pass by reference
   {
-      return (is_bool($value) || in_array($value, [0, 1, '0', '1'], true)) || empty($value);
+      if (is_bool($value)) {
+          return true; // It's already a boolean, $value is not changed.
+      }
+
+      // Normalize string values to lowercase for case-insensitive comparison.
+      // For non-string, non-bool values (like int 0, 1), use them as is for in_array checks.
+      $normalizedValue = is_string($value) ? strtolower(trim($value)) : $value;
+
+      if (in_array($normalizedValue, ['true', '1', 'on', 1], true)) {
+          $value = true; // Update original value to actual boolean true
+          return true;
+      }
+      
+      // For boolean validation, null, empty string, 'false', '0', 'off', and 0 are all treated as 'false'.
+      // This covers cases like optional checkboxes not being submitted (resulting in null)
+      // or submitting an empty value, or explicitly submitting a "false" equivalent.
+      if ($value === null || $value === '' || in_array($normalizedValue, ['false', '0', 'off', 0], true)) {
+          $value = false; // Update original value to actual boolean false
+          return true;
+      }
+
+      // If the value is none of the above, it's not a recognized boolean representation.
+      return false; 
   }
 
   /**
@@ -280,49 +304,78 @@ class Validations {
     foreach ($validationRules as $field => $rule) {
       // Get input with appropriate filter
       $filter = match ($rule['type']) {
-      'int' => FILTER_VALIDATE_INT,
-        'float' => FILTER_VALIDATE_FLOAT,
-        'bool' => FILTER_VALIDATE_BOOLEAN,
+        'int' => FILTER_SANITIZE_NUMBER_INT, // Or FILTER_VALIDATE_INT if strict format needed pre-validation
+        'float' => FILTER_SANITIZE_NUMBER_FLOAT, // Or FILTER_VALIDATE_FLOAT
+        'bool' => FILTER_DEFAULT, // Boolean needs special handling for 'on', 'off', 'true', 'false'
         'string', 'iso_date' => FILTER_DEFAULT,
         default => FILTER_DEFAULT
       };
-      $value = filter_input(INPUT_POST, $field, $filter);
+      // For booleans, filter_input with FILTER_VALIDATE_BOOLEAN has specific behaviors
+      // (e.g. "false", "off", "0", "" are false, "true", "on", "1" are true).
+      // We'll get the raw value for our custom ValidateBoolean.
+      $value = isset($_POST[$field]) ? $_POST[$field] : null;
+      
       $trim = $rule['trim'] ?? true;
-      $value = $value !== false && $value !== null && $trim ? trim((string)$value) : $value;
-
-      // Check for missing field
-      if ($value === null && !isset($_POST[$field])) {
-        if ($rule['required'] ?? true) {
-          $errors[$field] = ['Field is required.'];
-          $missingFields[] = $field;
-        } else {
-          $validatedData[$field] = null;
-          $validatedFields[] = $field;
-        }
-        continue;
+      // Trimming should only apply to strings.
+      if (is_string($value) && $trim) {
+          $value = trim($value);
+      } else if ($value === null && ($rule['type'] === 'bool' && !($rule['required'] ?? true))) {
+          // For optional boolean fields, if not present in POST, it implies false.
+          // The previous `filter_input` with `FILTER_VALIDATE_BOOLEAN` would yield `false`.
+          // With direct `$_POST` access, `null` means not present.
+          // Our `ValidateBoolean` will get `null`, which it will currently reject.
+          // The casting in `ValidateFormData` `in_array($value, ...)` would turn `null` to `0`.
+          // This is an important interaction. If an optional checkbox is not sent, it should be `false`.
+          // Let's ensure $value is explicitly `false` if it's an optional bool and not in POST.
+          // This makes it consistent for ValidateBoolean.
+          // However, ValidateNotNull should handle required. If it's not required and not present, it's effectively false.
+          // The current ValidateBoolean will return false for null. ValidateField will add error.
+          // This needs to be handled carefully.
+          // If a boolean is not required and not present, it should be considered `false` without error.
+          // This is a gap.
       }
 
+      // Check for missing field.
+      // If an optional boolean is not present in POST, $value will be null.
+      // The updated ValidateBoolean will correctly interpret null as `false`.
+      if (!isset($_POST[$field]) && !array_key_exists($field, $_POST)) { // array_key_exists for fields sent as null
+          if ($rule['required'] ?? true) {
+              // For required fields (including booleans that must be explicitly true, if such rule exists apart from NOTNULL)
+              $errors[$field] = ['Field is required.'];
+              $missingFields[] = $field;
+              continue; 
+          } else if ($rule['type'] === 'bool') {
+              // Optional boolean not present in POST, it defaults to false (handled by ValidateBoolean(null))
+              $value = null; // Explicitly set to null to go through ValidateBoolean
+          }
+           else {
+              // Optional non-boolean field not present
+              $validatedData[$field] = null; 
+              $validatedFields[] = $field;
+              continue; 
+          }
+      }
+      
       // Apply validations
       $validations = $rule['validations'];
-      if (isset($rule['params'])) {
-        // Merge params into validations (e.g., min_length for STRING)
-        $validations = array_merge($validations, [$rule['params']]);
-      }
-      $fieldErrors = self::ValidateField($value, $validations);
+      // $value is passed to ValidateField. If a boolean validation is present, 
+      // ValidateBoolean (called by ValidateField) will modify $value by reference.
+      $fieldErrors = self::ValidateField($value, $validations); 
+      
       if ($fieldErrors) {
-        $errors[$field] = $fieldErrors;
-        continue;
+          $errors[$field] = $fieldErrors;
+          continue;
       }
+      // After successful validation, $value now holds the potentially normalized value 
+      // (e.g., actual boolean for boolean types).
 
-      // Handle empty values
-      if ($value === '' || ($rule['type'] === 'string' && $value === null)) {
-        if ($rule['required'] ?? true) {
-          $errors[$field] = ['Field cannot be empty.'];
-        } else {
-          $validatedData[$field] = null;
+      // Handle cases where $value might be an empty string after validation (e.g. optional string field)
+      // and it's not required. This is effectively a 'null' or 'not provided' state.
+      // For boolean, empty string is now treated as false by ValidateBoolean.
+      if ($value === '' && !($rule['required'] ?? true) && $rule['type'] !== 'bool') {
+          $validatedData[$field] = null; // Store as null if optional and empty string (for non-booleans)
           $validatedFields[] = $field;
-        }
-        continue;
+          continue;
       }
 
       // Cast to the appropriate type
@@ -335,8 +388,15 @@ class Validations {
           $validatedData[$field] = (float)$value;
           break;
         case 'bool':
-          // Handle SQLite INTEGER booleans (0/1) and form inputs
-          $validatedData[$field] = in_array($value, [true, '1', 1, 'true', 'on'], true) ? 1 : 0;
+          // $value should now be an actual boolean (true/false) if ValidateBoolean ran and was successful.
+          // Or it could be an unvalidated value if ValidateBoolean wasn't in the chain or failed early.
+          // The in_array check is robust for various inputs if $value wasn't normalized.
+          if (is_bool($value)) {
+            $validatedData[$field] = $value ? 1 : 0;
+          } else {
+            // Fallback for safety, though ValidateBoolean should have normalized it.
+            $validatedData[$field] = in_array(is_string($value) ? strtolower($value) : $value, [true, '1', 1, 'true', 'on'], true) ? 1 : 0;
+          }
           break;
         case 'string':
           $validatedData[$field] = (string)$value;
@@ -458,8 +518,14 @@ class Validations {
                       }
                       break;
                   case 'bool':
-                      // Handle JSON booleans, strings, and integers (0/1)
-                      $validatedData[$field] = in_array($value, [true, '1', 1, 'true', 'on'], true) ? 1 : 0;
+                      // $value should be an actual boolean (true/false) if ValidateBoolean ran.
+                      if (is_bool($value)) {
+                          $validatedData[$field] = $value ? 1 : 0;
+                      } else {
+                          // Fallback for various JSON representations if not pre-normalized by ValidateBoolean
+                           $normalizedJsonBool = is_string($value) ? strtolower(trim($value)) : $value;
+                           $validatedData[$field] = in_array($normalizedJsonBool, [true, '1', 1, 'true', 'on'], true) ? 1 : 0;
+                      }
                       break;
                   case 'string':
                       $validatedData[$field] = (string)$value;
