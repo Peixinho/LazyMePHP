@@ -10,7 +10,7 @@ declare(strict_types=1);
 
 namespace Core\Security;
 
-use \Session\Session;
+use Core\Session\Session;
 
 class CsrfProtection
 {

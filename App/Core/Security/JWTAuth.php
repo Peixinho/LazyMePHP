@@ -11,7 +11,7 @@ declare(strict_types=1);
 namespace Core\Security;
 
 use Ahc\Jwt\JWT;
-use Session\Session;
+use Core\Session\Session;
 use Ahc\Jwt\JWTException;
 
 class JWTAuth

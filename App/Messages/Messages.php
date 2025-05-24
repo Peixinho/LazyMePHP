@@ -8,7 +8,7 @@
 
 declare(strict_types=1);
 
-namespace LazyMePHP\Messages;
+namespace Messages;
 
 class Messages {
 
