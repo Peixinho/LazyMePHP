@@ -631,11 +631,11 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
 		}
 		else echo "ERROR: Check your permissions to remove ".$classesPath."/".$db->_Tablename.".php\n";
 
-    if (\Tools\Helper\UNLINK($classesPath."/".$db->GetTableName()."_list.php"))
+    if (\Tools\Helper\UNLINK($classesPath."/".$db->GetTableName()."_List.php"))
     {
-      if (\Tools\Helper\TOUCH($classesPath."/".$db->GetTableName()."_list.php"))
+      if (\Tools\Helper\TOUCH($classesPath."/".$db->GetTableName()."_List.php"))
       {
-        $classFile = fopen($classesPath."/".$db->GetTableName()."_list.php","w+");
+        $classFile = fopen($classesPath."/".$db->GetTableName()."_List.php","w+");
         fwrite($classFile,"<?php");
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
