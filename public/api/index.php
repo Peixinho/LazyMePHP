@@ -10,13 +10,12 @@ declare(strict_types=1);
 
 namespace API;
 use Core\LazyMePHP;
-
-use function LazyMePHP\Helper\response;
+use Core\Http\ApiExitException;
 
 /*
  * Router
  */
-require_once __DIR__."/../../App/Ext/vendor/autoload.php";
+require_once __DIR__."/../../vendor/autoload.php";
 
 /*
  * Load Environment Variables
@@ -69,20 +68,50 @@ header('Content-type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, GET, DELETE, PUT');
 
-\Pecee\SimpleRouter\SimpleRouter::get('/api/not-found', function() {return "{\"status\": 0}";});
-\Pecee\SimpleRouter\SimpleRouter::get('/api/forbidden', function() {return "{\"status\": 0}";});
+\Pecee\SimpleRouter\SimpleRouter::get('/api/not-found', function() {
+    http_response_code(404);
+    echo json_encode(['success' => false, 'error' => 'Not found', 'code' => 404]);
+});
+\Pecee\SimpleRouter\SimpleRouter::get('/api/forbidden', function() {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Forbidden', 'code' => 403]);
+});
 
 \Pecee\SimpleRouter\SimpleRouter::error(function(\Pecee\Http\Request $request, \Exception $exception) {
-    switch($exception->getCode()) {
-        // Page not found
-        case 404:
-            response()->redirect('/api/not-found');
-        // Forbidden
-        case 403:
-            response()->redirect('/api/forbidden');
+    $code = $exception->getCode();
+    if ($code < 400 || $code > 599) {
+        $code = 500;
     }
-    
+    http_response_code($code);
+    header('Content-Type: application/json');
+    $response = [
+        'success' => false,
+        'error' => $exception->getMessage(),
+        'code' => $code,
+    ];
+    if (getenv('APP_ENV') !== 'production') {
+        $response['debug'] = [
+            'file' => $exception->getFile(),
+            'line' => $exception->getLine(),
+            'trace' => $exception->getTraceAsString(),
+        ];
+    }
+    echo json_encode($response);
+    throw new ApiExitException('API exited after error response');
 });
+
+// CSRF protection for API endpoints
+$method = $_SERVER['REQUEST_METHOD'] ?? null;
+if (in_array($method, ['POST', 'PUT', 'DELETE'])) {
+    $csrfToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+    if (!\Core\Security\CsrfProtection::verifyToken($csrfToken)) {
+        http_response_code(419); // Authentication Timeout
+        header('Content-Type: application/json');
+        echo json_encode(['error' => 'Invalid CSRF token']);
+        throw new ApiExitException('API exited after CSRF failure');
+    }
+}
+
 \Pecee\SimpleRouter\SimpleRouter::start();
 
 /*

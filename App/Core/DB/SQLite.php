@@ -31,7 +31,7 @@ final class SQLite extends ISQL
      */
     private function __construct(string $dbName, string $dbUser = '', string $dbPassword = '', string $dbHost = '')
     {
-        parent::__construct($dbName, '', '', ''); // Pass empty strings to ISQL for unused parameters
+        parent::__construct($dbName, $dbUser, $dbPassword, $dbHost); // Pass empty strings to ISQL for unused parameters
         $this->configHash = md5($dbName);
     }
 

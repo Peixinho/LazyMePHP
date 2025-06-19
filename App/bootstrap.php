@@ -11,7 +11,7 @@ declare(strict_types=1);
 /*
  * Load Composer Autoloader (for Dotenv and other dependencies)
  */
-require_once __DIR__.'/Ext/vendor/autoload.php';
+require_once __DIR__.'/../vendor/autoload.php';
 
 /*
  * Load Environment Variables
@@ -40,8 +40,7 @@ require_once __DIR__."/Routes/Routes.php";
  */
 ob_start();
 Pecee\SimpleRouter\SimpleRouter::start();
-$content = ob_get_contents();
-ob_clean();
+$content = ob_get_clean();
 
 
 /*

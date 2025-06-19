@@ -12,12 +12,12 @@ namespace Messages;
 
 class Messages {
 
-  static function ShowError($err)
+  static function ShowError(string $err) : void
   {
     $_GET['error'] = $err;
   }
 
-  static function ShowSuccess($succ)
+  static function ShowSuccess(string $succ) : void
   {
     $_GET['success'] = $succ;
   }

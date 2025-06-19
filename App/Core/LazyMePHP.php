@@ -12,7 +12,7 @@ namespace Core;
 use Core\Helpers\ErrorUtil;
 use Core\DB\MSSQL as DBMSSQL;
 use Core\DB\SQLite as DBSQLite;
-use Core\DB\MYSQL as DBMYSQL;
+use Core\DB\MySQL as DBMYSQL;
 
 /**
  * LazyMePHP Class
@@ -143,13 +143,6 @@ class LazyMePHP
    * @internal
    */
   private static array $_app_logdata = [];
-
-  /** 
-   * @var ?bool Flag indicating whether URL rewriting (e.g., mod_rewrite) is enabled.
-   * @internal
-   */
-  private static ?bool $_app_modrewrite = null;
-  //endregion
 
   //region Database Accessor Methods
   /**

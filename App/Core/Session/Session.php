@@ -10,9 +10,9 @@ namespace Core\Session;
 
 class Session
 {
-    private static $instance = null;
+    private static ?Session $instance = null;
 
-    public static function getInstance()
+    public static function getInstance() : Session
     {
         if (self::$instance === null) {
             self::$instance = new self();
@@ -27,24 +27,25 @@ class Session
         }
     }
 
-    public function get($key, $default = null)
+    public function get(string $key, mixed $default = null) : mixed
     {
         return $_SESSION[$key] ?? $default;
     }
 
-    public function put($key, $value)
+    public function put(string $key, mixed $value) : void
     {
         $_SESSION[$key] = $value;
     }
 
-    public function has($key)
+    public function has(string $key) : bool
     {
         return isset($_SESSION[$key]);
     }
 
-    public function forget($keys)
+    public function forget(array|string $keys) : void
     {
-        foreach ((array)$keys as $key) {
+        $keysArray = is_array($keys) ? $keys : [$keys];
+        foreach ($keysArray as $key) {
             unset($_SESSION[$key]);
         }
     }

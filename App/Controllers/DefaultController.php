@@ -9,10 +9,10 @@ namespace Controllers;
 use \eftec\bladeone\BladeOne;
 
 class DefaultController {
-	private static $views = __DIR__ . '/../Views/';
-	private static $cache = __DIR__ . '/../Views/_compiled/';
+	private static string $views = __DIR__ . '/../Views/';
+	private static string $cache = __DIR__ . '/../Views/_compiled/';
 
-	static function Default() {
+	static function Default() : void {
 		$blade = new BladeOne(DefaultController::$views,DefaultController::$cache);
 		echo $blade->run("_Default.view");
 	}

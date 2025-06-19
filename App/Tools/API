@@ -44,11 +44,11 @@ class BuildTableAPI
 
     // Create API MASK
     if ($replaceRouteApi) {
-      if (\Tools\Helper\UNLINK($apiPath."/MaskAPI.php"))
+      if (\Tools\Helper\UNLINK($apiPath."/ApiFieldMask.php"))
       {
-        if (\Tools\Helper\TOUCH($apiPath."/MaskAPI.php"))
+        if (\Tools\Helper\TOUCH($apiPath."/ApiFieldMask.php"))
         {
-          $routerFile = fopen($apiPath."/MaskAPI.php","w+");
+          $routerFile = fopen($apiPath."/ApiFieldMask.php", "w+");
           fwrite($routerFile,"<?php");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\n");
@@ -68,18 +68,20 @@ class BuildTableAPI
           fwrite($routerFile, "declare(strict_types=1);");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\n");
-
-          // Generate Default Visible Fields
-          fwrite($routerFile,"\$GLOBALS['API_FIELDS_AVAILABLE'] = array(");
+          fwrite($routerFile, "namespace App\Api;");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "class ApiFieldMask {");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\tprivate static array \$fields = [");
           fwrite($routerFile, "\n");
           $sqlObj = LazyMePHP::DB_CONNECTION()->Query($queryString);
           $_i = 0;
           while ($o=$sqlObj->FetchObject())
           {
-
             if (is_array($tablesList) && array_search($o->Table, $tablesList)!==false) {
               if ($_i>0) fwrite($routerFile, ",\n");
-              fwrite($routerFile, "\t\"".$o->Table."\" => array(");
+              fwrite($routerFile, "\t\t\"".$o->Table."\" => [");
               $db = new \Tools\Database\_DB_TABLE($o->Table);
               $db->GetFieldsFromDB();
               foreach($db->GetTableFields() as $_k => $field)
@@ -87,19 +89,32 @@ class BuildTableAPI
                 if ($_k>0) fwrite($routerFile, ",");
                 fwrite($routerFile, "\"".$field->GetName()."\"");
               }
-              fwrite($routerFile, ")");
+              fwrite($routerFile, "]");
             }
             $_i++;
           }
           fwrite($routerFile, "\n");
-          fwrite($routerFile, ");");
+          fwrite($routerFile, "\t];");
           fwrite($routerFile, "\n");
+          fwrite($routerFile, "\tpublic static function get(string \$entity): array {");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "?>");
+          fwrite($routerFile, "\t\treturn self::\$fields[\$entity] ?? [];");
+          fwrite($routerFile, "\n");  
+          fwrite($routerFile, "\t}");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\tpublic static function apply(string \$entity, array \$data): array {");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\t\t\$allowed = self::get(\$entity);");
+          fwrite($routerFile, "\n");  
+          fwrite($routerFile, "\t\treturn array_intersect_key(\$data, array_flip(\$allowed));");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\t}");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "}");
         }
-        else echo "ERROR: Check your permissions to write ".$apiPath."/MaskAPI.php\n";
+        else echo "ERROR: Check your permissions to write ".$apiPath."/ApiFieldMask.php\n";
       }
-      else echo "ERROR: Check your permissions to remove ".$apiPath."/MaskAPI.php\n";
+      else echo "ERROR: Check your permissions to remove ".$apiPath."/ApiFieldMask.php\n";
     }
     // Create Routing Rules
     if ($replaceRouteApi) {
@@ -134,10 +149,14 @@ class BuildTableAPI
             fwrite($routerFile, "declare(strict_types=1);");
             fwrite($routerFile, "\n");
             fwrite($routerFile, "\n");
+            fwrite($routerFile, "namespace App\Api;");
+            fwrite($routerFile, "\n");
+            fwrite($routerFile, "\n");
             fwrite($routerFile, "use Controllers\\".$o->Table.";");
             fwrite($routerFile, "\n");
             fwrite($routerFile, "use Pecee\SimpleRouter\SimpleRouter;");
             fwrite($routerFile, "\n");
+            fwrite($routerFile, "use Core\Http\Request;");
             fwrite($routerFile, "\n");
 
             #fwrite($routerFile, "Router::Create(\"controller\", \"".$o->Table."\",$apiPath/".$o->Table.".API.php\");");
@@ -148,56 +167,219 @@ class BuildTableAPI
               fwrite($routerFile, "\n");
               fwrite($routerFile, " */");
               fwrite($routerFile, "\n");
-              // The use statement for Views seems incorrect here as API routes typically don't use Views directly.
-              // Will comment out for now. Controllers are what's needed.
-              // fwrite($routerFile, "use LazyMePHP\Views\\".$o->Table.";"); 
-              // fwrite($routerFile, "\n");
-              // Removed: require_once __DIR__."/../Controllers/".$o->Table.".php";
-              // Controllers should be autoloaded. Ensure FQCN is used for controllers or add use statements.
-              fwrite($routerFile, "// Ensure LazyMePHP\Controllers\\".$o->Table." is autoloadable or use FQCN.");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "SimpleRouter::get('/api/".$o->Table."', function() {");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "\t\$data = ".$o->Table."::Default(false, \$_GET['page']??1, \$_GET['itemsPerPage']??\Core\LazyMePHP::NRESULTS());");
+              fwrite($routerFile, "\t\$request = new Request();");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "\techo json_encode(array('data' => \$data['".$o->Table."']->Serialize(\$GLOBALS['API_FOREIGN_DATA'], \$GLOBALS['API_FIELDS_AVAILABLE']), 'length' => \$data['length'], 'filters' => \$data['filters']));");
+              fwrite($routerFile, "\t\$controller = new ".$o->Table."(\$request);");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\$foreignData = filter_var(\$request->get('foreignData'), FILTER_VALIDATE_BOOLEAN);");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\ttry {");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\$data = \$controller->index(false, (int)(\$request->get('page') ?? 1), (int)(\$request->get('itemsPerPage') ?? \Core\LazyMePHP::NRESULTS()));");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t// Apply mask to each item in the list");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\$list = \$data['".$o->Table."']->GetList(false, true);");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\$maskedList = array_map(function(\$item) {");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\treturn ApiFieldMask::apply('".$o->Table."', \$item);");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t}, \$list);");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\techo json_encode([");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\t'success' => true,");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\t'data' => \$maskedList,");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\t'length' => \$data['length'],");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\t'filters' => \$data['filters']");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t]);");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t} catch (\Throwable \$e) {");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\thttp_response_code(500);");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\techo json_encode([");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\t'success' => false,");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\t'error' => \$e->getMessage(),");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\t'code' => 500");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t]);");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t}");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "});");
+              fwrite($routerFile, "\n");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "SimpleRouter::get('/api/".$o->Table."/{".$db->GetPrimaryFieldName()."}', function (\$".$db->GetPrimaryFieldName().") {");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "\t\$data = ".$o->Table."::Edit((int)\$".$db->GetPrimaryFieldName().");");
+              fwrite($routerFile, "\t\$request = new Request();");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "\techo json_encode(\$data['".$o->Table."']->Serialize(\$GLOBALS['API_FOREIGN_DATA'], \$GLOBALS['API_FIELDS_AVAILABLE']));");
+              fwrite($routerFile, "\t\$controller = new ".$o->Table."(\$request);");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\$foreignData = filter_var(\$request->get('foreignData'), FILTER_VALIDATE_BOOLEAN);");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\ttry {");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\$data = \$controller->edit((int)\$".$db->GetPrimaryFieldName().");");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\$masked = ApiFieldMask::apply('".$o->Table."', \$data['".$o->Table."']->Serialize(\$foreignData));");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\techo json_encode([");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\t'success' => true,");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\t'data' => \$masked");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t]);");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t} catch (\Throwable \$e) {");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\thttp_response_code(404);");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\techo json_encode([");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\t'success' => false,");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\t'error' => \$e->getMessage(),");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\t'code' => 404");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t]);");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t}");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "});");
+              fwrite($routerFile, "\n");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "SimpleRouter::post('/api/".$o->Table."/{".$db->GetPrimaryFieldName()."}', function (\$".$db->GetPrimaryFieldName().") {");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "\t\$data = ".$o->Table."::Save((int)\$".$db->GetPrimaryFieldName().", true);");
+              fwrite($routerFile, "\t\$request = new Request();");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "\techo json_encode(\$data ?? array('status' => 1));");
+              fwrite($routerFile, "\t\$controller = new ".$o->Table."(\$request);");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\$foreignData = filter_var(\$request->get('foreignData'), FILTER_VALIDATE_BOOLEAN);");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\ttry {");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\$data = \$controller->save((int)\$".$db->GetPrimaryFieldName().", true);");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\$masked = \$data ? ApiFieldMask::apply('".$o->Table."', \$data->Serialize(\$foreignData)) : null;");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\techo json_encode([");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\t'success' => (bool)\$data,");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\t'data' => \$masked");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t]);");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t} catch (\Throwable \$e) {");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\thttp_response_code(400);");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\techo json_encode([");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\t'success' => false,");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\t'error' => \$e->getMessage(),");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\t'code' => 400");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t]);");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t}");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "});");
+              fwrite($routerFile, "\n");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "SimpleRouter::post('/api/".$o->Table."', function () {");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "\t\$data = ".$o->Table."::Save(null, true);");
+              fwrite($routerFile, "\t\$request = new Request();");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "\techo json_encode(\$data ?? array('status' => 1));");
+              fwrite($routerFile, "\t\$controller = new ".$o->Table."(\$request);");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\$foreignData = filter_var(\$request->get('foreignData'), FILTER_VALIDATE_BOOLEAN);");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\ttry {");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\$data = \$controller->save(null, true);");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\$masked = \$data ? ApiFieldMask::apply('".$o->Table."', \$data->Serialize(\$foreignData)) : null;");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\techo json_encode([");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\t'success' => (bool)\$data,");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\t'data' => \$masked");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t]);");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t} catch (\Throwable \$e) {");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\thttp_response_code(400);");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\techo json_encode([");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\t'success' => false,");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\t'error' => \$e->getMessage(),");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\t'code' => 400");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t]);");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t}");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "});");
+              fwrite($routerFile, "\n");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "SimpleRouter::delete('/api/".$o->Table."/{".$db->GetPrimaryFieldName()."}}', function (\$".$db->GetPrimaryFieldName().") {");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "\t".$o->Table."::Delete((int)\$".$db->GetPrimaryFieldName().");");
+              fwrite($routerFile, "\t\$request = new Request();");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "\techo json_encode(array('status' => 1));");
+              fwrite($routerFile, "\t\$controller = new ".$o->Table."(\$request);");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\$foreignData = filter_var(\$request->get('foreignData'), FILTER_VALIDATE_BOOLEAN);");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\ttry {");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\$controller->delete((int)\$".$db->GetPrimaryFieldName().");");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\techo json_encode([");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\t'success' => true");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t]);");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t} catch (\Throwable \$e) {");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\thttp_response_code(400);");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\techo json_encode([");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\t'success' => false,");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\t'error' => \$e->getMessage(),");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t\t'code' => 400");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t\t]);");
+              fwrite($routerFile, "\n");
+              fwrite($routerFile, "\t}");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "});");
             }
-            fwrite($routerFile, "\n");
-            fwrite($routerFile, "?>");
           }
           else echo "ERROR: Check your permissions to write ".$apiPath."/RouteAPI.php\n";
         }

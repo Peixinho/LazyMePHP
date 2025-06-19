@@ -2,8 +2,8 @@
 // Ensure this is at the top
 
 // CLI Bootstrapping for LazyMePHP
-if (file_exists(__DIR__.'/App/Ext/vendor/autoload.php')) {
-    require_once __DIR__.'/App/Ext/vendor/autoload.php';
+if (file_exists(__DIR__.'/vendor/autoload.php')) {
+    require_once __DIR__.'/vendor/autoload.php';
 } else {
     echo "Composer autoload file not found. Please run 'composer install' or 'composer update'.\n";
     exit(1);

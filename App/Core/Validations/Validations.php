@@ -16,10 +16,11 @@ class Validations {
    *
    * @param mixed $value The value to validate.
    * @param array $validations Array of validation methods and optional parameters.
+   * @param array $messages Optional array of custom error messages for each validation rule.
    * @return array Array of error messages; empty if all validations pass.
    * @throws \InvalidArgumentException If validation parameters are invalid.
    */
-  static function ValidateField(mixed $value, array $validations): array
+  static function ValidateField(mixed $value, array $validations, array $messages = []): array
   {
       $errors = [];
       $i = 0;
@@ -35,28 +36,28 @@ class Validations {
                   if (!self::ValidateString($value, $params)) {
                       $min = $params['min_length'] ?? 0;
                       $max = $params['max_length'] ?? 'unlimited';
-                      $errors[] = "Value must be a valid string (min: $min, max: $max characters).";
+                      $errors[] = $messages[ValidationsMethod::STRING->value] ?? "Value must be a valid string (min: $min, max: $max characters).";
                   }
                   $i += is_array($validations[$i + 1] ?? null) ? 2 : 1;
                   break;
 
               case ValidationsMethod::FLOAT:
                   if (!self::ValidateFloat($value)) {
-                      $errors[] = 'Value must be a valid floating-point number.';
+                      $errors[] = $messages[ValidationsMethod::FLOAT->value] ?? 'Value must be a valid floating-point number.';
                   }
                   $i++;
                   break;
 
               case ValidationsMethod::INT:
                   if (!self::ValidateInteger($value)) {
-                      $errors[] = 'Value must be a valid integer.';
+                      $errors[] = $messages[ValidationsMethod::INT->value] ?? 'Value must be a valid integer.';
                   }
                   $i++;
                   break;
 
               case ValidationsMethod::NOTNULL:
                   if (!self::ValidateNotNull($value)) {
-                      $errors[] = 'Value cannot be null or empty.';
+                      $errors[] = $messages[ValidationsMethod::NOTNULL->value] ?? 'Value cannot be null or empty.';
                   }
                   $i++;
                   break;
@@ -66,28 +67,28 @@ class Validations {
                       throw new \InvalidArgumentException('LENGTH validation requires an integer parameter.');
                   }
                   if (!self::ValidateLength($value, $validations[$i])) {
-                      $errors[] = "Value must be exactly {$validations[$i]} characters long.";
+                      $errors[] = $messages[ValidationsMethod::LENGTH->value] ?? "Value must be exactly {$validations[$i]} characters long.";
                   }
                   $i++;
                   break;
 
               case ValidationsMethod::DATE:
                   if (!self::ValidateDate($value)) {
-                      $errors[] = 'Value must be a valid date in DD/MM/YYYY format.';
+                      $errors[] = $messages[ValidationsMethod::DATE->value] ?? 'Value must be a valid date in DD/MM/YYYY format.';
                   }
                   $i++;
                   break;
 
               case ValidationsMethod::ISO_DATE:
                   if (!self::ValidateISODate($value)) {
-                      $errors[] = 'Value must be a valid ISO 8601 date (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS).';
+                      $errors[] = $messages[ValidationsMethod::ISO_DATE->value] ?? 'Value must be a valid ISO 8601 date (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS).';
                   }
                   $i++;
                   break;
 
               case ValidationsMethod::EMAIL:
                   if (!self::ValidateEmail($value)) {
-                      $errors[] = 'Value must be a valid email address.';
+                      $errors[] = $messages[ValidationsMethod::EMAIL->value] ?? 'Value must be a valid email address.';
                   }
                   $i++;
                   break;
@@ -97,7 +98,7 @@ class Validations {
                       throw new \InvalidArgumentException('REGEXP validation requires a string regex parameter.');
                   }
                   if (!self::ValidateRegExp($value, $validations[$i])) {
-                      $errors[] = 'Value does not match the specified regular expression.';
+                      $errors[] = $messages[ValidationsMethod::REGEXP->value] ?? 'Value does not match the specified regular expression.';
                   }
                   $i++;
                   break;
@@ -105,9 +106,16 @@ class Validations {
               case ValidationsMethod::BOOLEAN:
                   // ValidateBoolean will now modify $value by reference to true/false if valid
                   if (!self::ValidateBoolean($value)) { 
-                      $errors[] = 'Value must be a valid boolean representation (e.g., true, false, 1, 0, on, off).';
+                      $errors[] = $messages[ValidationsMethod::BOOLEAN->value] ?? 'Value must be a valid boolean representation (e.g., true, false, 1, 0, on, off).';
                   }
                   // After ValidateBoolean, $value is either the original if invalid, or an actual boolean if valid.
+                  $i++;
+                  break;
+
+              case ValidationsMethod::DATETIME:
+                  if (!self::ValidateDateTime($value)) {
+                      $errors[] = $messages[ValidationsMethod::DATETIME->value] ?? 'Value must be a valid date/time in YYYY-MM-DD or YYYY/MM/DD, optionally with hours.';
+                  }
                   $i++;
                   break;
 
@@ -153,15 +161,8 @@ class Validations {
   }
 
   /**
-   * Validates that a value is a string with alphanumeric characters, spaces, and common punctuation.
-   *
-   * @param mixed $value The value to validate.
-   * @param array{min_length?: int, max_length?: int, regex?: string} $params Optional parameters:
-   *   - min_length: Minimum string length (default: 0).
-   *   - max_length: Maximum string length (default: unlimited).
-   *   - regex: Custom regex pattern to override default.
-   * @return bool True if the value is a valid string.
-   */
+  * @param array{min_length?: int, max_length?: int, regex?: string, sanitize?: bool} $params
+  */
   static function ValidateString(mixed $value, array $params = []): bool
   {
       if (!is_string($value)) {
@@ -174,6 +175,10 @@ class Validations {
 
       if (strlen($value) < $minLength || strlen($value) > $maxLength) {
           return false;
+      }
+
+      if (!empty($params['sanitize'])) {
+        $value = strip_tags($value);
       }
 
       return self::ValidateRegExp($value, $regex) || empty($value);
@@ -202,8 +207,9 @@ class Validations {
       if (!is_string($value) || !self::ValidateRegExp($value, ValidationPatterns::DATE)) {
           return false;
       }
-      $parts = explode('/', $value);
-      return checkdate((int)$parts[1], (int)$parts[0], (int)$parts[2]) || empty($value);
+      // Accept both YYYY/MM/DD and YYYY-MM-DD
+      $parts = preg_split('/[\/\-]/', $value);
+      return checkdate((int)$parts[1], (int)$parts[2], (int)$parts[0]) || empty($value);
   }
 
   /**
@@ -233,7 +239,7 @@ class Validations {
    */
   static function ValidateEmail(mixed $value): bool
   {
-      return (is_string($value) && self::ValidateRegExp($value, ValidationPatterns::EMAIL)) || empty($value);
+      return (is_string($value) && filter_var($value, FILTER_VALIDATE_EMAIL)) || empty($value);
   }
 
   /**
@@ -283,6 +289,24 @@ class Validations {
       }
       return (is_string($value) && preg_match($regexp, $value) === 1) || empty($value);
   }
+
+  static function ValidateDateTime(mixed $value): bool
+  {
+      if (!is_string($value) || !self::ValidateRegExp($value, ValidationPatterns::DATETIME)) {
+          return false;
+      }
+      // Extract date part
+      $datePart = preg_split('/[ T]/', $value)[0];
+      $parts = preg_split('/[\/\-]/', $datePart);
+      return checkdate((int)$parts[1], (int)$parts[2], (int)$parts[0]) || empty($value);
+  }
+
+  /**
+   * Validates form data against a set of validation rules.
+   *
+   * @param array $validationRules The validation rules to apply.
+   * @return array An array containing validation results.
+   */
   static function ValidateFormData(array $validationRules): array
   {
     $validatedData = [];
@@ -360,7 +384,7 @@ class Validations {
       $validations = $rule['validations'];
       // $value is passed to ValidateField. If a boolean validation is present, 
       // ValidateBoolean (called by ValidateField) will modify $value by reference.
-      $fieldErrors = self::ValidateField($value, $validations); 
+      $fieldErrors = self::ValidateField($value, $validations, $rule['messages'] ?? []); 
       
       if ($fieldErrors) {
           $errors[$field] = $fieldErrors;
@@ -376,6 +400,18 @@ class Validations {
           $validatedData[$field] = null; // Store as null if optional and empty string (for non-booleans)
           $validatedFields[] = $field;
           continue;
+      }
+
+      // In ValidateFormData, after $fieldErrors and before type casting:
+      if (isset($rule['callback']) && is_callable($rule['callback'])) {
+          $callbackError = $rule['callback']($value);
+          if ($callbackError !== null) {
+              if (!isset($errors[$field])) {
+                  $errors[$field] = [];
+              }
+              $errors[$field][] = $callbackError;
+              continue;
+          }
       }
 
       // Cast to the appropriate type
@@ -481,7 +517,7 @@ class Validations {
               // Merge params into validations (e.g., min_length for STRING)
               $validations = array_merge($validations, [$rule['params']]);
           }
-          $fieldErrors = self::ValidateField($value, $validations);
+          $fieldErrors = self::ValidateField($value, $validations, $rule['messages'] ?? []);
           if ($fieldErrors) {
               $errors[$field] = $fieldErrors;
               continue;
@@ -496,6 +532,18 @@ class Validations {
                   $validatedFields[] = $field;
               }
               continue;
+          }
+
+          // In ValidateJsonData, after $fieldErrors and before type casting:
+          if (isset($rule['callback']) && is_callable($rule['callback'])) {
+              $callbackError = $rule['callback']($value);
+              if ($callbackError !== null) {
+                  if (!isset($errors[$field])) {
+                      $errors[$field] = [];
+                  }
+                  $errors[$field][] = $callbackError;
+                  continue;
+              }
           }
 
           // Cast to the appropriate type

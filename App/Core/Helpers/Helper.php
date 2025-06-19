@@ -17,11 +17,11 @@ use Pecee\Http\Request;
 
 class Helper {
   
-  static function TransformDateDDMMYYYtoYYYMMDD($date)
+  static function TransformDateDDMMYYYtoYYYMMDD(string $date) : string
   {
     return substr($date,6,4)."/".substr($date,3,2)."/".substr($date,0,2);
   }
-  static function TransformDateYYYMMDDtoDDMMYYY($date)
+  static function TransformDateYYYMMDDtoDDMMYYY(string $date) : string
   {
     return substr($date,8,2)."/".substr($date,5,2)."/".substr($date,0,4);
   }
@@ -44,7 +44,7 @@ class Helper {
    * @return \Pecee\Http\Url
    * @throws \InvalidArgumentException
    */
-  static function url(?string $name = null, $parameters = null, ?array $getParams = null): Url
+  static function url(?string $name = null, mixed $parameters = null, ?array $getParams = null): Url
   {
     return Router::getUrl($name, $parameters, $getParams);
   }
@@ -58,32 +58,10 @@ class Helper {
   }
 
   /**
-   * @return \Pecee\Http\Request
-   */
-  static function request(): Request
-  {
-    return Router::request();
-  }
-
-  /**
-   * Get input class
-   * @param string|null $index Parameter index name
-   * @param string|mixed|null $defaultValue Default return value
-   * @param array ...$methods Default methods
-   * @return \Pecee\Http\Input\InputHandler|array|string|null
-   */
-  static function input($index = null, $defaultValue = null, ...$methods)
-  {
-    if ($index !== null) {
-      return request()->getInputHandler()->value($index, $defaultValue, ...$methods);
-    }
-
-    return request()->getInputHandler();
-  }
-
-  /**
-   * @param string $url
-   * @param int|null $code
+   * Redirect to a given URL with an optional HTTP status code.
+   *
+   * @param string $url The URL to redirect to.
+   * @param int|null $code The HTTP status code to use.
    */
   static function redirect(string $url, ?int $code = null): void
   {

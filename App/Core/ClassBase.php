@@ -12,13 +12,13 @@ namespace Core;
 
 class ClassBase
 {
-  protected $__initialized = false;
+  protected bool $__initialized = false;
 
-  protected function initialize() {
+  protected function initialize() : void {
     $this->__initialized = true;
   }
 
-  protected function isInitialized() {
+  protected function isInitialized() : bool {
     return $this->__initialized;
   }
 

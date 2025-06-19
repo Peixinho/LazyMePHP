@@ -25,10 +25,10 @@
     },
     "config": {
         "platform-check": true,
-        "vendor-dir": "App/Ext/vendor",
         "optimize-autoloader": true,
         "allow-plugins": {
-            "composer/installers": true
+            "composer/installers": true,
+            "pestphp/pest-plugin": true
         }
     },
     "minimum-stability": "dev",
@@ -50,5 +50,14 @@
             "Core\\Validations\\": "App/Core/Validations/",
             "Views\\": "App/Views/"
         }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "require-dev": {
+        "pestphp/pest": "^3.8",
+        "phpstan/phpstan": "^2.1"
     }
 }

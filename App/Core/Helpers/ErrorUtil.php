@@ -37,8 +37,8 @@ class ErrorUtil
           An email with this message was sent to the developer.
           </div>";
 
-        $appName = class_exists(LazyMePHP::class) && method_exists(LazyMePHP::class, 'NAME') ? LazyMePHP::NAME() : 'LazyMePHP Application';
-        $supportEmail = class_exists(LazyMePHP::class) && method_exists(LazyMePHP::class, 'SUPPORT_EMAIL') ? LazyMePHP::SUPPORT_EMAIL() : 'noreply@example.com';
+        $appName = LazyMePHP::NAME();
+        $supportEmail = LazyMePHP::SUPPORT_EMAIL();
 
         $to_mail = $supportEmail;
         $from_mail = "noreply@" . ($_SERVER['SERVER_NAME'] ?? 'localhost');
@@ -46,9 +46,9 @@ class ErrorUtil
         
         $messageContent = $errorMsg;
         $messageContent .= "<br><br><b>Request Data:</b><br>";
-        if (isset($_SESSION)) $messageContent .= "SESSION: ".json_encode($_SESSION)."<br>";
-        if (isset($_POST)) $messageContent .= "POST: ".json_encode($_POST)."<br>";
-        if (isset($_GET)) $messageContent .= "GET: ".json_encode($_GET)."<br>";
+        $messageContent .= "SESSION: ".json_encode($_SESSION)."<br>";
+        $messageContent .= "POST: ".json_encode($_POST)."<br>";
+        $messageContent .= "GET: ".json_encode($_GET)."<br>";
         
         if (!headers_sent()) {
             self::SendMail($from_mail, $to_mail, $subject, $messageContent);

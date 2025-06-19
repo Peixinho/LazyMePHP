@@ -30,7 +30,7 @@
       <div>
         <div>
         <!-- Main Content -->
-        <?=$content?>
+        <?=$content??''?>
         <!-- End  -->
       </div>
     </div>

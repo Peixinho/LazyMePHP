@@ -15,6 +15,6 @@ namespace Core\DB;
  */
 interface IDB
 {
-    public function Save();
-    public function Delete();
+    public function Save() : mixed;
+    public function Delete() : bool;
 }

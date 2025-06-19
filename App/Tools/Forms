@@ -86,6 +86,8 @@ class BuildTableForms
             fwrite($routerFile, "\n");
             fwrite($routerFile, "use Core\\LazyMePHP;");
             fwrite($routerFile, "\n");
+            fwrite($routerFile, "use Core\\Http\\Request;");
+            fwrite($routerFile, "\n");
             fwrite($routerFile, "\n");
           }
           else {
@@ -119,62 +121,76 @@ class BuildTableForms
           // fwrite($routerFile, "use Controllers\\".$db->GetTableName().";"); // Example, might not be needed if FQCN is used.
           // Removed: require_once __DIR__."/../Controllers/".$db->GetTableName().".php";
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "SimpleRouter::get('/".$db->GetTableName()."', function() {");
+          fwrite($routerFile, "SimpleRouter::get('/".$db->GetTableName()."', function() : void {");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\t\$data = ".$db->GetTableName()."::Default(true, (int)(\$_GET['page']??1), LazyMePHP::NRESULTS());");
+          fwrite($routerFile, "\t\$request = new Request();");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\t\$controller = new ".$db->GetTableName()."(\$request);");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\t\$data = \$controller->index(true, (int)(\$request->get('page')??1), LazyMePHP::NRESULTS());");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\tglobal \$blade;");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\techo \$blade->run(\"".$db->GetTableName().".list\", ['controller' => '".$db->GetTableName()."', '".$db->GetTableName()."' => \$data['".$db->GetTableName()."']");
+          fwrite($routerFile, "\techo \$blade->run(\"".$db->GetTableName().".index\", [\n\t\t'controller' => '".$db->GetTableName()."',\n\t\t'".$db->GetTableName()."' => \$data['".$db->GetTableName()."']");
           foreach ($db->GetTableFields() as $field)
           {
             if ($field->GetForeignField()) {
-              fwrite($routerFile, ", '".$field->GetForeignTable()."' => \$data['".$field->GetForeignTable()."']");
+              fwrite($routerFile, ",\n\t\t'".$field->GetForeignTable()."' => \$data['".$field->GetForeignTable()."']");
             }
           }
-          fwrite($routerFile, ", 'filters' => \$data['filters'], 'length' => \$data['length'], 'current' => \$_GET['page']??1, 'limit' => LazyMePHP::NRESULTS()]);");
+          fwrite($routerFile, ", 'filters' => \$data['filters'], 'length' => \$data['length'], 'current' => \$request->get('page')??1, 'limit' => LazyMePHP::NRESULTS()]);");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "});");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "SimpleRouter::get('/".$db->GetTableName()."/{".$db->GetPrimaryFieldName()."}/edit', function (\$".$db->GetPrimaryFieldName().") {");
+          fwrite($routerFile, "SimpleRouter::get('/".$db->GetTableName()."/{".$db->GetPrimaryFieldName()."}/edit', function (\$".$db->GetPrimaryFieldName().") : void {");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\t\$data = ".$db->GetTableName()."::Edit((int)\$".$db->GetPrimaryFieldName().");");
+          fwrite($routerFile, "\t\$request = new Request();");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\tglobal \$blade;");
+          fwrite($routerFile, "\t\$controller = new ".$db->GetTableName()."(\$request);");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\techo \$blade->run(\"".$db->GetTableName().".edit\", ['controller' => '".$db->GetTableName()."', '".$db->GetTableName()."' => \$data['".$db->GetTableName()."']");
-          foreach ($db->GetTableFields() as $field)
-          {
-            if ($field->GetForeignField()) {
-              fwrite($routerFile, "\n");
-              fwrite($routerFile, ", '".$field->GetForeignTable()."' => \$data['".$field->GetForeignTable()."']");
-            }
-          }
-          fwrite($routerFile, "]);");
-          fwrite($routerFile, "\n");
-          fwrite($routerFile, "});");
-          fwrite($routerFile, "\n");
-          fwrite($routerFile, "SimpleRouter::get('/".$db->GetTableName()."/new', function () {");
-          fwrite($routerFile, "\n");
-          fwrite($routerFile, "\t\$data = ".$db->GetTableName()."::Edit();");
+          fwrite($routerFile, "\t\$data = \$controller->edit((int)\$".$db->GetPrimaryFieldName().");");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\tglobal \$blade;");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\techo \$blade->run(\"".$db->GetTableName().".edit\", ['controller' => '".$db->GetTableName()."', '".$db->GetTableName()."' => \$data['".$db->GetTableName()."']");
+          fwrite($routerFile, "\techo \$blade->run(\"".$db->GetTableName().".edit\", [\n\t\t'controller' => '".$db->GetTableName()."',\n\t\t'".$db->GetTableName()."' => \$data['".$db->GetTableName()."']");
           foreach ($db->GetTableFields() as $field)
           {
             if ($field->GetForeignField()) {
-              fwrite($routerFile, "\n");
-              fwrite($routerFile, ", '".$field->GetForeignTable()."' => \$data['".$field->GetForeignTable()."']");
+              fwrite($routerFile, ", \n\t\t'".$field->GetForeignTable()."' => \$data['".$field->GetForeignTable()."']");
             }
           }
           fwrite($routerFile, "]);");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "});");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "SimpleRouter::post('/".$db->GetTableName()."/{id}/save', function (\$".$db->GetPrimaryFieldName().") {");
+          fwrite($routerFile, "SimpleRouter::get('/".$db->GetTableName()."/new', function () : void{");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\tif (".$db->GetTableName()."::Save((int)\$".$db->GetPrimaryFieldName()."))");
+          fwrite($routerFile, "\t\$request = new Request();");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\t\$controller = new ".$db->GetTableName()."(\$request);");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\t\$data = \$controller->edit();");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\tglobal \$blade;");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\techo \$blade->run(\"".$db->GetTableName().".edit\", [\n\t\t'controller' => '".$db->GetTableName()."',\n\t\t'".$db->GetTableName()."' => \$data['".$db->GetTableName()."']");
+          foreach ($db->GetTableFields() as $field)
+          {
+            if ($field->GetForeignField()) {
+              fwrite($routerFile, ", \n\t\t'".$field->GetForeignTable()."' => \$data['".$field->GetForeignTable()."']");
+            }
+          }
+          fwrite($routerFile, "]);");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "});");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "SimpleRouter::post('/".$db->GetTableName()."/{id}', function (\$".$db->GetPrimaryFieldName().") : void {");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\t\$request = new Request();");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\t\$controller = new ".$db->GetTableName()."(\$request);");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\tif (\$controller->save((int)\$id))");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\t\t\\Core\\Helpers\\Helper::redirect('/".$db->GetTableName()."?success=1');");
           fwrite($routerFile, "\n");
@@ -184,9 +200,13 @@ class BuildTableForms
           fwrite($routerFile, "\n");
           fwrite($routerFile, "});");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "SimpleRouter::post('/".$db->GetTableName()."/save', function () {");
+          fwrite($routerFile, "SimpleRouter::post('/".$db->GetTableName()."', function () : void {");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\tif(".$db->GetTableName()."::Save())");
+          fwrite($routerFile, "\t\$request = new Request();");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\t\$controller = new ".$db->GetTableName()."(\$request);");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\tif (\$controller->save())");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\t\t\\Core\\Helpers\\Helper::redirect('/".$db->GetTableName()."?success=1');");
           fwrite($routerFile, "\n");
@@ -198,7 +218,11 @@ class BuildTableForms
           fwrite($routerFile, "\n");
           fwrite($routerFile, "SimpleRouter::get('/".$db->GetTableName()."/{id}/delete', function (\$".$db->GetPrimaryFieldName().") {");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\t".$db->GetTableName()."::Delete((int)\$".$db->GetPrimaryFieldName().");");
+          fwrite($routerFile, "\t\$request = new Request();");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\t\$controller = new ".$db->GetTableName()."(\$request);");
+          fwrite($routerFile, "\n");
+          fwrite($routerFile, "\t\$controller->delete((int)\$id);");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\t\\Core\\Helpers\\Helper::redirect('/".$db->GetTableName()."?success=2');");
           fwrite($routerFile, "\n");
@@ -221,12 +245,12 @@ class BuildTableForms
 
     if (
     \Tools\Helper\UNLINK($viewsPath."/".$db->GetTableName()."/template.blade.php") &&
-      \Tools\Helper\UNLINK($viewsPath."/".$db->GetTableName()."/list.blade.php") &&
+      \Tools\Helper\UNLINK($viewsPath."/".$db->GetTableName()."/index.blade.php") &&
       \Tools\Helper\UNLINK($viewsPath."/".$db->GetTableName()."/edit.blade.php")
   ) {
       if (
       \Tools\Helper\TOUCH($viewsPath."/".$db->GetTableName()."/template.blade.php") &&
-        \Tools\Helper\TOUCH($viewsPath."/".$db->GetTableName()."/list.blade.php") &&
+        \Tools\Helper\TOUCH($viewsPath."/".$db->GetTableName()."/index.blade.php") &&
         \Tools\Helper\TOUCH($viewsPath."/".$db->GetTableName()."/edit.blade.php")
     ) {
 
@@ -298,7 +322,7 @@ class BuildTableForms
             break;
           } else $primaryKey = NULL;
         }
-        fwrite($viewFile, "<form id='".$db->GetTableName()."Form' method='POST' action='/".$db->GetTableName()."/{!!\$".$db->GetTableName()."->".$field->GetName()."!!}/save'>");
+        fwrite($viewFile, "<form id='".$db->GetTableName()."Form' method='POST' action='/".$db->GetTableName()."/{!!\$".$db->GetTableName()."->".$field->GetName()."!!}'>");
         foreach ($db->GetTableFields() as $field) {
           if (!$field->IsAutoIncrement() || !$field->IsPrimaryKey())
           {
@@ -355,7 +379,7 @@ class BuildTableForms
         fclose($viewFile);
 
         // Show List
-        $viewFile = fopen($viewsPath."/".$db->GetTableName()."/list.blade.php","w+");
+        $viewFile = fopen($viewsPath."/".$db->GetTableName()."/index.blade.php","w+");
         fwrite($viewFile,"<?php");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "\n");
@@ -509,16 +533,11 @@ class BuildTableForms
         fwrite($controllerFile, "use Core\\Validations\\ValidationsMethod;");
         fwrite($controllerFile, "\n");
         fwrite($controllerFile, "use Core\\Security\\CsrfProtection;");
+        fwrite($controllerFile, "\n");
+        fwrite($controllerFile, "use Core\\Http\\Request;");
 
         fwrite($controllerFile, "\n");
         fwrite($controllerFile, "\n");
-
-        // reload page with _get params from filter post
-        fwrite($controllerFile, "if (\array_key_exists(\"filter\",\$_POST)) {\n");
-        fwrite($controllerFile, "\t\$url=\"\";\n");
-        fwrite($controllerFile, "\tforeach(\$_POST as \$k=>\$g) if (\$g) \$url.=(!empty(\$url)?\"&\":\"?\").\"\$k=\$g\";\n");
-        fwrite($controllerFile, "\theader(\"location: \".\$url);\n");
-        fwrite($controllerFile, "}\n");
 
         // Get Primary Key
         $primaryKey = NULL;
@@ -533,9 +552,24 @@ class BuildTableForms
         fwrite($controllerFile, "\n");
         fwrite($controllerFile, "class ".$db->GetTableName()." {");
         fwrite($controllerFile, "\n");
+        fwrite($controllerFile, "\tprotected Request \$request;");
+        fwrite($controllerFile, "\n");
+        fwrite($controllerFile, "\tpublic function __construct(Request \$request) {");
+        fwrite($controllerFile, "\n");
+        fwrite($controllerFile, "\t\t\$this->request = \$request;");
+        fwrite($controllerFile, "\n");
+        fwrite($controllerFile, "\t\tif (\$this->request->post('filter')) {");
+        fwrite($controllerFile, "\t\t\$url = '';");
+        fwrite($controllerFile, "\t\tforeach (\$this->request->post() as \$k => \$g) if (\$g) \$url .= (!empty(\$url) ? '&' : '?') . \$k . '=' . \$g;");
+        fwrite($controllerFile, "\n");
+        fwrite($controllerFile, "\t\theader('location: ' . \$url);");
+        fwrite($controllerFile, "\n");
+        fwrite($controllerFile, "\t}");
+        fwrite($controllerFile, "\n");
+        fwrite($controllerFile, "\t}");
 
         fwrite($controllerFile, "\n");
-        fwrite($controllerFile, "\tstatic function Edit(?int \$".$field->GetName()." = null) {");
+        fwrite($controllerFile, "\tfunction edit(?int \$".$field->GetName()." = null) : array {");
         fwrite($controllerFile, "\n");
         fwrite($controllerFile, "\t\tif (isset(\$".$field->GetName().")) \$".$db->GetTableName()." = new \Classes\\".$db->GetTableName()."(\$".$field->GetName().");");
         fwrite($controllerFile, "\n");
@@ -571,10 +605,9 @@ class BuildTableForms
         if ($primaryKey)
         {
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\tstatic function Save(?int \$".$primaryKey->GetName()." = null, \$api = false) {");
+          fwrite($controllerFile, "\tfunction save(?int \$".$primaryKey->GetName()." = null, \$api = false) : mixed {");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\$obj = new \Classes\\".$db->GetTableName()."(\$".$primaryKey->GetName().");");
-          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\t\$obj = new \\Classes\\".$db->GetTableName()."(\$".$primaryKey->GetName().");");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\$validationRules = [");
           fwrite($controllerFile, "\n");
@@ -635,13 +668,13 @@ class BuildTableForms
           fwrite($controllerFile, "\t\t];");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\tif (!\$api && CsrfProtection::verifyToken(\$_POST['_token']))"); // Use short name
+          fwrite($controllerFile, "\t\tif (!\$api && CsrfProtection::verifyToken(\$this->request->post('_token')))"); // Use short name
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\t\$validatedData = \\Core\\Validations\\Validations::ValidateFormData(\$validationRules);"); // Use short name
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\telse");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\t\$validatedData = \\Core\\Validations\\Validations::ValidateJsonData(file_get_contents('php://input'),\$validationRules);"); // Use short name
+          fwrite($controllerFile, "\t\t\t\$validatedData = \\Core\\Validations\\Validations::ValidateJsonData(json_encode(\$this->request->json()), \$validationRules);"); // Use short name
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\tif (\$validatedData['success']) {");
@@ -664,7 +697,7 @@ class BuildTableForms
           fwrite($controllerFile, "\t}");
           fwrite($controllerFile, "\n");
 
-          fwrite($controllerFile, "\tstatic function Delete(?int \$".$primaryKey->GetName()." = null) {");
+          fwrite($controllerFile, "\tfunction delete(?int \$".$primaryKey->GetName()." = null) : void {");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\tif (\$".$primaryKey->GetName().") {");
           fwrite($controllerFile, "\n");
@@ -677,7 +710,7 @@ class BuildTableForms
           fwrite($controllerFile, "\t}");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\tstatic function Default(bool \$foreignTables = true, ?int \$page = null, ?int \$limit = null) {");
+          fwrite($controllerFile, "\tfunction index(bool \$foreignTables = true, ?int \$page = null, ?int \$limit = null) : array {");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\$".$db->GetTableName()." = new \Classes\\".$db->GetTableName()."_List();");
@@ -698,9 +731,11 @@ class BuildTableForms
           fwrite($controllerFile, "\n");
 
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\tif (count(\$_GET)>0) {");
+          fwrite($controllerFile, "\t\t\$get = \$this->request->get();");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\tforeach(\$_GET as \$method => \$val)");
+          fwrite($controllerFile, "\t\tif (count(\$get)>0) {");
+          fwrite($controllerFile, "\n");
+          fwrite($controllerFile, "\t\t\tforeach(\$get as \$method => \$val)");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\t{");
           fwrite($controllerFile, "\n");
