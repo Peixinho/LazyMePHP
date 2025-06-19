@@ -74,14 +74,7 @@ class Validations {
 
               case ValidationsMethod::DATE:
                   if (!self::ValidateDate($value)) {
-                      $errors[] = $messages[ValidationsMethod::DATE->value] ?? 'Value must be a valid date in DD/MM/YYYY format.';
-                  }
-                  $i++;
-                  break;
-
-              case ValidationsMethod::ISO_DATE:
-                  if (!self::ValidateISODate($value)) {
-                      $errors[] = $messages[ValidationsMethod::ISO_DATE->value] ?? 'Value must be a valid ISO 8601 date (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS).';
+                      $errors[] = $messages[ValidationsMethod::DATE->value] ?? 'Value must be a valid date.';
                   }
                   $i++;
                   break;
