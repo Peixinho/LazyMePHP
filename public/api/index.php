@@ -102,7 +102,22 @@ header('Access-Control-Allow-Methods: POST, GET, DELETE, PUT');
 
 // CSRF protection for API endpoints
 $method = $_SERVER['REQUEST_METHOD'] ?? null;
-if (in_array($method, ['POST', 'PUT', 'DELETE'])) {
+$requestUri = $_SERVER['REQUEST_URI'] ?? '';
+
+// Skip CSRF protection for certain endpoints
+$skipCsrfEndpoints = [
+    '/api/csrf-token',
+];
+
+$shouldSkipCsrf = false;
+foreach ($skipCsrfEndpoints as $endpoint) {
+    if (strpos($requestUri, $endpoint) !== false) {
+        $shouldSkipCsrf = true;
+        break;
+    }
+}
+
+if (in_array($method, ['POST', 'PUT', 'DELETE']) && !$shouldSkipCsrf) {
     $csrfToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
     if (!\Core\Security\CsrfProtection::verifyToken($csrfToken)) {
         http_response_code(419); // Authentication Timeout

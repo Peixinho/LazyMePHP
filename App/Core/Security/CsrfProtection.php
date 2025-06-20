@@ -52,10 +52,22 @@ class CsrfProtection
 
         $isValid = hash_equals($storedToken, $token);
 
-        // Regenerate token after successful verification to prevent reuse
         if ($isValid) {
-            $session->forget([self::TOKEN_KEY, 'csrf_created_at']);
-            self::getToken(); // Generate new token
+            // Track token usage
+            $usageCount = $session->get('csrf_usage_count', 0);
+            $usageCount++;
+            $session->put('csrf_usage_count', $usageCount);
+            
+            // Regenerate token after 10 uses or if it's been used for more than 30 minutes
+            $lastUsed = $session->get('csrf_last_used', time());
+            $timeSinceLastUsed = time() - $lastUsed;
+            
+            if ($usageCount >= 10 || $timeSinceLastUsed > 1800) { // 10 uses or 30 minutes
+                $session->forget([self::TOKEN_KEY, 'csrf_created_at', 'csrf_usage_count', 'csrf_last_used']);
+                self::getToken(); // Generate new token
+            } else {
+                $session->put('csrf_last_used', time());
+            }
         }
 
         return $isValid;

@@ -10,6 +10,7 @@ App/Api
 !App/Views/_compiled
 !App/Views/_Default
 !App/Views/_Error
+!App/Api/CsrfToken.php
 App/Ext/vendor
 App/Ext/composer.lock
 tools/.descriptors

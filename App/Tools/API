@@ -344,7 +344,7 @@ class BuildTableAPI
               fwrite($routerFile, "});");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "SimpleRouter::delete('/api/".$o->Table."/{".$db->GetPrimaryFieldName()."}}', function (\$".$db->GetPrimaryFieldName().") {");
+              fwrite($routerFile, "SimpleRouter::delete('/api/".$o->Table."/{".$db->GetPrimaryFieldName()."}', function (\$".$db->GetPrimaryFieldName().") {");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "\t\$request = new Request();");
               fwrite($routerFile, "\n");
