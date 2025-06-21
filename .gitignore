@@ -14,3 +14,35 @@ App/Api
 App/Ext/vendor
 App/Ext/composer.lock
 tools/.descriptors
+
+# Temporary and cache files
+*.tmp
+*.log
+*.cache
+.phpunit.result.cache
+webserver_debug.log
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Test and debug files
+test-*.php
+debug-*.php
+test-*.js
+setup_*.php
+regenerate_*.php
+
+# Cookies and session files
+cookies.txt
+*.session
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Composer
+composer.phar

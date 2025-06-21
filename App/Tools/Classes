@@ -29,6 +29,27 @@ interface IDB_LIST
     public function GetList(bool $buildForeignMembers = true, bool $serialize = false, array $mask = array());
 }
 
+// Add this function at the top of the file (after namespace and use statements)
+if (!function_exists('mapSqlTypeToPhpType')) {
+    function mapSqlTypeToPhpType($sqlType) {
+        $type = strtolower($sqlType);
+        return match (true) {
+            str_starts_with($type, 'varchar'),
+            str_starts_with($type, 'char'),
+            str_starts_with($type, 'text'),
+            str_starts_with($type, 'date'),
+            str_starts_with($type, 'time') => 'string',
+            str_starts_with($type, 'int') => 'int',
+            str_starts_with($type, 'bool'),
+            str_starts_with($type, 'boolean') => 'bool',
+            str_starts_with($type, 'float'),
+            str_starts_with($type, 'double'),
+            str_starts_with($type, 'decimal') => 'float',
+            default => 'string',
+        };
+    }
+}
+
 /**
  * Build class tables
  */
@@ -155,58 +176,78 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
         $addToSerialize = "";
         $primaryKeyFound = false;
         foreach ($db->_Tablefields as $field) {
+          $phpType = mapSqlTypeToPhpType($field->GetDataType());
           fwrite($classFile, "\n");
           fwrite($classFile, "\t/** @var ".$field->GetDataType()."|null ".$field->GetName()."*/");
           fwrite($classFile, "\n");
-            fwrite($classFile, "\tpublic ?".$field->GetDataType()." \$".$field->GetName()."".($field->AllowNull()?" = null":($field->GetDefaultValue()?' = '.$field->GetDefaultValue():' = null'))." {");
+          fwrite($classFile, "\tprotected ?$phpType $".$field->GetName()." = null;");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\t\tget {");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\t\t\treturn (".$field->GetDataType().")\$this->".$field->GetName().";");
+          fwrite($classFile, "\t/**");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\t\t}");
+          fwrite($classFile, "\t * Get ".$field->GetName());
           fwrite($classFile, "\n");
-          fwrite($classFile, "\t\tset(?".$field->GetDataType()." \$".$field->GetName().") {");
           fwrite($classFile, "\n");
-            if ($field->HasForeignKey() && $field->GetForeignField())
-            {
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t\t\tif (\$this->buildForeignMembers && \$this->".$field->GetName()."!=\$".$field->GetName().") {");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t\t\t\t\$this->".$field->GetName()."_OBJ = new ".$field->GetForeignTable()."(\$".$field->GetName().");");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t\t\t}");
-            }
-            fwrite($classFile, "\n");
-            switch ($field->GetDataType())
-            {
-              case "bool":
-              case "float":
-              case "int":
-                if ($field->AllowNull())
-                  fwrite($classFile, "\t\t\tif (!empty(\$this->".$field->GetName().") && LazyMePHP::ACTIVITY_LOG() && \$this->".$field->GetName()."!=\$".$field->GetName().")\n\t\t\t\t\$this->__log['".$field->GetName()."']=array(\$this->".$field->GetName().", \$".$field->GetName().");");
-                else
-                  fwrite($classFile, "\t\t\tif (LazyMePHP::ACTIVITY_LOG() && \$this->".$field->GetName()."!=\$".$field->GetName().")\n\t\t\t\t\$this->__log['".$field->GetName()."']=array(\$this->".$field->GetName().", \$".$field->GetName().");");
-                break;
-                case "string":
-                if ($field->AllowNull())
-                  fwrite($classFile, "\t\t\tif (!empty(\$this->".$field->GetName().") && LazyMePHP::ACTIVITY_LOG() && \$this->".$field->GetName()."!=\$".$field->GetName().")\n\t\t\t\t\$this->__log['".$field->GetName()."']=array(substr(\$this->".$field->GetName()." ?? '',0,255), substr(\$".$field->GetName()." ?? '',0,255));");
-                else
-                  fwrite($classFile, "\t\t\tif (LazyMePHP::ACTIVITY_LOG() && \$this->".$field->GetName()."!=\$".$field->GetName().")\n\t\t\t\t\$this->__log['".$field->GetName()."']=array(substr(\$this->".$field->GetName()." ?? '',0,255), substr(\$".$field->GetName()." ?? '',0,255));");
-                break;
-            }
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\n");
-            if ($field->AllowNull())
-              fwrite($classFile, "\t\t\t\$this->".$field->GetName()."=(!empty(\$".$field->GetName().")?".($field->GetDataLength()>0?"substr(\$".$field->GetName().",0,".$field->GetDataLength().")":"\$".$field->GetName()).":".($field->GetDefaultValue??($field->Allownull()?"null":"''")).");");
-            else
-              fwrite($classFile, "\t\t\t\$this->".$field->GetName()."=\$".$field->GetName().";");
+          fwrite($classFile, "\t * @return ".$phpType."|null");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\t\t}");
+          fwrite($classFile, "\t */");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\tpublic function Get".ucfirst($field->GetName())."() : ?$phpType {");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\t\treturn \$this->".$field->GetName().";");
           fwrite($classFile, "\n");
           fwrite($classFile, "\t}");
           fwrite($classFile, "\n");
-
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\t/**");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\t * Set ".$field->GetName());
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\t * @param ".$phpType."|null $".$field->GetName());
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\t * @return void");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\t */");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\tpublic function Set".ucfirst($field->GetName())."(?$phpType $".$field->GetName().") : void {");
+          fwrite($classFile, "\n");
+          if ($field->HasForeignKey() && $field->GetForeignField())
+          {
+              fwrite($classFile, "\n");
+              fwrite($classFile, "\t\tif (\$this->buildForeignMembers && \$this->".$field->GetName()."!=\$".$field->GetName().") {");
+              fwrite($classFile, "\n");
+              fwrite($classFile, "\t\t\t\$this->".$field->GetName()."_OBJ = new ".$field->GetForeignTable()."(\$".$field->GetName().");");
+              fwrite($classFile, "\n");
+              fwrite($classFile, "\t\t}");
+          }
+          fwrite($classFile, "\n");
+          switch ($field->GetDataType())
+          {
+              case "bool":
+              case "float":
+              case "int":
+                  if ($field->AllowNull())
+                      fwrite($classFile, "\t\tif (!empty(\$this->".$field->GetName().") && LazyMePHP::ACTIVITY_LOG() && \$this->".$field->GetName()."!=\$".$field->GetName().")\n\t\t\t\$this->__log['".$field->GetName()."']=array(\$this->".$field->GetName().", \$".$field->GetName().");");
+                  else
+                      fwrite($classFile, "\t\tif (LazyMePHP::ACTIVITY_LOG() && \$this->".$field->GetName()."!=\$".$field->GetName().")\n\t\t\t\$this->__log['".$field->GetName()."']=array(\$this->".$field->GetName().", \$".$field->GetName().");");
+                  break;
+              case "string":
+                  if ($field->AllowNull())
+                      fwrite($classFile, "\t\tif (!empty(\$this->".$field->GetName().") && LazyMePHP::ACTIVITY_LOG() && \$this->".$field->GetName()."!=\$".$field->GetName().")\n\t\t\t\$this->__log['".$field->GetName()."']=array(substr(\$this->".$field->GetName()." ?? '',0,255), substr(\$".$field->GetName()." ?? '',0,255));");
+                  else
+                      fwrite($classFile, "\t\tif (LazyMePHP::ACTIVITY_LOG() && \$this->".$field->GetName()."!=\$".$field->GetName().")\n\t\t\t\$this->__log['".$field->GetName()."']=array(substr(\$this->".$field->GetName()." ?? '',0,255), substr(\$".$field->GetName()." ?? '',0,255));");
+                  break;
+          }
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\n");
+          if ($field->AllowNull())
+              fwrite($classFile, "\t\t\$this->".$field->GetName()."=(!empty(\$".$field->GetName().")?".($field->GetDataLength()>0?"substr(\$".$field->GetName().",0,".$field->GetDataLength().")":"\$".$field->GetName()).":".($field->GetDefaultValue??($field->Allownull()?"null":"''")).");");
+          else
+              fwrite($classFile, "\t\t\$this->".$field->GetName()."=\$".$field->GetName().";");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\t}");
+          fwrite($classFile, "\n");
 
           if ($field->HasForeignKey())
           {
@@ -340,20 +381,20 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
                   fwrite($classFile, "\n");
                   foreach($fTable->GetTableFields() as $field3)
                   {
-                    switch ($field3->GetDataType())
+                    switch (mapSqlTypeToPhpType($field3->GetDataType()))
                     {
                       case "bool":
-                        fwrite($classFile,"\t\t\t\t\t\$this->".$field2->GetName()."_OBJ->".$field3->GetName()."=(bool)\$row['".$field2->GetName()."_".$field3->GetName()."'];");
+                        fwrite($classFile,"\t\t\t\t\t\$this->".$field2->GetName()."_OBJ->Set".ucfirst($field3->GetName())."((bool)\$row['".$field2->GetName()."_".$field3->GetName()."']);");
                       break;
                       case "float":
-                        fwrite($classFile,"\t\t\t\t\t\$this->".$field2->GetName()."_OBJ->".$field3->GetName()."=(float)\$row['".$field2->GetName()."_".$field3->GetName()."'];");
+                        fwrite($classFile,"\t\t\t\t\t\$this->".$field2->GetName()."_OBJ->Set".ucfirst($field3->GetName())."((float)\$row['".$field2->GetName()."_".$field3->GetName()."']);");
                       break;
                       case "int":
-                        fwrite($classFile,"\t\t\t\t\t\$this->".$field2->GetName()."_OBJ->".$field3->GetName()."=(int)\$row['".$field2->GetName()."_".$field3->GetName()."'];");
+                        fwrite($classFile,"\t\t\t\t\t\$this->".$field2->GetName()."_OBJ->Set".ucfirst($field3->GetName())."((int)\$row['".$field2->GetName()."_".$field3->GetName()."']);");
                       break;
                       case "string":
                       default:
-                        fwrite($classFile,"\t\t\t\t\t\$this->".$field2->GetName()."_OBJ->".$field3->GetName()."=(string)\$row['".$field2->GetName()."_".$field3->GetName()."'];");
+                        fwrite($classFile,"\t\t\t\t\t\$this->".$field2->GetName()."_OBJ->Set".ucfirst($field3->GetName())."((string)\$row['".$field2->GetName()."_".$field3->GetName()."']);");
                       break;
                     }
                     fwrite($classFile, "\n");
@@ -365,7 +406,7 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
                   fwrite($classFile, "\n");
                   fwrite($classFile, "\n");
                 }
-                switch ($field2->GetDataType())
+                switch (mapSqlTypeToPhpType($field2->GetDataType()))
                 {
                   case "bool":
                     fwrite($classFile,"\t\t\t\t\$this->".$field2->GetName()."=(bool)\$row['".$field2->GetName()."'];");
@@ -880,20 +921,20 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
 
             foreach($fTable->GetTableFields() as $field3)
             {
-              switch ($field3->GetDataType())
+              switch (mapSqlTypeToPhpType($field3->GetDataType()))
               {
                 case "bool":
-                  fwrite($classFile,"\t\t\t\t\t\$_OBJ->".$field3->GetName()."=(bool)\$row['".$field2->GetName()."_".$field3->GetName()."'];");
+                  fwrite($classFile,"\t\t\t\t\t\$_OBJ->Set".ucfirst($field3->GetName())."((bool)\$row['".$field2->GetName()."_".$field3->GetName()."']);");
                 break;
                 case "float":
-                  fwrite($classFile,"\t\t\t\t\t\$_OBJ->".$field3->GetName()."=(float)\$row['".$field2->GetName()."_".$field3->GetName()."'];");
+                  fwrite($classFile,"\t\t\t\t\t\$_OBJ->Set".ucfirst($field3->GetName())."((float)\$row['".$field2->GetName()."_".$field3->GetName()."']);");
                 break;
                 case "int":
-                  fwrite($classFile,"\t\t\t\t\t\$_OBJ->".$field3->GetName()."=(int)\$row['".$field2->GetName()."_".$field3->GetName()."'];");
+                  fwrite($classFile,"\t\t\t\t\t\$_OBJ->Set".ucfirst($field3->GetName())."((int)\$row['".$field2->GetName()."_".$field3->GetName()."']);");
                 break;
                 case "string":
                 default:
-                  fwrite($classFile,"\t\t\t\t\t\$_OBJ->".$field3->GetName()."=(string)\$row['".$field2->GetName()."_".$field3->GetName()."'];");
+                  fwrite($classFile,"\t\t\t\t\t\$_OBJ->Set".ucfirst($field3->GetName())."((string)\$row['".$field2->GetName()."_".$field3->GetName()."']);");
                 break;
               }
               fwrite($classFile, "\n");
@@ -907,20 +948,20 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
             fwrite($classFile, "\n");
             fwrite($classFile, "\n");
           }
-          switch ($field2->GetDataType())
+          switch (mapSqlTypeToPhpType($field2->GetDataType()))
           {
             case "bool":
-              fwrite($classFile,"\t\t\t\t\$obj->".$field2->GetName()."=(bool)\$row['".$field2->GetName()."'];");
+              fwrite($classFile,"\t\t\t\t\$obj->Set".ucfirst($field2->GetName())."((bool)\$row['".$field2->GetName()."']);");
             break;
             case "float":
-              fwrite($classFile,"\t\t\t\t\$obj->".$field2->GetName()."=(float)\$row['".$field2->GetName()."'];");
+              fwrite($classFile,"\t\t\t\t\$obj->Set".ucfirst($field2->GetName())."((float)\$row['".$field2->GetName()."']);");
             break;
             case "int":
-              fwrite($classFile,"\t\t\t\t\$obj->".$field2->GetName()."=(int)\$row['".$field2->GetName()."'];");
+              fwrite($classFile,"\t\t\t\t\$obj->Set".ucfirst($field2->GetName())."((int)\$row['".$field2->GetName()."']);");
             break;
             case "string":
             default:
-              fwrite($classFile,"\t\t\t\t\$obj->".$field2->GetName()."=(string)\$row['".$field2->GetName()."'];");
+              fwrite($classFile,"\t\t\t\t\$obj->Set".ucfirst($field2->GetName())."((string)\$row['".$field2->GetName()."']);");
             break;
           }
           fwrite($classFile, "\n");
@@ -980,9 +1021,7 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\t */");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\tpublic function ClearFind() : void");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t{");
+        fwrite($classFile, "\tpublic function ClearFind() : void {");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t\t\$this->_args = array();");
         fwrite($classFile, "\n");
@@ -1013,9 +1052,7 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\t */");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\tpublic function FindAll() : void");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t{");
+        fwrite($classFile, "\tpublic function FindAll() : void {");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t\t\$this->_sql = \"\";");
         fwrite($classFile, "\n");
@@ -1041,7 +1078,7 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
           fwrite($classFile, "\n");
           fwrite($classFile, "\t */");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\tpublic function FindBy".$field->GetName()."(".$field->GetDataType()." \$var, string \$operator = '=', string \$operator2 = 'AND') : void {");
+          fwrite($classFile, "\tpublic function FindBy".$field->GetName()."(".mapSqlTypeToPhpType($field->GetDataType())." \$var, string \$operator = '=', string \$operator2 = 'AND') : void {");
           fwrite($classFile, "\n");
           fwrite($classFile, "\t\t\$this->_args[]=\$var;");
           fwrite($classFile, "\n");

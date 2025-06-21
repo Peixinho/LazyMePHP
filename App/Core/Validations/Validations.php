@@ -421,10 +421,10 @@ class Validations {
           // Or it could be an unvalidated value if ValidateBoolean wasn't in the chain or failed early.
           // The in_array check is robust for various inputs if $value wasn't normalized.
           if (is_bool($value)) {
-            $validatedData[$field] = $value ? 1 : 0;
+            $validatedData[$field] = $value; // Return actual boolean, not integer
           } else {
             // Fallback for safety, though ValidateBoolean should have normalized it.
-            $validatedData[$field] = in_array(is_string($value) ? strtolower($value) : $value, [true, '1', 1, 'true', 'on'], true) ? 1 : 0;
+            $validatedData[$field] = in_array(is_string($value) ? strtolower($value) : $value, [true, '1', 1, 'true', 'on'], true);
           }
           break;
         case 'string':
@@ -561,11 +561,11 @@ class Validations {
                   case 'bool':
                       // $value should be an actual boolean (true/false) if ValidateBoolean ran.
                       if (is_bool($value)) {
-                          $validatedData[$field] = $value ? 1 : 0;
+                          $validatedData[$field] = $value; // Return actual boolean, not integer
                       } else {
                           // Fallback for various JSON representations if not pre-normalized by ValidateBoolean
                            $normalizedJsonBool = is_string($value) ? strtolower(trim($value)) : $value;
-                           $validatedData[$field] = in_array($normalizedJsonBool, [true, '1', 1, 'true', 'on'], true) ? 1 : 0;
+                           $validatedData[$field] = in_array($normalizedJsonBool, [true, '1', 1, 'true', 'on'], true);
                       }
                       break;
                   case 'string':

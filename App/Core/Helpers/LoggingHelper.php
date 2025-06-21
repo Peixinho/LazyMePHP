@@ -13,6 +13,7 @@ class LoggingHelper
      */
     public static function logUpdate(string $table, array $changes, string $pk, string $pkValue): void
     {
+        if (!LazyMePHP::ACTIVITY_LOG()) return;
         $db = LazyMePHP::DB_CONNECTION();
         if (!$db) return;
 
@@ -38,6 +39,7 @@ class LoggingHelper
      */
     public static function logInsert(string $table, array $changes, string $pkValue): void
     {
+        if (!LazyMePHP::ACTIVITY_LOG()) return;
         $logData = [];
         foreach ($changes as $field => $change) {
             if (is_array($change) && count($change) === 2 && isset($change[0]) && isset($change[1])) {
@@ -57,6 +59,7 @@ class LoggingHelper
      */
     public static function logDelete(string $table, string $pk, string $pkValue): void
     {
+        if (!LazyMePHP::ACTIVITY_LOG()) return;
         $db = LazyMePHP::DB_CONNECTION();
         if (!$db) return;
 
@@ -81,6 +84,7 @@ class LoggingHelper
      */
     public static function logFieldChange(string $table, string $field, $newValue, string $pk, string $pkValue): void
     {
+        if (!LazyMePHP::ACTIVITY_LOG()) return;
         $db = LazyMePHP::DB_CONNECTION();
         if (!$db) return;
 

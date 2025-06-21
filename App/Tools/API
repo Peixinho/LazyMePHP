@@ -96,8 +96,8 @@ class BuildTableAPI
                 fwrite($routerFile, "\"".$field->GetName()."\"");
               }
               fwrite($routerFile, "]");
+              $_i++;
             }
-            $_i++;
           }
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\t];");
@@ -118,9 +118,7 @@ class BuildTableAPI
           fwrite($routerFile, "\n");
           fwrite($routerFile, "}");
         }
-        else echo "ERROR: Check your permissions to write ".$apiPath."/ApiFieldMask.php\n";
       }
-      else echo "ERROR: Check your permissions to remove ".$apiPath."/ApiFieldMask.php\n";
     }
     // Create Routing Rules
     if ($replaceRouteApi) {
@@ -131,11 +129,14 @@ class BuildTableAPI
       {
         $db = new \Tools\Database\_DB_TABLE($o->Table);
         $db->GetFieldsFromDB();
-        if (\Tools\Helper\UNLINK($apiPath."/".$o->Table.".php"))
+        $targetFile = $apiPath."/".$o->Table.".php";
+        // echo "[GENERATOR] Attempting to create API file for table: {$o->Table} at {$targetFile}\n";
+        if (\Tools\Helper\UNLINK($targetFile))
         {
-          if (\Tools\Helper\TOUCH($apiPath."/".$o->Table.".php"))
+          if (\Tools\Helper\TOUCH($targetFile))
           {
-            $routerFile = fopen($apiPath."/".$o->Table.".php","w+");
+            // echo "[GENERATOR] Created file: {$targetFile}\n";
+            $routerFile = fopen($targetFile,"w+");
             fwrite($routerFile,"<?php");
             fwrite($routerFile, "\n");
             fwrite($routerFile, "\n");
@@ -387,9 +388,7 @@ class BuildTableAPI
               fwrite($routerFile, "});");
             }
           }
-          else echo "ERROR: Check your permissions to write ".$apiPath."/RouteAPI.php\n";
         }
-        else echo "ERROR: Check your permissions to remove ".$apiPath."/RouteAPI.php\n";
       }
     }
   }

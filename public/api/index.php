@@ -35,18 +35,12 @@ if (file_exists(__DIR__.'/../../.env')) {
 new LazyMePHP();
 
 /*
- * Mask API
- */
-if(file_exists(__DIR__."/../../App/api/MaskAPI.php"))
-	require_once __DIR__."/../../App/api/MaskAPI.php";
-
-/*
  * Check of our request needs foreing data
  */
 $GLOBALS['API_FOREIGN_DATA'] = (isset($_GET['foreignData']) && $_GET['foreignData'] == 'true') ? true : false;
 
 /* Load all api routes */
-foreach(glob(__DIR__."/../../App/api/" . "/*.php") as $r)
+foreach(glob(__DIR__."/../../App/Api/" . "/*.php") as $r)
   require_once $r;
 
 /*

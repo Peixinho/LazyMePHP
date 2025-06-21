@@ -365,6 +365,7 @@ class LazyMePHP
    */
   static function LOGDATA(string $table, array $log, ?string $pk = null, ?string $method = null): void
   {
+    if (!self::ACTIVITY_LOG()) return;
     // Ensure the entry for the table exists.
     if (!array_key_exists($table, self::$_app_logdata)) {
         self::$_app_logdata[$table] = [];
@@ -461,8 +462,9 @@ class LazyMePHP
    */
   static function LOG_ACTIVITY(): void 
   {
+    if (!self::ACTIVITY_LOG()) return;
     // Proceed only if activity logging is enabled and a database connection exists.
-    if (self::ACTIVITY_LOG() && self::DB_CONNECTION()) {
+    if (self::DB_CONNECTION()) {
       // --- Collect request information ---
       $currentDateTime = date("Y-m-d H:i:s");
       $requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'CLI';
@@ -597,6 +599,43 @@ class LazyMePHP
         return 'Resource';
     } else {
         return (string)$value;
+    }
+  }
+
+  /**
+   * Reset all static properties for testing purposes
+   */
+  public static function reset(): void
+  {
+    self::$_db_name = null;
+    self::$_db_connection = null;
+    self::$_db_user = null;
+    self::$_db_password = null;
+    self::$_db_type = null;
+    self::$_db_host = null;
+    self::$_db_file = null;
+    self::$_db_file_path = null;
+    self::$_app_name = null;
+    self::$_app_title = null;
+    self::$_app_version = null;
+    self::$_app_description = null;
+    self::$_app_timezone = null;
+    self::$_support_email = null;
+    self::$_app_nresults = null;
+    self::$_app_encryption = null;
+    self::$_app_activity_log = null;
+    self::$_app_activity_auth = null;
+    self::$_app_logdata = [];
+    
+    // Reset database instances to prevent singleton conflicts during testing
+    if (class_exists('Core\DB\MySQL')) {
+      \Core\DB\MySQL::resetInstance();
+    }
+    if (class_exists('Core\DB\MSSQL')) {
+      \Core\DB\MSSQL::resetInstance();
+    }
+    if (class_exists('Core\DB\SQLite')) {
+      \Core\DB\SQLite::resetInstance();
     }
   }
 }

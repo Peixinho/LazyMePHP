@@ -30,6 +30,18 @@ class ErrorHandler
         ?array $details = null,
         ?\Throwable $exception = null
     ): void {
+        // Do not output JSON or STDERR in CLI test environment
+        if ((php_sapi_name() === 'cli' || defined('STDIN')) && self::isTestEnvironment()) {
+            return;
+        }
+        // Do not output JSON in CLI context (for scripts, artisan, etc.)
+        if (php_sapi_name() === 'cli' || defined('STDIN')) {
+            fwrite(STDERR, "[API ERROR] $code: $message\n");
+            if ($exception) {
+                fwrite(STDERR, $exception->getTraceAsString() . "\n");
+            }
+            return;
+        }
         $httpCode = self::ERROR_CODES[$code] ?? 500;
         
         // Log the error to database
@@ -109,6 +121,15 @@ class ErrorHandler
      * Handle rate limit errors
      */
     public static function handleRateLimitError(int $retryAfter = 60): void {
+        // Do not output JSON or STDERR in CLI test environment
+        if ((php_sapi_name() === 'cli' || defined('STDIN')) && self::isTestEnvironment()) {
+            return;
+        }
+        // Do not output JSON in CLI context
+        if (php_sapi_name() === 'cli' || defined('STDIN')) {
+            fwrite(STDERR, "[RATE LIMIT] Retry after $retryAfter seconds\n");
+            return;
+        }
         http_response_code(429);
         header('Retry-After: ' . $retryAfter);
         header('Content-Type: application/json');
@@ -153,8 +174,8 @@ class ErrorHandler
             $context
         );
         
-        // Fallback to old logging
-        if (self::isDebugMode()) {
+        // Fallback to old logging - skip in test environment
+        if (self::isDebugMode() && !self::isTestEnvironment()) {
             error_log("[$context] Error: " . $exception->getMessage());
             error_log("[$context] File: " . $exception->getFile() . ":" . $exception->getLine());
             error_log("[$context] Trace: " . $exception->getTraceAsString());
@@ -171,6 +192,7 @@ class ErrorHandler
         ?\Throwable $exception = null, 
         string $context = 'API'
     ): void {
+        if (!\Core\LazyMePHP::ACTIVITY_LOG()) return;
         try {
             $db = \Core\LazyMePHP::DB_CONNECTION();
             if (!$db) return;
@@ -239,6 +261,11 @@ class ErrorHandler
         // Log the error to database
         self::logErrorToDatabase($message, 'WEB_ERROR', 500, null, 'WEBPAGE');
         
+        // Skip exit in test environment
+        if ((php_sapi_name() === 'cli' || defined('STDIN')) && self::isTestEnvironment()) {
+            return;
+        }
+        
         $_SESSION['error'] = $message;
         header("Location: $redirectUrl");
         exit;
@@ -250,6 +277,11 @@ class ErrorHandler
     public static function handleWebNotFoundError(string $url = ''): void {
         $message = "Page not found: " . ($url ?: $_SERVER['REQUEST_URI'] ?? 'unknown');
         self::logErrorToDatabase($message, 'NOT_FOUND', 404, null, 'WEBPAGE');
+        
+        // Skip exit in test environment
+        if ((php_sapi_name() === 'cli' || defined('STDIN')) && self::isTestEnvironment()) {
+            return;
+        }
         
         http_response_code(404);
         echo '<h1>404 - Page Not Found</h1>';
@@ -267,6 +299,11 @@ class ErrorHandler
         $message = "Server error: " . $exception->getMessage();
         self::logErrorToDatabase($message, 'INTERNAL_ERROR', 500, $exception, 'WEBPAGE');
         
+        // Skip exit in test environment
+        if ((php_sapi_name() === 'cli' || defined('STDIN')) && self::isTestEnvironment()) {
+            return;
+        }
+        
         http_response_code(500);
         echo '<h1>500 - Internal Server Error</h1>';
         echo '<p>An internal server error occurred.</p>';
@@ -281,8 +318,27 @@ class ErrorHandler
      * Handle web success messages
      */
     public static function handleWebSuccess(string $message, string $redirectUrl = '/'): void {
+        // Skip exit in test environment
+        if ((php_sapi_name() === 'cli' || defined('STDIN')) && self::isTestEnvironment()) {
+            return;
+        }
+        
         $_SESSION['success'] = $message;
         header("Location: $redirectUrl");
         exit;
+    }
+
+    /**
+     * Detect if running under Pest or PHPUnit
+     */
+    private static function isTestEnvironment(): bool {
+        return (
+            defined('PHPUNIT_COMPOSER_INSTALL') ||
+            defined('PHPUNIT_RUNNING') ||
+            getenv('PEST') ||
+            getenv('PEST_RUNNING') ||
+            (isset($_ENV['PEST']) && $_ENV['PEST']) ||
+            (isset($_SERVER['PEST']) && $_SERVER['PEST'])
+        );
     }
 } 
