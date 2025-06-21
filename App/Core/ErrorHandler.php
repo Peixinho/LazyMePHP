@@ -271,7 +271,7 @@ class ErrorHandler
         string $context = 'API',
         ?array $additionalContext = null
     ): void {
-        if (!\Core\LazyMePHP::ACTIVITY_LOG()) return;
+        if (self::isTestEnvironment()) return;
         
         try {
             $db = \Core\LazyMePHP::DB_CONNECTION();
