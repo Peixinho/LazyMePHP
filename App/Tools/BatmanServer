@@ -1,0 +1,168 @@
+<?php
+
+/**
+ * LazyMePHP Batman Server
+ * @copyright This file is part of the LazyMePHP developed by Duarte Peixinho
+ * @author Duarte Peixinho
+ */
+
+// Load environment variables
+$envFile = __DIR__ . '/../../.env';
+if (file_exists($envFile)) {
+    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos($line, '=') !== false && strpos($line, '#') !== 0) {
+            list($key, $value) = explode('=', $line, 2);
+            $_ENV[trim($key)] = trim($value);
+            putenv(trim($key) . '=' . trim($value));
+        }
+    }
+}
+
+// Configuration
+$debugLogging = $_ENV['BATMAN_DEBUG_LOGGING'] ?? false;
+$batmanDir = __DIR__ . '/../../batman';
+
+// Debug logging function
+function logDebug($message) {
+    global $debugLogging;
+    if ($debugLogging) {
+        file_put_contents(
+            __DIR__ . '/../../batman_server_debug.log',
+            "\n" . date('Y-m-d H:i:s') . " - $message\n",
+            FILE_APPEND
+        );
+    }
+}
+
+// Route handler function
+function handleRoute($route, $filePath, $errorMessage = null) {
+    global $batmanDir;
+    
+    if (strpos($_SERVER["REQUEST_URI"], $route) !== false) {
+        $fullPath = $batmanDir . $filePath;
+        
+        logDebug("Handling route: $route -> $fullPath (exists: " . (file_exists($fullPath) ? 'YES' : 'NO') . ")");
+        
+        if (file_exists($fullPath)) {
+            include $fullPath;
+            exit;
+        } else {
+            header("HTTP/1.1 404 Not Found");
+            if ($errorMessage) {
+                echo json_encode([
+                    'success' => false,
+                    'error' => $errorMessage
+                ]);
+            } else {
+                echo "404 Not Found - $route not available";
+            }
+            exit;
+        }
+    }
+}
+
+// Log initial request
+logDebug("REQUEST_URI: {$_SERVER['REQUEST_URI']}");
+
+// Handle API requests first
+if (substr($_SERVER["REQUEST_URI"], 0, 4) == "/api") {
+    handleRoute("/api", '/api.php', 'Batman API not found');
+}
+
+// Handle specific routes
+$routes = [
+    '/get-changes.php' => '/get-changes.php',
+    '/get-error-details.php' => '/get-error-details.php',
+    '/errors.php' => '/errors.php',
+    '/login.php' => '/login.php',
+    '/logout.php' => '/logout.php',
+    '/debug.php' => '/debug.php'
+];
+
+foreach ($routes as $route => $filePath) {
+    handleRoute($route, $filePath);
+}
+
+// Handle static files
+$requestedPath = $batmanDir . $_SERVER['REQUEST_URI'];
+
+logDebug("Static file request: $requestedPath (is_dir: " . (is_dir($requestedPath) ? 'YES' : 'NO') . ", is_file: " . (is_file($requestedPath) ? 'YES' : 'NO') . ")");
+
+// If it's a directory, serve index.php first, then index.html
+if (is_dir($requestedPath)) {
+    $indexPhp = $requestedPath . '/index.php';
+    $indexHtml = $requestedPath . '/index.html';
+    
+    if (file_exists($indexPhp)) {
+        include $indexPhp;
+        exit;
+    } elseif (file_exists($indexHtml)) {
+        header('Content-Type: text/html');
+        readfile($indexHtml);
+        exit;
+    }
+}
+
+// If it's a PHP file, execute it
+if (is_file($requestedPath) && pathinfo($requestedPath, PATHINFO_EXTENSION) === 'php') {
+    include $requestedPath;
+    exit;
+}
+
+// If it's a static file, serve it
+if (is_file($requestedPath)) {
+    // Determine content type based on file extension
+    $extension = pathinfo($requestedPath, PATHINFO_EXTENSION);
+    $contentTypes = [
+        'html' => 'text/html',
+        'json' => 'application/json',
+        'css' => 'text/css',
+        'js' => 'application/javascript',
+        'png' => 'image/png',
+        'jpg' => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'gif' => 'image/gif',
+        'svg' => 'image/svg+xml',
+        'ico' => 'image/x-icon',
+        'woff' => 'font/woff',
+        'woff2' => 'font/woff2',
+        'ttf' => 'font/ttf',
+        'eot' => 'application/vnd.ms-fontobject'
+    ];
+    
+    if (isset($contentTypes[$extension])) {
+        header('Content-Type: ' . $contentTypes[$extension]);
+    }
+    
+    readfile($requestedPath);
+    exit;
+}
+
+// Default to index.php for all other requests
+$defaultPhp = $batmanDir . '/index.php';
+$defaultHtml = $batmanDir . '/index.html';
+
+if (file_exists($defaultPhp)) {
+    include $defaultPhp;
+    exit;
+} elseif (file_exists($defaultHtml)) {
+    header('Content-Type: text/html');
+    readfile($defaultHtml);
+    exit;
+} else {
+    header("HTTP/1.1 404 Not Found");
+    echo "404 Not Found - Batman dashboard not available";
+    if ($debugLogging) {
+        echo "\nDebug info:";
+        echo "\n- Batman directory: " . $batmanDir;
+        echo "\n- Default PHP path: " . $defaultPhp;
+        echo "\n- Default HTML path: " . $defaultHtml;
+        echo "\n- PHP exists: " . (file_exists($defaultPhp) ? 'YES' : 'NO');
+        echo "\n- HTML exists: " . (file_exists($defaultHtml) ? 'YES' : 'NO');
+        echo "\n- Requested URI: " . $_SERVER['REQUEST_URI'];
+    }
+    exit;
+}
+
+?>

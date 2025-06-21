@@ -1,6 +1,6 @@
 <?php
 /**
- * Login page for Logging Dashboard
+ * Login page for Batman Dashboard
  * @copyright This file is part of the LazyMePHP Framework developed by Duarte Peixinho
  * @author Duarte Peixinho
  */
@@ -10,7 +10,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Standalone bootstrap for logging dashboard
+// Standalone bootstrap for batman dashboard
 require_once __DIR__ . '/../vendor/autoload.php';
 
 // Load Environment Variables
@@ -37,30 +37,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $dbPassword = $_ENV['DB_PASSWORD'] ?? '';
     
     if (!empty($username)) {
-        if ($username === $dbUsername && $password === $dbPassword) {
-            // Login successful
-            $_SESSION['user_id'] = 1;
-            $_SESSION['username'] = $username;
-            $_SESSION['user_name'] = 'Database User';
-            $_SESSION['user_email'] = 'db@example.com';
-            $_SESSION['is_logged_in'] = true;
-            
-            // Redirect to logging dashboard
-            header('Location: index.php');
-            exit;
-        } elseif ($username === $dbUsername && empty($dbPassword) && empty($password)) {
-            // Login successful with empty password
-            $_SESSION['user_id'] = 1;
-            $_SESSION['username'] = $username;
-            $_SESSION['user_name'] = 'Database User';
-            $_SESSION['user_email'] = 'db@example.com';
-            $_SESSION['is_logged_in'] = true;
-            
-            // Redirect to logging dashboard
-            header('Location: index.php');
-            exit;
+        // Check if username matches DB_USER
+        if ($username === $dbUsername) {
+            // If DB_PASSWORD is empty or not set, allow login without password
+            if (empty($dbPassword)) {
+                // Login successful with no password required
+                $_SESSION['user_id'] = 1;
+                $_SESSION['username'] = $username;
+                $_SESSION['user_name'] = 'Database User';
+                $_SESSION['user_email'] = 'db@example.com';
+                $_SESSION['is_logged_in'] = true;
+                
+                // Redirect to batman dashboard
+                header('Location: index.php');
+                exit;
+            } else {
+                // Check password if it's set
+                if ($password === $dbPassword) {
+                    // Login successful with password
+                    $_SESSION['user_id'] = 1;
+                    $_SESSION['username'] = $username;
+                    $_SESSION['user_name'] = 'Database User';
+                    $_SESSION['user_email'] = 'db@example.com';
+                    $_SESSION['is_logged_in'] = true;
+                    
+                    // Redirect to batman dashboard
+                    header('Location: index.php');
+                    exit;
+                } else {
+                    $error = 'Invalid password';
+                }
+            }
         } else {
-            $error = 'Invalid username or password';
+            $error = 'Invalid username';
         }
     } else {
         $error = 'Please enter a username';
@@ -78,7 +87,7 @@ if (isset($_SESSION['is_logged_in']) && $_SESSION['is_logged_in']) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Logging Dashboard</title>
+    <title>Login - Batman Dashboard</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         * {
@@ -183,27 +192,27 @@ if (isset($_SESSION['is_logged_in']) && $_SESSION['is_logged_in']) {
             text-align: center;
         }
 
-        .debug-link {
-            text-align: center;
-            margin-top: 20px;
-        }
-
-        .debug-link a {
-            color: #667eea;
-            text-decoration: none;
+        .password-note {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 20px;
             font-size: 14px;
+            color: #6c757d;
         }
 
-        .debug-link a:hover {
-            text-decoration: underline;
+        .password-note i {
+            color: #667eea;
+            margin-right: 8px;
         }
     </style>
 </head>
 <body>
     <div class="login-container">
         <div class="login-header">
-            <h1><i class="fas fa-chart-line"></i> Logging Dashboard</h1>
-            <p>Please sign in to continue</p>
+            <h1><i class="fas fa-shield-alt"></i> Batman Dashboard</h1>
+            <p>Enter your database credentials to access the dashboard</p>
         </div>
 
         <?php if ($error): ?>
@@ -218,26 +227,33 @@ if (isset($_SESSION['is_logged_in']) && $_SESSION['is_logged_in']) {
             </div>
         <?php endif; ?>
 
+        <?php if (empty($_ENV['DB_PASSWORD'] ?? '')): ?>
+            <div class="password-note">
+                <i class="fas fa-info-circle"></i>
+                <strong>Note:</strong> No password is required for this database connection.
+            </div>
+        <?php endif; ?>
+
         <form method="POST" action="">
             <div class="form-group">
                 <label for="username">
                     <i class="fas fa-user"></i> Username
                 </label>
-                <input type="text" id="username" name="username" required 
-                       value="<?php echo htmlspecialchars($_POST['username'] ?? ''); ?>"
-                       placeholder="Enter your username">
+                <input type="text" id="username" name="username" value="<?php echo htmlspecialchars($_POST['username'] ?? ''); ?>" required>
             </div>
 
             <div class="form-group">
                 <label for="password">
                     <i class="fas fa-lock"></i> Password
+                    <?php if (empty($_ENV['DB_PASSWORD'] ?? '')): ?>
+                        <small style="color: #6c757d;">(Optional)</small>
+                    <?php endif; ?>
                 </label>
-                <input type="password" id="password" name="password" <?php echo empty($dbPassword) ? '' : 'required'; ?>
-                       placeholder="Enter your password<?php echo empty($dbPassword) ? ' (optional)' : ''; ?>">
+                <input type="password" id="password" name="password">
             </div>
 
             <button type="submit" class="btn-login">
-                <i class="fas fa-sign-in-alt"></i> Sign In
+                <i class="fas fa-sign-in-alt"></i> Login to Dashboard
             </button>
         </form>
     </div>

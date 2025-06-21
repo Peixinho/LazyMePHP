@@ -1,6 +1,6 @@
 <?php
 /**
- * Modern Logging Dashboard for LazyMePHP
+ * Batman Dashboard for LazyMePHP
  * @copyright This file is part of the LazyMePHP Framework developed by Duarte Peixinho
  * @author Duarte Peixinho
  */
@@ -10,7 +10,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Standalone bootstrap for logging dashboard
+// Standalone bootstrap for batman dashboard
 require_once __DIR__ . '/../vendor/autoload.php';
 
 // Load Environment Variables
@@ -31,7 +31,7 @@ $hasUserSession = isset($_SESSION['is_logged_in']) && $_SESSION['is_logged_in'];
 
 // Require login in all cases
 if (!$hasUserSession) {
-    header('Location: login.php');
+    header('Location: /batman/login.php');
     exit;
 }
 
@@ -105,18 +105,22 @@ if ($db) {
         $hourlyData = array_fill(0, 24, 0);
         $statusData = [];
         
-        // Process data for charts
-        foreach ($activityLogs as $log) {
+        // Get all logs in the date range for accurate chart data (not just paginated)
+        // Remove pagination parameters for chart data
+        $chartParams = array_slice($params, 0, -2); // Remove LIMIT and OFFSET
+        $allLogsQuery = "SELECT method, date, status_code FROM __LOG_ACTIVITY $whereClause";
+        $allLogsResult = $db->Query($allLogsQuery, $chartParams);
+        while ($row = $allLogsResult->FetchArray()) {
             // Method distribution
-            $method = $log['method'] ?? 'Unknown';
+            $method = $row['method'] ?? 'Unknown';
             $methodData[$method] = ($methodData[$method] ?? 0) + 1;
             
             // Hourly distribution
-            $hour = (int)date('G', strtotime($log['date']));
+            $hour = (int)date('G', strtotime($row['date']));
             $hourlyData[$hour]++;
             
             // Status code distribution
-            $status = $log['status_code'] ?? 'Unknown';
+            $status = $row['status_code'] ?? 'Unknown';
             $statusData[$status] = ($statusData[$status] ?? 0) + 1;
         }
         
@@ -132,6 +136,19 @@ if ($db) {
             $trendData[$row['day']] = $row['count'];
         }
         
+        // Ensure we have at least some data for charts
+        if (empty($trendData)) {
+            // Create dummy data for the last 7 days
+            for ($i = 6; $i >= 0; $i--) {
+                $date = date('Y-m-d', strtotime("-$i days"));
+                $trendData[$date] = 0;
+            }
+        }
+        
+        if (empty($methodData)) {
+            $methodData = ['GET' => 0, 'POST' => 0, 'PUT' => 0, 'DELETE' => 0];
+        }
+        
     } catch (Exception $e) {
         // Silently handle database errors
     }
@@ -144,7 +161,7 @@ $totalPages = ceil($totalActivities / $limit);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Logging Dashboard - <?php echo LazyMePHP::NAME(); ?></title>
+    <title>Batman Dashboard - <?php echo LazyMePHP::NAME(); ?></title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -398,89 +415,57 @@ $totalPages = ceil($totalActivities / $limit);
         .status-500 { background: #f8d7da; color: #721c24; }
 
         .pagination {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
-            margin-top: 30px;
+            margin: 20px 0;
+            text-align: center;
         }
 
         .pagination a, .pagination span {
-            padding: 10px 15px;
-            border-radius: 8px;
+            display: inline-block;
+            margin: 0 4px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            background: #f1f5f9;
+            color: #222;
             text-decoration: none;
-            transition: all 0.3s ease;
-        }
-
-        .pagination a {
-            background: #f8f9fa;
-            color: #667eea;
-            border: 1px solid #e1e8ed;
-        }
-
-        .pagination a:hover {
-            background: #667eea;
-            color: white;
         }
 
         .pagination .current {
             background: #667eea;
-            color: white;
-            font-weight: 600;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: #7f8c8d;
-        }
-
-        .empty-state i {
-            font-size: 4em;
-            margin-bottom: 20px;
-            color: #bdc3c7;
+            color: #fff;
+            font-weight: bold;
         }
 
         .nav-tabs {
             display: flex;
             gap: 10px;
             margin-bottom: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
         }
 
         .nav-tab {
-            padding: 10px 20px;
+            padding: 12px 20px;
             border-radius: 10px;
             text-decoration: none;
-            color: #7f8c8d;
+            color: #2c3e50;
+            font-weight: 500;
             transition: all 0.3s ease;
-            background: rgba(255, 255, 255, 0.5);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-tab:hover {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
         }
 
         .nav-tab.active {
             background: #667eea;
             color: white;
-        }
-
-        .nav-tab:hover {
-            background: #667eea;
-            color: white;
-        }
-
-        .view-changes {
-            background: #667eea;
-            color: white;
-            padding: 6px 12px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-size: 12px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            display: inline-block;
-        }
-
-        .view-changes:hover {
-            background: #5a6fd8;
-            transform: translateY(-1px);
         }
 
         .modal {
@@ -545,6 +530,7 @@ $totalPages = ceil($totalActivities / $limit);
             padding: 12px;
             text-align: left;
             border-bottom: 1px solid #e1e8ed;
+            vertical-align: middle;
         }
 
         .changes-table th {
@@ -693,8 +679,8 @@ $totalPages = ceil($totalActivities / $limit);
             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                 <div>
                     <h1>
-                        <i class="fas fa-chart-line"></i>
-                        Logging Dashboard
+                        <i class="fas fa-bat"></i>
+                        Batman Dashboard
                     </h1>
                     <p>Monitor application activity, errors, and performance metrics</p>
                     <?php if (isset($_SESSION['is_logged_in']) && $_SESSION['is_logged_in']): ?>
@@ -712,6 +698,18 @@ $totalPages = ceil($totalActivities / $limit);
                     <?php endif; ?>
                 </div>
             </div>
+        </div>
+
+        <div class="nav-tabs">
+            <a href="/batman/index.php?debug=1" class="nav-tab active">
+                <i class="fas fa-activity"></i> Activity Logs
+            </a>
+            <a href="/batman/errors.php?debug=1" class="nav-tab">
+                <i class="fas fa-exclamation-triangle"></i> Error Logs
+            </a>
+            <a href="/batman/debug.php?debug=1" class="nav-tab">
+                <i class="fas fa-bug"></i> Debug Dashboard
+            </a>
         </div>
 
         <div class="stats-grid">
@@ -783,6 +781,17 @@ $totalPages = ceil($totalActivities / $limit);
         <!-- Charts Section -->
         <div class="charts-section">
             <h3><i class="fas fa-chart-line"></i> Analytics Dashboard</h3>
+            
+            <!-- Debug info (remove in production) -->
+            <?php if (isset($_GET['debug']) && $_GET['debug'] == '1'): ?>
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 20px; font-family: monospace; font-size: 12px;">
+                    <strong>Debug Info:</strong><br>
+                    Trend Data: <?php echo json_encode($trendData); ?><br>
+                    Method Data: <?php echo json_encode($methodData); ?><br>
+                    Total Activities: <?php echo $totalActivities; ?>
+                </div>
+            <?php endif; ?>
+            
             <div class="charts-grid">
                 <div class="chart-container">
                     <div class="chart-title">Activity Trends</div>
@@ -793,15 +802,6 @@ $totalPages = ceil($totalActivities / $limit);
                     <canvas id="methodChart" class="chart-canvas"></canvas>
                 </div>
             </div>
-        </div>
-
-        <div class="nav-tabs">
-            <a href="/logging/errors.php?debug=1" class="nav-tab">
-                <i class="fas fa-exclamation-triangle"></i> Error Logs
-            </a>
-            <a href="/logging/index.php?debug=1" class="nav-tab active">
-                <i class="fas fa-activity"></i> Activity Logs
-            </a>
         </div>
 
         <div class="logs-section">
@@ -867,7 +867,19 @@ $totalPages = ceil($totalActivities / $limit);
                                     <small><?php echo htmlspecialchars($log['ip_address'] ?: 'N/A'); ?></small>
                                 </td>
                                 <td>
-                                    <a href="#" class="view-changes" data-log-id="<?php echo $log['id']; ?>">View Changes</a>
+                                    <?php 
+                                    // Check if there are changes for this log
+                                    $changesQuery = "SELECT COUNT(*) as count FROM __LOG_DATA WHERE id_log_activity = ?";
+                                    $changesResult = $db->Query($changesQuery, [$log['id']]);
+                                    $changesCount = $changesResult->FetchArray()['count'] ?? 0;
+                                    
+                                    if ($changesCount > 0): ?>
+                                        <a href="#" class="view-changes btn" style="background: #667eea; color: white; padding: 6px 12px; font-size: 0.8em; border-radius: 6px;" data-log-id="<?php echo $log['id']; ?>">
+                                            <i class="fas fa-eye"></i> View Changes (<?php echo $changesCount; ?>)
+                                        </a>
+                                    <?php else: ?>
+                                        <span style="color: #7f8c8d; font-size: 0.8em; font-style: italic;">No changes</span>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -927,23 +939,115 @@ $totalPages = ceil($totalActivities / $limit);
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Initialize charts
+            initializeCharts();
+            
+            // Initialize modal functionality
+            initializeModal();
+        });
+
+        function initializeCharts() {
+            console.log('Initializing charts...');
+            
+            // Trend Chart
+            const trendCtx = document.getElementById('trendChart');
+            if (trendCtx) {
+                const trendLabels = <?php echo json_encode(array_keys($trendData)); ?>;
+                const trendCounts = <?php echo json_encode(array_values($trendData)); ?>;
+                
+                console.log('Trend data:', { labels: trendLabels, counts: trendCounts });
+                
+                try {
+                    new Chart(trendCtx, {
+                        type: 'line',
+                        data: {
+                            labels: trendLabels,
+                            datasets: [{
+                                label: 'Requests',
+                                data: trendCounts,
+                                borderColor: '#667eea',
+                                backgroundColor: 'rgba(102,126,234,0.1)',
+                                fill: true,
+                                tension: 0.3
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { 
+                                legend: { display: false } 
+                            },
+                            scales: { 
+                                y: { beginAtZero: true } 
+                            }
+                        }
+                    });
+                    console.log('Trend chart initialized successfully');
+                } catch (error) {
+                    console.error('Error initializing trend chart:', error);
+                }
+            } else {
+                console.error('Trend chart canvas not found');
+            }
+
+            // Method Chart
+            const methodCtx = document.getElementById('methodChart');
+            if (methodCtx) {
+                const methodLabels = <?php echo json_encode(array_keys($methodData)); ?>;
+                const methodCounts = <?php echo json_encode(array_values($methodData)); ?>;
+                
+                console.log('Method data:', { labels: methodLabels, counts: methodCounts });
+                
+                try {
+                    new Chart(methodCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: methodLabels,
+                            datasets: [{
+                                data: methodCounts,
+                                backgroundColor: ['#667eea','#764ba2','#f093fb','#f5576c','#4facfe','#00f2fe','#43e97b']
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { 
+                                legend: { position: 'bottom' } 
+                            }
+                        }
+                    });
+                    console.log('Method chart initialized successfully');
+                } catch (error) {
+                    console.error('Error initializing method chart:', error);
+                }
+            } else {
+                console.error('Method chart canvas not found');
+            }
+        }
+
+        function initializeModal() {
             const viewChangesButtons = document.querySelectorAll('.view-changes');
             const modal = document.getElementById('view-changes-modal');
             const closeModal = document.querySelector('.close');
             const changesTable = document.querySelector('.changes-table table tbody');
             const noChanges = document.querySelector('.no-changes');
 
+            console.log('Found view-changes buttons:', viewChangesButtons.length);
+
             viewChangesButtons.forEach(button => {
                 button.addEventListener('click', function(e) {
                     e.preventDefault();
                     const logId = this.getAttribute('data-log-id');
+                    console.log('View changes clicked for log ID:', logId);
                     fetchChanges(logId);
                 });
             });
 
-            closeModal.addEventListener('click', function() {
-                modal.style.display = 'none';
-            });
+            if (closeModal) {
+                closeModal.addEventListener('click', function() {
+                    modal.style.display = 'none';
+                });
+            }
 
             // Close modal when clicking outside
             window.addEventListener('click', function(e) {
@@ -967,7 +1071,7 @@ $totalPages = ceil($totalActivities / $limit);
                     basePath += '/';
                 }
                 
-                const url = window.location.origin + basePath + 'get-changes.php?log_id=' + logId + '&debug=1';
+                const url = window.location.origin + '/batman/get-changes.php?log_id=' + logId + '&debug=1';
                 
                 console.log('Pathname:', pathname);
                 console.log('Base path:', basePath);
@@ -1046,91 +1150,6 @@ $totalPages = ceil($totalActivities / $limit);
                         console.error('Error fetching changes:', error);
                         alert(`Error fetching changes: ${error.message}`);
                     });
-            }
-            
-            // Initialize Charts
-            initializeCharts();
-        });
-        
-        function initializeCharts() {
-            // Chart data from PHP
-            const methodData = <?php echo json_encode($methodData ?? []); ?>;
-            const hourlyData = <?php echo json_encode($hourlyData ?? []); ?>;
-            const trendData = <?php echo json_encode($trendData ?? []); ?>;
-            const statusData = <?php echo json_encode($statusData ?? []); ?>;
-            
-            // Activity Trends Chart
-            const trendCtx = document.getElementById('trendChart');
-            if (trendCtx) {
-                const trendLabels = Object.keys(trendData);
-                const trendValues = Object.values(trendData);
-                
-                new Chart(trendCtx, {
-                    type: 'line',
-                    data: {
-                        labels: trendLabels,
-                        datasets: [{
-                            label: 'Activities',
-                            data: trendValues,
-                            borderColor: '#667eea',
-                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                            borderWidth: 3,
-                            fill: true,
-                            tension: 0.4
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                display: false
-                            }
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                grid: {
-                                    color: 'rgba(0,0,0,0.1)'
-                                }
-                            },
-                            x: {
-                                grid: {
-                                    display: false
-                                }
-                            }
-                        }
-                    }
-                });
-            }
-            
-            // Method Distribution Chart
-            const methodCtx = document.getElementById('methodChart');
-            if (methodCtx) {
-                const methodLabels = Object.keys(methodData);
-                const methodValues = Object.values(methodData);
-                const methodColors = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe'];
-                
-                new Chart(methodCtx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: methodLabels,
-                        datasets: [{
-                            data: methodValues,
-                            backgroundColor: methodColors,
-                            borderWidth: 0
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'bottom'
-                            }
-                        }
-                    }
-                });
             }
         }
     </script>

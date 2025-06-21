@@ -1,134 +1,173 @@
 <?php
 
 /**
- * LazyMePHP
+ * LazyMePHP Webserver
  * @copyright This file is part of the LazyMePHP developed by Duarte Peixinho
  * @author Duarte Peixinho
  */
 
-if (file_exists(getcwd() . '/public/' . $_SERVER['REQUEST_URI'])) {
-  return false; // serve the requested resource as-is.
-} 
+// Load environment variables
+$envFile = __DIR__ . '/../../.env';
+if (file_exists($envFile)) {
+    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos($line, '=') !== false && strpos($line, '#') !== 0) {
+            list($key, $value) = explode('=', $line, 2);
+            $_ENV[trim($key)] = trim($value);
+            putenv(trim($key) . '=' . trim($value));
+        }
+    }
+}
 
+// Configuration
+$debugLogging = $_ENV['WEBSERVER_DEBUG_LOGGING'] ?? false;
+$publicDir = getcwd() . '/public';
+$docsDir = getcwd() . '/docs';
+
+// Debug logging function
+function logDebug($message) {
+    global $debugLogging;
+    if ($debugLogging) {
+        file_put_contents(
+            __DIR__ . '/../../webserver_debug.log',
+            "\n" . date('Y-m-d H:i:s') . " - $message\n",
+            FILE_APPEND
+        );
+    }
+}
+
+// Content type mapping
+$contentTypes = [
+    'html' => 'text/html',
+    'json' => 'application/json',
+    'css' => 'text/css',
+    'js' => 'application/javascript',
+    'png' => 'image/png',
+    'jpg' => 'image/jpeg',
+    'jpeg' => 'image/jpeg',
+    'gif' => 'image/gif',
+    'svg' => 'image/svg+xml',
+    'ico' => 'image/x-icon',
+    'woff' => 'font/woff',
+    'woff2' => 'font/woff2',
+    'ttf' => 'font/ttf',
+    'eot' => 'application/vnd.ms-fontobject',
+    'pdf' => 'application/pdf',
+    'txt' => 'text/plain',
+    'xml' => 'application/xml',
+    'zip' => 'application/zip'
+];
+
+// Log initial request
+logDebug("REQUEST_URI: {$_SERVER['REQUEST_URI']}");
+
+// Check if file exists in public directory
+if (file_exists($publicDir . '/' . $_SERVER['REQUEST_URI'])) {
+    logDebug("Serving static file from public: {$_SERVER['REQUEST_URI']}");
+    return false; // serve the requested resource as-is
+}
+
+// Parse command line arguments
 $cmdline = file_get_contents('php://input');
 $argv = str_getcsv($cmdline, "\0", "\"", "\\");
-$argvo = $argv;
 
 while (true) {
-  $arg = array_shift($argv);
-  if ($arg === null || $arg === '--') {
-    // Stick whatever on the start to align with normal $argv
-    array_unshift($argv, __FILE__);
-    if ($arg !== null) {
-      // Remove extra empty arg at the end
-      array_pop($argv);
+    $arg = array_shift($argv);
+    if ($arg === null || $arg === '--') {
+        array_unshift($argv, __FILE__);
+        if ($arg !== null) {
+            array_pop($argv);
+        }
+        break;
     }
-    break;
-  }
 }
-$argc = count($argv);
 
+// Get file path
 $filePath = realpath(ltrim($_SERVER["REQUEST_URI"], '/'));
-if ($filePath && is_dir($filePath)){
-  // attempt to find an index file
-  foreach (['index.php', 'index.html'] as $indexFile){
-    if ($filePath = realpath($filePath . DIRECTORY_SEPARATOR . $indexFile)){
-      break;
+if ($filePath && is_dir($filePath)) {
+    // attempt to find an index file
+    foreach (['index.php', 'index.html'] as $indexFile) {
+        if ($filePath = realpath($filePath . DIRECTORY_SEPARATOR . $indexFile)) {
+            break;
+        }
     }
-  }
 }
+
+// Security checks and file serving
 if ($filePath && is_file($filePath)) {
-  // 1. check that file is not outside of this directory for security
-  // 2. check for circular reference to router.php
-  // 3. don't serve dotfiles
-  if (strpos($filePath, getcwd() . DIRECTORY_SEPARATOR) === 0 &&
-    $filePath != getcwd() . DIRECTORY_SEPARATOR . 'serve.php' &&
-    substr(basename($filePath), 0, 1) != '.'
-) {
-    if (strtolower(substr($filePath, -4)) == '.php') {
-      // php file; serve through interpreter
-      include $filePath;
+    // Security checks
+    if (strpos($filePath, getcwd() . DIRECTORY_SEPARATOR) === 0 &&
+        $filePath != getcwd() . DIRECTORY_SEPARATOR . 'serve.php' &&
+        substr(basename($filePath), 0, 1) != '.'
+    ) {
+        if (strtolower(substr($filePath, -4)) == '.php') {
+            // PHP file; serve through interpreter
+            logDebug("Executing PHP file: $filePath");
+            include $filePath;
+        } else {
+            // Asset file; serve from filesystem
+            logDebug("Serving static file: $filePath");
+            return false;
+        }
     } else {
-      // asset file; serve from filesystem
-      return false;
-    }
-  } else {
-    // disallowed file
-    header("HTTP/1.1 404 Not Found");
-    echo "404 Not Found";
-  }
-} else {
-  // rewrite to our index file
-  if (substr($_SERVER["REQUEST_URI"],0,4) == "/api")
-    include getcwd() . DIRECTORY_SEPARATOR . 'public/api/index.php';
-  elseif (substr($_SERVER["REQUEST_URI"],0,8) == "/logging") {
-    // Handle logging directory - check if specific file exists
-    $loggingPath = getcwd() . DIRECTORY_SEPARATOR . 'logging';
-    $requestedFile = ltrim(parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH), '/');
-    $fullPath = getcwd() . DIRECTORY_SEPARATOR . $requestedFile;
-
-    // DEBUG OUTPUT
-    file_put_contents(
-        __DIR__ . '/../../webserver_debug.log',
-        "\n---\nREQUEST_URI: {$_SERVER['REQUEST_URI']}\nrequestedFile: $requestedFile\nfullPath: $fullPath\nloggingPath: $loggingPath\nis_dir(fullPath): " . (is_dir($fullPath) ? 'YES' : 'NO') . "\nfile_exists(fullPath): " . (file_exists($fullPath) ? 'YES' : 'NO') . "\n",
-        FILE_APPEND
-    );
-
-    // If the path is exactly 'logging' (directory), serve index.php
-    if (is_dir($fullPath)) {
-      include $loggingPath . DIRECTORY_SEPARATOR . 'index.php';
-    }
-    // If the requested file exists in logging directory, serve it
-    elseif (file_exists($fullPath) && strpos($fullPath, $loggingPath) === 0) {
-      include $fullPath;
-    } else {
-      // Default to index.php if file doesn't exist
-      include $loggingPath . DIRECTORY_SEPARATOR . 'index.php';
-    }
-  } elseif (substr($_SERVER["REQUEST_URI"],0,5) == "/docs") {
-    // Handle docs directory - serve static files directly
-    $requestedFile = ltrim(parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH), '/');
-    $fullPath = getcwd() . DIRECTORY_SEPARATOR . $requestedFile;
-    $docsPath = getcwd() . DIRECTORY_SEPARATOR . 'public/docs';
-
-    // If the requested file exists in docs directory, serve it
-    if (file_exists($fullPath) && strpos($fullPath, $docsPath) === 0) {
-      // Determine content type based on file extension
-      $extension = pathinfo($fullPath, PATHINFO_EXTENSION);
-      $contentTypes = [
-        'html' => 'text/html',
-        'json' => 'application/json',
-        'css' => 'text/css',
-        'js' => 'application/javascript',
-        'png' => 'image/png',
-        'jpg' => 'image/jpeg',
-        'jpeg' => 'image/jpeg',
-        'gif' => 'image/gif',
-        'svg' => 'image/svg+xml'
-      ];
-      
-      if (isset($contentTypes[$extension])) {
-        header('Content-Type: ' . $contentTypes[$extension]);
-      }
-      
-      // Serve the file
-      readfile($fullPath);
-      exit;
-    } else {
-      // Default to index.html if file doesn't exist
-      $defaultFile = $docsPath . DIRECTORY_SEPARATOR . 'index.html';
-      if (file_exists($defaultFile)) {
-        header('Content-Type: text/html');
-        readfile($defaultFile);
-        exit;
-      } else {
-        // 404 if docs directory doesn't exist
+        // Disallowed file
+        logDebug("Access denied to file: $filePath");
         header("HTTP/1.1 404 Not Found");
-        echo "404 Not Found - Documentation not available";
-        exit;
-      }
+        echo "404 Not Found";
     }
-  } else
-    include getcwd() . DIRECTORY_SEPARATOR . 'public/index.php';
+} else {
+    // Route handling
+    if (substr($_SERVER["REQUEST_URI"], 0, 4) == "/api") {
+        // Route through API router
+        logDebug("Routing to API: {$_SERVER['REQUEST_URI']}");
+        include $publicDir . DIRECTORY_SEPARATOR . 'api/index.php';
+    } elseif (substr($_SERVER["REQUEST_URI"], 0, 5) == "/docs") {
+        // Handle docs directory
+        handleDocsRoute();
+    } else {
+        // Default route to main application
+        logDebug("Routing to main application");
+        include $publicDir . DIRECTORY_SEPARATOR . 'index.php';
+    }
 }
+
+/**
+ * Handle documentation routes
+ */
+function handleDocsRoute() {
+    global $docsDir, $contentTypes;
+    
+    $requestedFile = ltrim(parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH), '/');
+    $fullPath = getcwd() . DIRECTORY_SEPARATOR . $requestedFile;
+    
+    logDebug("Docs request: $requestedFile -> $fullPath");
+    
+    // If the requested file exists in docs directory, serve it
+    if (file_exists($fullPath) && strpos($fullPath, $docsDir) === 0) {
+        // Determine content type
+        $extension = pathinfo($fullPath, PATHINFO_EXTENSION);
+        if (isset($contentTypes[$extension])) {
+            header('Content-Type: ' . $contentTypes[$extension]);
+        }
+        
+        // Serve the file
+        readfile($fullPath);
+        exit;
+    } else {
+        // Default to index.html if file doesn't exist
+        $defaultFile = $docsDir . DIRECTORY_SEPARATOR . 'index.html';
+        if (file_exists($defaultFile)) {
+            header('Content-Type: text/html');
+            readfile($defaultFile);
+            exit;
+        } else {
+            // 404 if docs directory doesn't exist
+            logDebug("Documentation not found: $docsDir");
+            header("HTTP/1.1 404 Not Found");
+            echo "404 Not Found - Documentation not available";
+            exit;
+        }
+    }
+}
+
 ?>

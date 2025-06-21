@@ -10,7 +10,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Standalone bootstrap for logging dashboard
+// Standalone bootstrap for batman dashboard
 require_once __DIR__ . '/../vendor/autoload.php';
 
 // Load Environment Variables
@@ -25,7 +25,7 @@ new Core\LazyMePHP();
 use Core\LazyMePHP;
 
 // Set content type to JSON
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
 
 // Proper authentication check - require login
 $hasUserSession = isset($_SESSION['is_logged_in']) && $_SESSION['is_logged_in'];
@@ -38,7 +38,7 @@ if (!$hasUserSession) {
         'code' => 'UNAUTHORIZED',
         'session_status' => session_status(),
         'session_data' => $_SESSION
-    ]);
+    ], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
@@ -51,7 +51,7 @@ if (!$logId) {
         'success' => false,
         'error' => 'Log ID is required',
         'received_log_id' => $_GET['log_id'] ?? 'not set'
-    ]);
+    ], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
@@ -98,22 +98,36 @@ try {
     $activityResult = $db->Query($activityQuery, [$logId]);
     $activity = $activityResult->FetchArray();
 
-    echo json_encode([
+    $response = [
         'success' => true,
         'activity' => $activity,
         'changes' => $changes,
         'total_changes' => count($changes),
         'log_id' => $logId
-    ]);
+    ];
+
+    // Debug output if requested
+    if (isset($_GET['debug']) && $_GET['debug'] == '1') {
+        error_log("Batman get-changes.php debug - Log ID: $logId, Changes: " . count($changes));
+    }
+
+    echo json_encode($response, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
 } catch (Exception $e) {
     http_response_code(500);
-    echo json_encode([
+    $errorResponse = [
         'success' => false,
         'error' => 'Failed to fetch changes: ' . $e->getMessage(),
         'file' => $e->getFile(),
         'line' => $e->getLine(),
         'log_id' => $logId
-    ]);
+    ];
+    
+    // Debug output if requested
+    if (isset($_GET['debug']) && $_GET['debug'] == '1') {
+        error_log("Batman get-changes.php error - " . $e->getMessage());
+    }
+    
+    echo json_encode($errorResponse, JSON_UNESCAPED_UNICODE);
 }
 ?> 

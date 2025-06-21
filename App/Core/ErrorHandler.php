@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Core;
 
 /**
- * Centralized Error Handler for LazyMePHP Framework
- * Provides consistent error handling and logging
+ * Enhanced Error Handler for LazyMePHP Framework
+ * Provides consistent error handling, detailed debugging, and developer-friendly messages
  */
 class ErrorHandler
 {
@@ -18,34 +18,57 @@ class ErrorHandler
         'RATE_LIMIT_EXCEEDED' => 429,
         'INTERNAL_ERROR' => 500,
         'BAD_REQUEST' => 400,
-        'CONFLICT' => 409
+        'CONFLICT' => 409,
+        'DATABASE_ERROR' => 500,
+        'CONFIGURATION_ERROR' => 500,
+        'FILE_NOT_FOUND' => 404,
+        'PERMISSION_DENIED' => 403,
+        'TIMEOUT' => 408,
+        'SERVICE_UNAVAILABLE' => 503
+    ];
+
+    private const ERROR_MESSAGES = [
+        'VALIDATION_ERROR' => 'The provided data is invalid',
+        'NOT_FOUND' => 'The requested resource was not found',
+        'UNAUTHORIZED' => 'Authentication is required to access this resource',
+        'FORBIDDEN' => 'You do not have permission to access this resource',
+        'RATE_LIMIT_EXCEEDED' => 'Too many requests. Please try again later',
+        'INTERNAL_ERROR' => 'An internal server error occurred',
+        'BAD_REQUEST' => 'The request is malformed or invalid',
+        'CONFLICT' => 'The request conflicts with the current state of the resource',
+        'DATABASE_ERROR' => 'A database operation failed',
+        'CONFIGURATION_ERROR' => 'A configuration error occurred',
+        'FILE_NOT_FOUND' => 'The requested file was not found',
+        'PERMISSION_DENIED' => 'Permission denied for this operation',
+        'TIMEOUT' => 'The request timed out',
+        'SERVICE_UNAVAILABLE' => 'The service is temporarily unavailable'
     ];
 
     /**
-     * Handle API errors with consistent response format
+     * Enhanced API error handler with detailed debugging information
      */
     public static function handleApiError(
         string $message, 
         string $code = 'INTERNAL_ERROR', 
         ?array $details = null,
-        ?\Throwable $exception = null
+        ?\Throwable $exception = null,
+        ?array $context = null
     ): void {
         // Do not output JSON or STDERR in CLI test environment
         if ((php_sapi_name() === 'cli' || defined('STDIN')) && self::isTestEnvironment()) {
             return;
         }
+        
         // Do not output JSON in CLI context (for scripts, artisan, etc.)
         if (php_sapi_name() === 'cli' || defined('STDIN')) {
-            fwrite(STDERR, "[API ERROR] $code: $message\n");
-            if ($exception) {
-                fwrite(STDERR, $exception->getTraceAsString() . "\n");
-            }
+            self::outputCliError($message, $code, $exception);
             return;
         }
+        
         $httpCode = self::ERROR_CODES[$code] ?? 500;
         
-        // Log the error to database
-        self::logErrorToDatabase($message, $code, $httpCode, $exception, 'API');
+        // Log the error to database with enhanced context
+        self::logErrorToDatabase($message, $code, $httpCode, $exception, 'API', $context);
         
         http_response_code($httpCode);
         header('Content-Type: application/json');
@@ -55,7 +78,9 @@ class ErrorHandler
             'error' => [
                 'message' => $message,
                 'code' => $code,
-                'http_code' => $httpCode
+                'http_code' => $httpCode,
+                'type' => self::getErrorType($code),
+                'suggestion' => self::getErrorSuggestion($code, $message)
             ]
         ];
 
@@ -64,75 +89,137 @@ class ErrorHandler
             $response['error']['details'] = $details;
         }
 
+        // Add context information
+        if ($context) {
+            $response['error']['context'] = $context;
+        }
+
         // Add debug info in non-production
-        if (self::isDebugMode() && $exception) {
-            $response['debug'] = [
-                'file' => $exception->getFile(),
-                'line' => $exception->getLine(),
-                'trace' => $exception->getTraceAsString()
-            ];
+        if (self::isDebugMode()) {
+            $response['debug'] = self::generateDebugInfo($exception, $context);
         }
 
         echo json_encode($response, JSON_PRETTY_PRINT);
     }
 
     /**
-     * Handle validation errors specifically
+     * Enhanced validation error handler with field-specific messages
      */
-    public static function handleValidationError(array $errors): void {
+    public static function handleValidationError(array $errors, ?array $context = null): void {
+        $enhancedErrors = [];
+        
+        foreach ($errors as $field => $error) {
+            $enhancedErrors[$field] = [
+                'message' => $error,
+                'field' => $field,
+                'suggestion' => self::getValidationSuggestion($field, $error)
+            ];
+        }
+        
         self::handleApiError(
             'Validation failed',
             'VALIDATION_ERROR',
-            ['validation_errors' => $errors]
+            ['validation_errors' => $enhancedErrors],
+            null,
+            $context
         );
     }
 
     /**
-     * Handle not found errors
+     * Enhanced database error handler with query information
      */
-    public static function handleNotFoundError(string $resource = 'Resource'): void {
+    public static function handleDatabaseError(\Throwable $exception, ?string $query = null, ?array $params = null): void {
+        $message = self::isDebugMode() 
+            ? $exception->getMessage() 
+            : 'Database operation failed';
+            
+        $context = [];
+        if ($query) {
+            $context['query'] = $query;
+        }
+        if ($params) {
+            $context['params'] = $params;
+        }
+        
+        self::handleApiError(
+            $message,
+            'DATABASE_ERROR',
+            null,
+            $exception,
+            $context
+        );
+    }
+
+    /**
+     * Enhanced not found error with resource suggestions
+     */
+    public static function handleNotFoundError(string $resource = 'Resource', ?array $suggestions = null): void {
+        $details = null;
+        if ($suggestions) {
+            $details = ['suggestions' => $suggestions];
+        }
+        
         self::handleApiError(
             "$resource not found",
-            'NOT_FOUND'
+            'NOT_FOUND',
+            $details
         );
     }
 
     /**
-     * Handle unauthorized errors
+     * Enhanced unauthorized error with authentication hints
      */
-    public static function handleUnauthorizedError(string $message = 'Unauthorized'): void {
+    public static function handleUnauthorizedError(string $message = 'Unauthorized', ?string $authType = null): void {
+        $details = null;
+        if ($authType) {
+            $details = ['auth_type' => $authType, 'hint' => 'Please provide valid authentication credentials'];
+        }
+        
         self::handleApiError(
             $message,
-            'UNAUTHORIZED'
+            'UNAUTHORIZED',
+            $details
         );
     }
 
     /**
-     * Handle forbidden errors
+     * Enhanced forbidden error with permission details
      */
-    public static function handleForbiddenError(string $message = 'Access denied'): void {
+    public static function handleForbiddenError(string $message = 'Access denied', ?array $requiredPermissions = null): void {
+        $details = null;
+        if ($requiredPermissions) {
+            $details = ['required_permissions' => $requiredPermissions];
+        }
+        
         self::handleApiError(
             $message,
-            'FORBIDDEN'
+            'FORBIDDEN',
+            $details
         );
     }
 
     /**
-     * Handle rate limit errors
+     * Enhanced rate limit error with retry information
      */
-    public static function handleRateLimitError(int $retryAfter = 60): void {
+    public static function handleRateLimitError(int $retryAfter = 60, ?int $limit = null, ?int $remaining = null): void {
         // Do not output JSON or STDERR in CLI test environment
         if ((php_sapi_name() === 'cli' || defined('STDIN')) && self::isTestEnvironment()) {
             return;
         }
+        
         // Do not output JSON in CLI context
         if (php_sapi_name() === 'cli' || defined('STDIN')) {
             fwrite(STDERR, "[RATE LIMIT] Retry after $retryAfter seconds\n");
             return;
         }
+        
         http_response_code(429);
         header('Retry-After: ' . $retryAfter);
         header('Content-Type: application/json');
+        
+        $details = ['retry_after' => $retryAfter];
+        if ($limit) $details['limit'] = $limit;
+        if ($remaining !== null) $details['remaining'] = $remaining;
         
         echo json_encode([
             'success' => false,
@@ -140,38 +227,25 @@ class ErrorHandler
                 'message' => 'Rate limit exceeded',
                 'code' => 'RATE_LIMIT_EXCEEDED',
                 'http_code' => 429,
-                'retry_after' => $retryAfter
+                'type' => 'rate_limit',
+                'suggestion' => "Please wait {$retryAfter} seconds before making another request",
+                'details' => $details
             ]
         ]);
     }
 
     /**
-     * Handle database errors
+     * Log error for debugging with enhanced context
      */
-    public static function handleDatabaseError(\Throwable $exception): void {
-        $message = self::isDebugMode() 
-            ? $exception->getMessage() 
-            : 'Database operation failed';
-            
-        self::handleApiError(
-            $message,
-            'INTERNAL_ERROR',
-            null,
-            $exception
-        );
-    }
-
-    /**
-     * Log error for debugging
-     */
-    public static function logError(\Throwable $exception, string $context = 'API'): void {
+    public static function logError(\Throwable $exception, string $context = 'API', ?array $additionalContext = null): void {
         // Log to database if possible
         self::logErrorToDatabase(
             $exception->getMessage(),
             'INTERNAL_ERROR',
             500,
             $exception,
-            $context
+            $context,
+            $additionalContext
         );
         
         // Fallback to old logging - skip in test environment
@@ -179,53 +253,189 @@ class ErrorHandler
             error_log("[$context] Error: " . $exception->getMessage());
             error_log("[$context] File: " . $exception->getFile() . ":" . $exception->getLine());
             error_log("[$context] Trace: " . $exception->getTraceAsString());
+            
+            if ($additionalContext) {
+                error_log("[$context] Additional Context: " . json_encode($additionalContext));
+            }
         }
     }
 
     /**
-     * Log error to database with enhanced context
+     * Enhanced error logging to database with better context
      */
     private static function logErrorToDatabase(
         string $message, 
         string $errorCode, 
         int $httpStatus, 
         ?\Throwable $exception = null, 
-        string $context = 'API'
+        string $context = 'API',
+        ?array $additionalContext = null
     ): void {
         if (!\Core\LazyMePHP::ACTIVITY_LOG()) return;
+        
         try {
             $db = \Core\LazyMePHP::DB_CONNECTION();
             if (!$db) return;
 
             // Check if __LOG_ERRORS table exists
             $tableExists = $db->Query("SHOW TABLES LIKE '__LOG_ERRORS'");
-            if (!$tableExists->FetchArray()) {
+            if (!$tableExists || $tableExists->GetCount() === 0) {
                 return; // Table doesn't exist, skip logging
             }
 
-            $query = "INSERT INTO __LOG_ERRORS (
-                error_code, error_message, http_status, exception_class,
-                exception_file, exception_line, exception_trace, context, severity,
-                created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+            $severity = self::getSeverityFromHttpStatus($httpStatus);
+            $stackTrace = $exception ? $exception->getTraceAsString() : '';
+            $file = $exception ? $exception->getFile() : '';
+            $line = $exception ? $exception->getLine() : 0;
+            $contextData = $additionalContext ? json_encode($additionalContext) : '';
 
-            $db->Query($query, [
-                $errorCode,
+            $sql = "INSERT INTO __LOG_ERRORS (error_message, error_code, http_status, severity, context, file_path, line_number, stack_trace, context_data, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+            
+            $db->Query($sql, [
                 $message,
+                $errorCode,
                 $httpStatus,
-                $exception ? get_class($exception) : null,
-                $exception ? $exception->getFile() : null,
-                $exception ? $exception->getLine() : null,
-                $exception ? $exception->getTraceAsString() : null,
+                $severity,
                 $context,
-                self::getSeverityFromHttpStatus($httpStatus)
+                $file,
+                $line,
+                $stackTrace,
+                $contextData
             ]);
-        } catch (\Exception $e) {
-            // Silently fail - error logging shouldn't break the app
+
+        } catch (\Throwable $e) {
+            // If we can't log to database, fall back to error_log
             if (self::isDebugMode()) {
                 error_log("Failed to log error to database: " . $e->getMessage());
             }
         }
+    }
+
+    /**
+     * Generate comprehensive debug information
+     */
+    private static function generateDebugInfo(?\Throwable $exception, ?array $context): array {
+        $debug = [
+            'timestamp' => date('Y-m-d H:i:s'),
+            'request_id' => uniqid('req_', true),
+            'php_version' => PHP_VERSION,
+            'framework_version' => 'LazyMePHP 1.0.0',
+            'memory_usage' => memory_get_usage(true),
+            'peak_memory' => memory_get_peak_usage(true)
+        ];
+
+        if ($exception) {
+            $debug['exception'] = [
+                'file' => $exception->getFile(),
+                'line' => $exception->getLine(),
+                'trace' => $exception->getTraceAsString(),
+                'previous' => $exception->getPrevious() ? $exception->getPrevious()->getMessage() : null
+            ];
+        }
+
+        if ($context) {
+            $debug['context'] = $context;
+        }
+
+        // Add request information
+        $debug['request'] = [
+            'method' => $_SERVER['REQUEST_METHOD'] ?? 'CLI',
+            'uri' => $_SERVER['REQUEST_URI'] ?? 'CLI',
+            'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'CLI',
+            'ip' => $_SERVER['REMOTE_ADDR'] ?? 'CLI',
+            'referer' => $_SERVER['HTTP_REFERER'] ?? null
+        ];
+
+        return $debug;
+    }
+
+    /**
+     * Get error type for better categorization
+     */
+    private static function getErrorType(string $code): string {
+        $types = [
+            'VALIDATION_ERROR' => 'validation',
+            'NOT_FOUND' => 'not_found',
+            'UNAUTHORIZED' => 'authentication',
+            'FORBIDDEN' => 'authorization',
+            'RATE_LIMIT_EXCEEDED' => 'rate_limit',
+            'INTERNAL_ERROR' => 'server',
+            'BAD_REQUEST' => 'client',
+            'CONFLICT' => 'conflict',
+            'DATABASE_ERROR' => 'database',
+            'CONFIGURATION_ERROR' => 'configuration',
+            'FILE_NOT_FOUND' => 'file',
+            'PERMISSION_DENIED' => 'permission',
+            'TIMEOUT' => 'timeout',
+            'SERVICE_UNAVAILABLE' => 'service'
+        ];
+
+        return $types[$code] ?? 'unknown';
+    }
+
+    /**
+     * Get helpful suggestions for errors
+     */
+    private static function getErrorSuggestion(string $code, string $message): string {
+        $suggestions = [
+            'VALIDATION_ERROR' => 'Please check your input data and ensure all required fields are provided with valid values.',
+            'NOT_FOUND' => 'Verify the resource ID or URL path is correct.',
+            'UNAUTHORIZED' => 'Please log in or provide valid authentication credentials.',
+            'FORBIDDEN' => 'Contact your administrator if you believe you should have access to this resource.',
+            'RATE_LIMIT_EXCEEDED' => 'Please wait before making additional requests.',
+            'INTERNAL_ERROR' => 'This is a server error. Please try again later or contact support.',
+            'BAD_REQUEST' => 'Please check your request format and parameters.',
+            'CONFLICT' => 'The resource may have been modified by another request. Please refresh and try again.',
+            'DATABASE_ERROR' => 'A database operation failed. Please try again or contact support.',
+            'CONFIGURATION_ERROR' => 'Server configuration issue. Please contact support.',
+            'FILE_NOT_FOUND' => 'The requested file does not exist or has been moved.',
+            'PERMISSION_DENIED' => 'You do not have the necessary permissions for this operation.',
+            'TIMEOUT' => 'The request took too long to process. Please try again.',
+            'SERVICE_UNAVAILABLE' => 'The service is temporarily unavailable. Please try again later.'
+        ];
+
+        return $suggestions[$code] ?? 'Please try again or contact support if the problem persists.';
+    }
+
+    /**
+     * Get validation-specific suggestions
+     */
+    private static function getValidationSuggestion(string $field, string $error): string {
+        $suggestions = [
+            'email' => 'Please provide a valid email address (e.g., user@example.com)',
+            'password' => 'Password must be at least 8 characters long and contain letters and numbers',
+            'phone' => 'Please provide a valid phone number',
+            'date' => 'Please provide a valid date in YYYY-MM-DD format',
+            'url' => 'Please provide a valid URL (e.g., https://example.com)',
+            'required' => 'This field is required and cannot be empty',
+            'min_length' => 'This field must be at least the minimum required length',
+            'max_length' => 'This field must not exceed the maximum allowed length',
+            'numeric' => 'This field must contain only numbers',
+            'alpha' => 'This field must contain only letters',
+            'alphanumeric' => 'This field must contain only letters and numbers'
+        ];
+
+        foreach ($suggestions as $key => $suggestion) {
+            if (stripos($error, $key) !== false) {
+                return $suggestion;
+            }
+        }
+
+        return 'Please check the format and requirements for this field.';
+    }
+
+    /**
+     * Output error information for CLI context
+     */
+    private static function outputCliError(string $message, string $code, ?\Throwable $exception): void {
+        fwrite(STDERR, "\n[ERROR] $code: $message\n");
+        
+        if ($exception) {
+            fwrite(STDERR, "File: " . $exception->getFile() . ":" . $exception->getLine() . "\n");
+            fwrite(STDERR, "Trace:\n" . $exception->getTraceAsString() . "\n");
+        }
+        
+        fwrite(STDERR, "Suggestion: " . self::getErrorSuggestion($code, $message) . "\n\n");
     }
 
     /**
@@ -242,16 +452,18 @@ class ErrorHandler
      * Check if debug mode is enabled
      */
     private static function isDebugMode(): bool {
-        $env = strtolower($_ENV['APP_ENV'] ?? 'production');
-        $debug = strtolower($_ENV['APP_DEBUG'] ?? '');
-        if ($debug === 'true') {
-            return true;
-        }
-        if ($debug === 'false') {
-            return false;
-        }
-        // If APP_DEBUG is not set, show debug only if not in production
-        return $env !== 'production';
+        return \Core\LazyMePHP::DEBUG_MODE() || 
+               (isset($_ENV['APP_DEBUG']) && $_ENV['APP_DEBUG'] === 'true') ||
+               (isset($_GET['debug']) && $_GET['debug'] === 'true');
+    }
+
+    /**
+     * Check if running in test environment
+     */
+    private static function isTestEnvironment(): bool {
+        return defined('TESTING') || 
+               (isset($_ENV['APP_ENV']) && $_ENV['APP_ENV'] === 'testing') ||
+               (php_sapi_name() === 'cli' && strpos($_SERVER['SCRIPT_NAME'] ?? '', 'phpunit') !== false);
     }
 
     /**
@@ -326,19 +538,5 @@ class ErrorHandler
         $_SESSION['success'] = $message;
         header("Location: $redirectUrl");
         exit;
-    }
-
-    /**
-     * Detect if running under Pest or PHPUnit
-     */
-    private static function isTestEnvironment(): bool {
-        return (
-            defined('PHPUNIT_COMPOSER_INSTALL') ||
-            defined('PHPUNIT_RUNNING') ||
-            getenv('PEST') ||
-            getenv('PEST_RUNNING') ||
-            (isset($_ENV['PEST']) && $_ENV['PEST']) ||
-            (isset($_SERVER['PEST']) && $_SERVER['PEST'])
-        );
     }
 } 

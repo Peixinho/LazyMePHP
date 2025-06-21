@@ -42,23 +42,24 @@ CREATE TABLE IF NOT EXISTS __LOG_DATA (
 
 CREATE TABLE IF NOT EXISTS __LOG_ERRORS (
   id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  id_log_activity INT NULL,
-  trace_id VARCHAR(64) DEFAULT NULL,
-  error_code VARCHAR(50) NOT NULL,
   error_message TEXT NOT NULL,
-  http_status INT DEFAULT 500,
-  exception_class VARCHAR(255) DEFAULT NULL,
-  exception_file VARCHAR(500) DEFAULT NULL,
-  exception_line INT DEFAULT NULL,
-  exception_trace TEXT DEFAULT NULL,
-  context VARCHAR(50) DEFAULT 'API',
-  severity VARCHAR(20) DEFAULT 'ERROR',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_trace_id (trace_id),
+  error_code VARCHAR(50) NOT NULL,
+  http_status INT NOT NULL,
+  severity ENUM('DEBUG','INFO','WARNING','ERROR','CRITICAL') NOT NULL DEFAULT 'ERROR',
+  context VARCHAR(100) NOT NULL DEFAULT 'API',
+  file_path VARCHAR(500) DEFAULT NULL,
+  line_number INT DEFAULT NULL,
+  stack_trace LONGTEXT DEFAULT NULL,
+  context_data LONGTEXT DEFAULT NULL,
+  user_agent VARCHAR(500) DEFAULT NULL,
+  ip_address VARCHAR(45) DEFAULT NULL,
+  request_uri VARCHAR(500) DEFAULT NULL,
+  request_method VARCHAR(10) DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY idx_error_code (error_code),
-  KEY idx_http_status (http_status),
-  KEY idx_created_at (created_at),
-  FOREIGN KEY (id_log_activity) REFERENCES __LOG_ACTIVITY(id) ON DELETE SET NULL
+  KEY idx_severity (severity),
+  KEY idx_context (context),
+  KEY idx_created_at (created_at)
 );
 ";
         case 'sqlite':
@@ -100,19 +101,20 @@ CREATE TABLE IF NOT EXISTS __LOG_DATA (
 
 CREATE TABLE IF NOT EXISTS __LOG_ERRORS (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  id_log_activity INTEGER,
-  trace_id TEXT,
-  error_code TEXT NOT NULL,
   error_message TEXT NOT NULL,
-  http_status INTEGER DEFAULT 500,
-  exception_class TEXT,
-  exception_file TEXT,
-  exception_line INTEGER,
-  exception_trace TEXT,
-  context TEXT DEFAULT 'API',
+  error_code TEXT NOT NULL,
+  http_status INTEGER NOT NULL,
   severity TEXT DEFAULT 'ERROR',
-  created_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (id_log_activity) REFERENCES __LOG_ACTIVITY(id)
+  context TEXT DEFAULT 'API',
+  file_path TEXT,
+  line_number INTEGER,
+  stack_trace TEXT,
+  context_data TEXT,
+  user_agent TEXT,
+  ip_address TEXT,
+  request_uri TEXT,
+  request_method TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
 );
 ";
         case 'mssql':
@@ -153,19 +155,20 @@ CREATE TABLE __LOG_DATA (
 
 CREATE TABLE __LOG_ERRORS (
   id INT IDENTITY(1,1) PRIMARY KEY,
-  id_log_activity INT NULL,
-  trace_id NVARCHAR(64) NULL,
-  error_code NVARCHAR(50) NOT NULL,
   error_message NVARCHAR(MAX) NOT NULL,
-  http_status INT DEFAULT 500,
-  exception_class NVARCHAR(255) NULL,
-  exception_file NVARCHAR(500) NULL,
-  exception_line INT NULL,
-  exception_trace NVARCHAR(MAX) NULL,
-  context NVARCHAR(50) DEFAULT 'API',
+  error_code NVARCHAR(50) NOT NULL,
+  http_status INT NOT NULL,
   severity NVARCHAR(20) DEFAULT 'ERROR',
-  created_at DATETIME DEFAULT GETDATE(),
-  FOREIGN KEY (id_log_activity) REFERENCES __LOG_ACTIVITY(id)
+  context NVARCHAR(100) DEFAULT 'API',
+  file_path NVARCHAR(500) NULL,
+  line_number INT NULL,
+  stack_trace NVARCHAR(MAX) NULL,
+  context_data NVARCHAR(MAX) NULL,
+  user_agent NVARCHAR(500) NULL,
+  ip_address NVARCHAR(45) NULL,
+  request_uri NVARCHAR(500) NULL,
+  request_method NVARCHAR(10) NULL,
+  created_at DATETIME DEFAULT GETDATE()
 );
 ";
         default:

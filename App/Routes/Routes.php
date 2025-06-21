@@ -40,4 +40,10 @@ foreach (glob(__DIR__."/" . '/*.php') as $file) {
   require($file);
 }
 
+// Add catch-all route for 404 errors - this must be the last route
+SimpleRouter::all('*', function() : void {
+    // Log the 404 error to our system
+    \Core\ErrorHandler::handleWebNotFoundError();
+});
+
 ?>

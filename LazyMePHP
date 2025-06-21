@@ -53,6 +53,7 @@ if (!isset($argv[1])) {
     echo "Available commands:\n";
     echo "  serve    Start the PHP development server for the public directory.\n";
     echo "  build    Run the build tools for classes, forms, and APIs.\n";
+    echo "  batman   Start the Batman dashboard server.\n";
     // echo "  config   (Deprecated) Configure the application.\n"; // Config case removed
     exit(0);
 }
@@ -85,6 +86,25 @@ switch($argv[1]) {
         Echo "Build script (App/Tools/build) not found.\n";
         exit(1);
     }
+  break;
+  case "batman":
+    echo "Starting Batman dashboard server...\n";
+    echo "What port do you want to use for Batman server?";
+    $port = false;
+    while(!$port) {
+      echo "\n8081:?";
+      $port = trim(fgets(STDIN));
+      if (strlen($port)>0 && !intval($port)) {
+        echo "invalid port, please try again";
+        $port = false;
+      }
+      else if (strlen($port)==0) $port = 8081;
+      else $port = intval($port);
+    }
+    if (!$port || !is_int($port)) $port = 8081;
+    echo "Batman dashboard will be available at: http://localhost:$port\n";
+    echo "Press Ctrl+C to stop the server.\n";
+    @exec("php -S 0.0.0.0:".$port." -t ./batman App/Tools/BatmanServer");
   break;
   // The "config" case has been removed as per instructions.
 }

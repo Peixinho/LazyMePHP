@@ -207,16 +207,16 @@ final class MSSQL extends ISQL
             
             // Log query to debug toolbar (development only)
             $executionTime = microtime(true) - $startTime;
-            if (class_exists('Core\Debug\DebugHelper')) {
-                \Core\Debug\DebugHelper::logQuery($query, $executionTime, $params);
+            if (class_exists('Core\Debug\DebugToolbar')) {
+                \Core\Debug\DebugToolbar::getInstance()->addQuery($query, $executionTime, $params);
             }
             
         } catch (PDOException $e) {
             // Log query error to debug toolbar (development only)
             $executionTime = microtime(true) - $startTime;
-            if (class_exists('Core\Debug\DebugHelper')) {
-                \Core\Debug\DebugHelper::logError("Query failed: {$e->getMessage()}", __FILE__, __LINE__);
-                \Core\Debug\DebugHelper::logQuery($query, $executionTime, $params);
+            if (class_exists('Core\Debug\DebugToolbar')) {
+                \Core\Debug\DebugToolbar::getInstance()->addError("Query failed: {$e->getMessage()}", __FILE__, __LINE__);
+                \Core\Debug\DebugToolbar::getInstance()->addQuery($query, $executionTime, $params);
             }
             
             throw new DatabaseException(
@@ -364,5 +364,15 @@ final class MSSQLResult extends IDBObject
     public function getRowCount(): int
     {
         return $this->dbResult ? $this->dbResult->rowCount() : 0;
+    }
+
+    /**
+     * Returns the number of rows affected or selected (alias for getRowCount).
+     *
+     * @return int Row count
+     */
+    public function GetCount(): int
+    {
+        return $this->getRowCount();
     }
 }

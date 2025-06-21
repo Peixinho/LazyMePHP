@@ -58,6 +58,14 @@ header('Access-Control-Allow-Methods: POST, GET, DELETE, PUT');
     ErrorHandler::handleForbiddenError('Access to this API endpoint is forbidden');
 });
 
+\Pecee\SimpleRouter\SimpleRouter::get('/api', function() {
+    ErrorHandler::handleApiError(
+        'API endpoint not specified',
+        'ENDPOINT_NOT_FOUND',
+        null
+    );
+});
+
 \Pecee\SimpleRouter\SimpleRouter::error(function(\Pecee\Http\Request $request, \Exception $exception) {
     // Log the error with request context
     $requestUri = $request->getUrl()->getPath();
