@@ -125,6 +125,9 @@ final class MySQL extends ISQL
         $this->connect();
         $result = new MySQLResult($query);
 
+        // Start timing for debug toolbar
+        $startTime = microtime(true);
+
         try {
             $stmt = $this->connection->prepare($query);
             if ($stmt === false) {
@@ -201,7 +204,21 @@ final class MySQL extends ISQL
 
             $stmt->execute();
             $result->setStatement($stmt);
+            
+            // Log query to debug toolbar (development only)
+            $executionTime = microtime(true) - $startTime;
+            if (class_exists('Core\Debug\DebugHelper')) {
+                \Core\Debug\DebugHelper::logQuery($query, $executionTime, $params);
+            }
+            
         } catch (PDOException $e) {
+            // Log query error to debug toolbar (development only)
+            $executionTime = microtime(true) - $startTime;
+            if (class_exists('Core\Debug\DebugHelper')) {
+                \Core\Debug\DebugHelper::logError("Query failed: {$e->getMessage()}", __FILE__, __LINE__);
+                \Core\Debug\DebugHelper::logQuery($query, $executionTime, $params);
+            }
+            
             throw new DatabaseException(
                 "Query failed: {$e->getMessage()}",
                 (int)$e->getCode(),

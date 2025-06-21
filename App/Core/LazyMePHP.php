@@ -144,6 +144,12 @@ class LazyMePHP
    */
   private static array $_app_logdata = [];
 
+  /** 
+   * @var ?bool Flag indicating whether debug mode is enabled.
+   * @internal
+   */
+  private static ?bool $_app_debug_mode = null;
+
   //region Database Accessor Methods
   /**
    * Returns the configured database name.
@@ -344,13 +350,23 @@ class LazyMePHP
   }
 
   /**
-   * Returns the identifier for the user/process for activity logging.
+   * Gets the authentication identifier for activity logging.
    *
-   * @return ?string The activity log auth identifier, or null if not set.
+   * @return ?string The authentication identifier, or null if not set.
    */
   static function ACTIVITY_AUTH(): ?string
   {
     return self::$_app_activity_auth;
+  }
+
+  /**
+   * Checks if debug mode is enabled.
+   *
+   * @return ?bool True if debug mode is enabled, false otherwise, or null if not set.
+   */
+  static function DEBUG_MODE(): ?bool
+  {
+    return self::$_app_debug_mode;
   }
   
   /**
@@ -366,6 +382,12 @@ class LazyMePHP
   static function LOGDATA(string $table, array $log, ?string $pk = null, ?string $method = null): void
   {
     if (!self::ACTIVITY_LOG()) return;
+    
+    // Skip INSERT operations - they will still be visible in debug toolbar but not logged persistently
+    if (strtoupper($method) === 'INSERT') {
+      return;
+    }
+    
     // Ensure the entry for the table exists.
     if (!array_key_exists($table, self::$_app_logdata)) {
         self::$_app_logdata[$table] = [];
@@ -441,6 +463,7 @@ class LazyMePHP
     self::$_app_activity_auth = $_ENV['APP_ACTIVITY_AUTH'] ?? ''; // E.g., default system user for logs
     self::$_app_nresults = (int)($_ENV['APP_NRESULTS'] ?? 100);
     self::$_app_encryption = $_ENV['APP_ENCRYPTION'] ?? 'your-default-strong-encryption-key'; // IMPORTANT: Change this default!
+    self::$_app_debug_mode = ($_ENV['APP_DEBUG_MODE'] ?? 'false') === 'true';
 
     // --- System Setup ---
     // Set the default timezone for all date/time functions.
@@ -462,9 +485,8 @@ class LazyMePHP
    */
   static function LOG_ACTIVITY(): void 
   {
-    if (!self::ACTIVITY_LOG()) return;
     // Proceed only if activity logging is enabled and a database connection exists.
-    if (self::DB_CONNECTION()) {
+    if (self::ACTIVITY_LOG() && self::DB_CONNECTION()) {
       // --- Collect request information ---
       $currentDateTime = date("Y-m-d H:i:s");
       $requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'CLI';
@@ -472,11 +494,7 @@ class LazyMePHP
       $ipAddress = $_SERVER['REMOTE_ADDR'] ?? $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['HTTP_CLIENT_IP'] ?? 'unknown';
       $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
       $statusCode = http_response_code() ?: 200;
-      
-      // Calculate response time
-      $requestStartTime = $_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true);
-      $responseTime = microtime(true) - $requestStartTime;
-      
+      $responseTime = microtime(true) - $_SERVER['REQUEST_TIME_FLOAT'] ?? 0;
       $traceId = uniqid('req_', true);
       
       // --- Log main activity with enhanced information ---
@@ -548,10 +566,6 @@ class LazyMePHP
                           $dataBefore = $values[0] ?? null;
                           $dataAfter = $values[1] ?? null;
                           
-                          // Serialize data properly to prevent "Array" strings
-                          $dataBefore = self::serializeLogValue($dataBefore);
-                          $dataAfter = self::serializeLogValue($dataAfter);
-                          
                           $logDataQueryParts[] = "(?, ?, ?, ?, ?, ?, ?)";
                           array_push(
                               $logDataQueryData,
@@ -582,27 +596,6 @@ class LazyMePHP
   }
 
   /**
-   * Serializes a log value to prevent "Array" strings from being stored in the database.
-   *
-   * @param mixed $value The value to be serialized.
-   * @return string The serialized value.
-   */
-  private static function serializeLogValue($value): string
-  {
-    if (is_null($value)) {
-        return 'NULL';
-    } elseif (is_array($value)) {
-        return json_encode($value);
-    } elseif (is_object($value)) {
-        return serialize($value);
-    } elseif (is_resource($value)) {
-        return 'Resource';
-    } else {
-        return (string)$value;
-    }
-  }
-
-  /**
    * Reset all static properties for testing purposes
    */
   public static function reset(): void
@@ -625,6 +618,7 @@ class LazyMePHP
     self::$_app_encryption = null;
     self::$_app_activity_log = null;
     self::$_app_activity_auth = null;
+    self::$_app_debug_mode = null;
     self::$_app_logdata = [];
     
     // Reset database instances to prevent singleton conflicts during testing

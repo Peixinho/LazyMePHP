@@ -27,6 +27,13 @@ if (!isset($_ENV['TESTING']) && file_exists(__DIR__.'/../.env')) {
 new Core\LazyMePHP();
 
 /*
+ * Initialize Debug Mode (if enabled)
+ */
+if (Core\LazyMePHP::DEBUG_MODE()) {
+    Core\Debug\DebugHelper::init();
+}
+
+/*
  * Router
  */
 require_once __DIR__."/Routes/Routes.php";

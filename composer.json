@@ -35,7 +35,7 @@
     "prefer-stable": true,
     "autoload": {
         "psr-4": {
-            "api\\": "App/api/",
+            "App\\Api\\": "App/Api/",
             "Classes\\": "App/Classes/",
             "Controllers\\": "App/Controllers/",
             "Core\\": "App/Core/",
