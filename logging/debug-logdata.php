@@ -7,17 +7,24 @@ require_once __DIR__ . '/../App/bootstrap.php';
 
 use Core\LazyMePHP;
 
+// Start session if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 // Set content type to JSON
 header('Content-Type: application/json');
 
-// Simple authentication check
-$isDevelopment = defined('APP_ENV') && constant('APP_ENV') === 'development';
-$isDebugMode = isset($_GET['debug']);
-$hasUserSession = isset($_SESSION['user_id']);
+// Proper authentication check - require login
+$hasUserSession = isset($_SESSION['is_logged_in']) && $_SESSION['is_logged_in'];
 
-if (!$hasUserSession && !$isDebugMode && !$isDevelopment) {
-    http_response_code(403);
-    echo json_encode(['error' => 'Access denied']);
+if (!$hasUserSession) {
+    http_response_code(401);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Authentication required',
+        'code' => 'UNAUTHORIZED'
+    ]);
     exit;
 }
 

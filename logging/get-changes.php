@@ -1,32 +1,44 @@
 <?php
-// Disable error display for production
-ini_set('display_errors', 0);
-error_reporting(E_ALL);
 /**
  * API endpoint to fetch changes for a specific log ID
+ * @copyright This file is part of the LazyMePHP Framework developed by Duarte Peixinho
+ * @author Duarte Peixinho
  */
 
-// Start output buffering to capture any unwanted output
-ob_start();
+// Start session if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-require_once __DIR__ . '/../App/bootstrap.php';
+// Standalone bootstrap for logging dashboard
+require_once __DIR__ . '/../vendor/autoload.php';
+
+// Load Environment Variables
+if (file_exists(__DIR__.'/../.env')) {
+    $dotenv = Dotenv\Dotenv::createImmutable(__DIR__.'/../');
+    $dotenv->load();
+}
+
+// Initialize LazyMePHP without routing
+new Core\LazyMePHP();
 
 use Core\LazyMePHP;
-
-// Clear any output that might have been generated
-ob_clean();
 
 // Set content type to JSON
 header('Content-Type: application/json');
 
-// Simple authentication check
-$isDevelopment = defined('APP_ENV') && constant('APP_ENV') === 'development';
-$isDebugMode = isset($_GET['debug']);
-$hasUserSession = isset($_SESSION['user_id']);
+// Proper authentication check - require login
+$hasUserSession = isset($_SESSION['is_logged_in']) && $_SESSION['is_logged_in'];
 
-if (!$hasUserSession && !$isDebugMode && !$isDevelopment) {
-    http_response_code(403);
-    echo json_encode(['error' => 'Access denied']);
+if (!$hasUserSession) {
+    http_response_code(401);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Authentication required',
+        'code' => 'UNAUTHORIZED',
+        'session_status' => session_status(),
+        'session_data' => $_SESSION
+    ]);
     exit;
 }
 
@@ -35,7 +47,11 @@ $logId = intval($_GET['log_id'] ?? 0);
 
 if (!$logId) {
     http_response_code(400);
-    echo json_encode(['error' => 'Log ID is required']);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Log ID is required',
+        'received_log_id' => $_GET['log_id'] ?? 'not set'
+    ]);
     exit;
 }
 
@@ -86,15 +102,18 @@ try {
         'success' => true,
         'activity' => $activity,
         'changes' => $changes,
-        'total_changes' => count($changes)
+        'total_changes' => count($changes),
+        'log_id' => $logId
     ]);
 
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode([
+        'success' => false,
         'error' => 'Failed to fetch changes: ' . $e->getMessage(),
         'file' => $e->getFile(),
-        'line' => $e->getLine()
+        'line' => $e->getLine(),
+        'log_id' => $logId
     ]);
 }
 ?> 
