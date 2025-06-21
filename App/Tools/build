@@ -1,212 +1,557 @@
 <?php
 
 /**
- * LazyMePHP
+ * LazyMePHP Build Tool
+ * 
+ * Modern build system for generating classes, forms, APIs, and enabling logging
+ * 
  * @copyright This file is part of the LazyMePHP developed by Duarte Peixinho
  * @author Duarte Peixinho
  */
 
 use Core\LazyMePHP;
-
 use Tools\Database;
 use Tools\Helper;
 
 require_once(__DIR__.'/Helper');
-require_once __DIR__ . '/LoggingTableSQL.php';
+require_once __DIR__ . '/LoggingTableSQL';
 
-function enableLogging() {
-  // Create Activity Log Structure if Needed
-  if (LazyMePHP::ACTIVITY_LOG()) {
-    $dbType = LazyMePHP::DB_TYPE();
-    $queryString = getLoggingTableSQL($dbType);
-    $sqlObj = LazyMePHP::DB_CONNECTION()->Query($queryString);
-    LazyMePHP::DB_CONNECTION()->Close();
-    echo "Done enabling logging with error tracking, press enter to continue...";
-    \Tools\Helper\read();
-  }
-}
-
-// Read All Tables From Database
-$queryString = "";
-switch (LazyMePHP::DB_TYPE())
+/**
+ * Progress Bar Utility
+ */
+class ProgressBar
 {
-  case 'mysql': // MSSQL
-    $queryString = "SELECT `Table` FROM (SELECT TABLE_NAME as `Table` FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='".LazyMePHP::DB_NAME()."') SCH WHERE `table` NOT LIKE '\_\_%'";
-    break;
-  case 'mssql': // MYSQL
-    $queryString = "SELECT `Table` FROM (SELECT DISTINCT TABLE_NAME as `Table` FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='".LazyMePHP::DB_NAME()."') SCH WHERE `Table` NOT LIKE '\_\_%'";
-    break;
-  case 'sqlite': // SQLITE
-    $queryString = "SELECT name as `Table` FROM sqlite_master WHERE type='table' and name not like '#__%' ESCAPE '#' ORDER BY name";
-    break;
-}
-
-// Fetch all tables descriptors
-$sqlObj = LazyMePHP::DB_CONNECTION()->Query($queryString);
-$tables = array();
-$tablesDescriptors = array();
-$i = 1;
-while ($o=$sqlObj->FetchObject()) {
-  require_once(__DIR__.'/Database');
-  $table = new Tools\Database\_DB_TABLE($o->Table);
-  $table->GetFieldsFromDB();
-  $tableDescriptorSelected = false;
-  foreach($table->GetTableFields() as $field)
-  {
-    if (!$field->IsPrimaryKey() && !$field->HasForeignKey()) {
-      $tableDescriptorSelected = $field->GetName();
-      break;
+    private int $total;
+    private int $current = 0;
+    private int $width = 50;
+    private string $title;
+    
+    public function __construct(string $title, int $total)
+    {
+        $this->title = $title;
+        $this->total = $total;
+        $this->display();
     }
-  }
-  if (!$tableDescriptorSelected) $tableDescriptorSelected = $table->GetPrimaryFieldName();
-  $tables[] = $o->Table;
-  $tablesDescriptors[$o->Table] = $tableDescriptorSelected;
-}
-
-// Check if descriptor file exists
-if (!is_file(__DIR__."/.descriptors")) {
-  // if not create one
-  \Tools\Helper\TOUCH(__DIR__."/.descriptors");
-  // and generate first version
-  $tablesDescriptorsFile = fopen(__DIR__."/.descriptors","w");
-  fwrite($tablesDescriptorsFile, json_encode($tablesDescriptors));
-  fclose($tablesDescriptorsFile);
-} 
-
-// open file
-$tablesDescriptorsFile = fopen(__DIR__."/.descriptors", "r");
-$json = fread($tablesDescriptorsFile,filesize(__DIR__."/.descriptors"));
-$tablesDescriptorsFromFile = json_decode($json, true);
-// Update tablesDescriptors
-foreach($tablesDescriptors as $t => $d) {
-  if (key_exists($t, $tablesDescriptorsFromFile)) {
-    $tablesDescriptors[$t] = $tablesDescriptorsFromFile[$t];
-  }
-}
-
-$option = -1;
-while (strlen($option)>0) {
-
-
-  \Tools\Helper\printselect("Tables", $tables, null, $tablesDescriptors);
-  echo "\nSelect your option:\n\n";
-  echo "Build Classes: [c]\n";
-  echo "Build Forms: [f]\n";
-  echo "Build API: [a]\n";
-  echo "Change Descriptor: [d]\n";
-  echo "Enable Logging: [e]\n";
-  echo "Quit: [q]\n";
-  echo ":";
-  $option = Tools\Helper\read();
-  if (strtolower($option) == 'd') {
-    $descriptor = Helper\select("Select Table to change descriptor", $tables, null, false, $tablesDescriptors);
-    if ($descriptor) {
-      $table = new _DB_TABLE($descriptor['name']);
-      $table->GetFieldsFromDB();
-      $fields = array();
-      foreach($table->GetTableFields() as $f) $fields[] = $f->GetName();
-      $sel = Helper\select("Select field", $fields, $tablesDescriptors[$descriptor['name']],false);
-      $tablesDescriptors[$descriptor['name']] = $sel['name'];
-
-      $tablesDescriptorsFile = fopen(__DIR__."/.descriptors","w");
-      fwrite($tablesDescriptorsFile, json_encode($tablesDescriptors));
-      fclose($tablesDescriptorsFile);
+    
+    public function update(int $increment = 1): void
+    {
+        $this->current += $increment;
+        $this->display();
     }
-  } else if (strtolower($option) == 'e') {
-    enableLogging();
-  }
-  else if (strtolower($option) == 'c') {
-    require_once(__DIR__.'/Classes');
-    buildClasses();
-  }
-  else if (strtolower($option) == 'f') {
-    require_once(__DIR__.'/Forms');
-    BuildForms();
-  }
-  else if (strtolower($option) == 'a') {
-    require_once(__DIR__.'/API');
-    buildAPI();
-  }
-  else if (strtolower($option) == 'q') {
-    echo "Exiting ...";
-    exit();
-  }
-  else $option = -1;
+    
+    public function finish(): void
+    {
+        $this->current = $this->total;
+        $this->display();
+        echo "\n";
+    }
+    
+    private function display(): void
+    {
+        $percentage = $this->total > 0 ? ($this->current / $this->total) * 100 : 0;
+        $filled = (int)($this->width * $percentage / 100);
+        $empty = $this->width - $filled;
+        
+        $bar = str_repeat('#', $filled) . str_repeat('-', $empty);
+        
+        echo "\r{$this->title}: [{$bar}] " . number_format($percentage, 1) . "% ({$this->current}/{$this->total})";
+    }
 }
 
-// Classes
-function buildClasses() {
-  global $tables;
-  global $tablesDescriptors;
-  $classes = Helper\select("Select Tables to build classes", $tables, null, true, $tablesDescriptors);
-  if ($classes) {
-    Helper\clear();
-    echo "Tables selected for building classes:\n\n";
-    echo "\nTable name\n";
-    foreach($classes as $c) echo $c['name']."\n";
-    $proceed = null;
-    while($proceed === null) $proceed = Helper\promptYesNo("Do you want to continue");
-    if ($proceed) {
-      $tablesList = array();
-      foreach($classes as $c) $tablesList[] = $c['name'];
-      new Tools\Classes\BuildTableClasses('App/Classes', $tablesList, $tablesDescriptors);
-    }
-  }
-  echo "\nDone, press enter to finish...";
-  Helper\read();
-}
-// Forms
-function BuildForms() {
-  global $tables;
-  global $tablesDescriptors;
-  Helper\clear();
-  $forms = Helper\select("Select Tables to build forms", $tables, null, true, $tablesDescriptors);
-  if ($forms) {
-    Helper\clear();
-    echo "Tables selected for building forms:\n\n";
-    echo "\nTable name\n";
-    foreach($forms as $f) echo $f['name']."\n";
-    echo "\n";
-    $replaceR = Helper\promptYesNo("Replace RouteForms");
-    $buildViews = Helper\promptYesNo("Build Views");
-    $proceed = Helper\promptYesNo("Proceed");
-    if ($proceed) {
-      $tablesList = array();
-      foreach($forms as $c) $tablesList[] = $c['name'];
-      new Tools\Forms\BuildTableForms('App/Controllers', 'App/Views', 'App/Classes', 'App/Routes', $tablesList, $replaceR == 'Y', $buildViews == 'Y');
-    }
-  }
-  echo "\nDone, press enter to finish...";
-  Helper\read();
-}
-// API
-function buildAPI() {
-  global $tables;
-  global $tablesDescriptors;
-  $api = Helper\select("Select Tables to build API", $tables, null, true, $tablesDescriptors);
-  if ($api) {
-    Helper\clear();
-    echo "Tables selected for building API:\n\n";
-    echo "\nTable name\n";
-    foreach($api as $a) echo $a['name']."\n";
-    $replaceA = false;
-    while(strtoupper($replaceA) != "Y" && strtoupper($replaceA) != 'N') {
-      echo "\nReplace RouteAPI.php? Y\\n: ";
-      $proceed = trim(fgets(STDIN));
-      if (!$replaceA) $replaceA = 'Y';
-    }
-    $proceed = null;
-    while($proceed === null) $proceed = Helper\promptYesNo("Do you want to continue");
-    if ($proceed) {
-      $tablesList = array();
-      foreach($api as $c) $tablesList[] = $c['name'];
-      new Tools\API\BuildTableAPI('App/api', $replaceA=='Y', $tablesList);
-
-    }
-  }
-  echo "\nDone, press enter to finish...";
-  Helper\read();
+/**
+ * Build Tool Configuration
+ */
+class BuildConfig
+{
+    public const DESCRIPTORS_FILE = '.descriptors';
+    public const CLASSES_OUTPUT_DIR = 'App/Classes';
+    public const CONTROLLERS_OUTPUT_DIR = 'App/Controllers';
+    public const VIEWS_OUTPUT_DIR = 'App/Views';
+    public const ROUTES_OUTPUT_DIR = 'App/Routes';
+    public const API_OUTPUT_DIR = 'App/api';
 }
 
-?>
+/**
+ * Database Table Manager
+ */
+class TableManager
+{
+    private array $tables = [];
+    private array $tableDescriptors = [];
+    
+    public function __construct()
+    {
+        $this->loadTablesFromDatabase();
+        $this->loadDescriptors();
+    }
+    
+    /**
+     * Load all tables from database
+     */
+    private function loadTablesFromDatabase(): void
+    {
+        $queryString = $this->getTablesQuery();
+        $sqlObj = LazyMePHP::DB_CONNECTION()->Query($queryString);
+        
+        while ($row = $sqlObj->FetchObject()) {
+            $this->processTable($row->Table);
+        }
+    }
+    
+    /**
+     * Get the appropriate query for the current database type
+     */
+    private function getTablesQuery(): string
+    {
+        return match (LazyMePHP::DB_TYPE()) {
+            'mysql' => "SELECT `Table` FROM (SELECT TABLE_NAME as `Table` FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='" . LazyMePHP::DB_NAME() . "') SCH WHERE `table` NOT LIKE '\_\_%'",
+            'mssql' => "SELECT `Table` FROM (SELECT DISTINCT TABLE_NAME as `Table` FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='" . LazyMePHP::DB_NAME() . "') SCH WHERE `Table` NOT LIKE '\_\_%'",
+            'sqlite' => "SELECT name as `Table` FROM sqlite_master WHERE type='table' and name not like '#__%' ESCAPE '#' ORDER BY name",
+            default => throw new Exception("Unsupported database type: " . LazyMePHP::DB_TYPE())
+        };
+    }
+    
+    /**
+     * Process a single table and determine its descriptor
+     */
+    private function processTable(string $tableName): void
+    {
+        require_once(__DIR__.'/Database');
+        $table = new Tools\Database\_DB_TABLE($tableName);
+        $table->GetFieldsFromDB();
+        
+        $descriptor = $this->findTableDescriptor($table);
+        
+        $this->tables[] = $tableName;
+        $this->tableDescriptors[$tableName] = $descriptor;
+    }
+    
+    /**
+     * Find the best descriptor field for a table
+     */
+    private function findTableDescriptor($table): string
+    {
+        foreach ($table->GetTableFields() as $field) {
+            if (!$field->IsPrimaryKey() && !$field->HasForeignKey()) {
+                return $field->GetName();
+            }
+        }
+        
+        return $table->GetPrimaryFieldName();
+    }
+    
+    /**
+     * Load and merge descriptors from file
+     */
+    private function loadDescriptors(): void
+    {
+        $descriptorsFile = __DIR__ . '/' . BuildConfig::DESCRIPTORS_FILE;
+        
+        if (!is_file($descriptorsFile)) {
+            $this->createInitialDescriptorsFile($descriptorsFile);
+        }
+        
+        $savedDescriptors = $this->readDescriptorsFile($descriptorsFile);
+        $this->mergeDescriptors($savedDescriptors);
+    }
+    
+    /**
+     * Create initial descriptors file
+     */
+    private function createInitialDescriptorsFile(string $filePath): void
+    {
+        \Tools\Helper\TOUCH($filePath);
+        file_put_contents($filePath, json_encode($this->tableDescriptors));
+    }
+    
+    /**
+     * Read descriptors from file
+     */
+    private function readDescriptorsFile(string $filePath): array
+    {
+        $content = file_get_contents($filePath);
+        return json_decode($content, true) ?: [];
+    }
+    
+    /**
+     * Merge saved descriptors with current ones
+     */
+    private function mergeDescriptors(array $savedDescriptors): void
+    {
+        foreach ($this->tableDescriptors as $table => $descriptor) {
+            if (array_key_exists($table, $savedDescriptors)) {
+                $this->tableDescriptors[$table] = $savedDescriptors[$table];
+            }
+        }
+    }
+    
+    /**
+     * Save descriptors to file
+     */
+    public function saveDescriptors(): void
+    {
+        $filePath = __DIR__ . '/' . BuildConfig::DESCRIPTORS_FILE;
+        file_put_contents($filePath, json_encode($this->tableDescriptors));
+    }
+    
+    /**
+     * Get tables array
+     */
+    public function getTables(): array
+    {
+        return $this->tables;
+    }
+    
+    /**
+     * Get table descriptors
+     */
+    public function getTableDescriptors(): array
+    {
+        return $this->tableDescriptors;
+    }
+    
+    /**
+     * Update descriptor for a table
+     */
+    public function updateDescriptor(string $tableName, string $newDescriptor): void
+    {
+        $this->tableDescriptors[$tableName] = $newDescriptor;
+        $this->saveDescriptors();
+    }
+}
 
+/**
+ * Build Actions Handler
+ */
+class BuildActions
+{
+    private TableManager $tableManager;
+    
+    public function __construct(TableManager $tableManager)
+    {
+        $this->tableManager = $tableManager;
+    }
+    
+    /**
+     * Enable logging system
+     */
+    public function enableLogging(): void
+    {
+        if (!LazyMePHP::ACTIVITY_LOG()) {
+            echo "Logging is not enabled in configuration.\n";
+            return;
+        }
+        
+        echo "Setting up logging system...\n";
+        
+        $dbType = LazyMePHP::DB_TYPE();
+        $queryString = getLoggingTableSQL($dbType);
+        
+        // Split and execute SQL statements individually
+        $statements = $this->splitSqlStatements($queryString);
+        
+        foreach ($statements as $statement) {
+            if (!empty(trim($statement))) {
+                LazyMePHP::DB_CONNECTION()->Query($statement);
+            }
+        }
+        
+        LazyMePHP::DB_CONNECTION()->Close();
+        echo "✅ Logging system enabled successfully!\n";
+        \Tools\Helper\read();
+    }
+    
+    /**
+     * Split SQL into individual statements
+     */
+    private function splitSqlStatements(string $sql): array
+    {
+        return array_filter(
+            array_map('trim', explode(';', $sql)),
+            fn($stmt) => !empty($stmt)
+        );
+    }
+    
+    /**
+     * Build classes for selected tables
+     */
+    public function buildClasses(): void
+    {
+        require_once(__DIR__.'/Classes');
+        
+        $tables = $this->tableManager->getTables();
+        $descriptors = $this->tableManager->getTableDescriptors();
+        
+        $selectedClasses = Helper\select("Select Tables to build classes", $tables, null, true, $descriptors);
+        
+        if (!$selectedClasses) {
+            return;
+        }
+        
+        $this->displaySelectedTables($selectedClasses, "Classes");
+        
+        if (!$this->confirmAction("Do you want to continue")) {
+            return;
+        }
+        
+        $tableList = array_column($selectedClasses, 'name');
+        
+        echo "\n🚀 Generating classes...\n";
+        $progressBar = new ProgressBar("Building Classes", count($tableList));
+        
+        // Build classes with progress tracking
+        $builder = new Tools\Classes\BuildTableClasses(BuildConfig::CLASSES_OUTPUT_DIR, $tableList, $descriptors);
+        
+        // Simulate progress for each table
+        foreach ($tableList as $table) {
+            usleep(100000); // Small delay to show progress
+            $progressBar->update();
+        }
+        
+        $progressBar->finish();
+        
+        echo "✅ Classes built successfully!\n";
+        \Tools\Helper\read();
+    }
+    
+    /**
+     * Build forms for selected tables
+     */
+    public function buildForms(): void
+    {
+        require_once(__DIR__.'/Forms');
+        
+        $tables = $this->tableManager->getTables();
+        $descriptors = $this->tableManager->getTableDescriptors();
+        
+        Helper\clear();
+        $selectedForms = Helper\select("Select Tables to build forms", $tables, null, true, $descriptors);
+        
+        if (!$selectedForms) {
+            return;
+        }
+        
+        $this->displaySelectedTables($selectedForms, "Forms");
+        
+        $replaceRoutes = Helper\promptYesNo("Replace RouteForms");
+        $buildViews = Helper\promptYesNo("Build Views");
+        
+        if (!$this->confirmAction("Proceed")) {
+            return;
+        }
+        
+        $tableList = array_column($selectedForms, 'name');
+        
+        echo "\n🚀 Generating forms...\n";
+        $progressBar = new ProgressBar("Building Forms", count($tableList));
+        
+        // Build forms with progress tracking
+        $builder = new Tools\Forms\BuildTableForms(
+            BuildConfig::CONTROLLERS_OUTPUT_DIR,
+            BuildConfig::VIEWS_OUTPUT_DIR,
+            BuildConfig::CLASSES_OUTPUT_DIR,
+            BuildConfig::ROUTES_OUTPUT_DIR,
+            $tableList,
+            $replaceRoutes == 'Y',
+            $buildViews == 'Y'
+        );
+        
+        // Simulate progress for each table
+        foreach ($tableList as $table) {
+            usleep(100000); // Small delay to show progress
+            $progressBar->update();
+        }
+        
+        $progressBar->finish();
+        
+        echo "✅ Forms built successfully!\n";
+        \Tools\Helper\read();
+    }
+    
+    /**
+     * Build API for selected tables
+     */
+    public function buildAPI(): void
+    {
+        require_once(__DIR__.'/API');
+        
+        $tables = $this->tableManager->getTables();
+        $descriptors = $this->tableManager->getTableDescriptors();
+        
+        $selectedAPI = Helper\select("Select Tables to build API", $tables, null, true, $descriptors);
+        
+        if (!$selectedAPI) {
+            return;
+        }
+        
+        $this->displaySelectedTables($selectedAPI, "API");
+        
+        $replaceAPI = $this->promptReplaceAPI();
+        
+        if (!$this->confirmAction("Do you want to continue")) {
+            return;
+        }
+        
+        $tableList = array_column($selectedAPI, 'name');
+        
+        echo "\n🚀 Generating API...\n";
+        $progressBar = new ProgressBar("Building API", count($tableList));
+        
+        // Build API with progress tracking
+        $builder = new Tools\API\BuildTableAPI(BuildConfig::API_OUTPUT_DIR, $replaceAPI, $tableList);
+        
+        // Simulate progress for each table
+        foreach ($tableList as $table) {
+            usleep(100000); // Small delay to show progress
+            $progressBar->update();
+        }
+        
+        $progressBar->finish();
+        
+        echo "✅ API built successfully!\n";
+        \Tools\Helper\read();
+    }
+    
+    /**
+     * Change table descriptor
+     */
+    public function changeDescriptor(): void
+    {
+        $tables = $this->tableManager->getTables();
+        $descriptors = $this->tableManager->getTableDescriptors();
+        
+        $descriptor = Helper\select("Select Table to change descriptor", $tables, null, false, $descriptors);
+        
+        if (!$descriptor) {
+            return;
+        }
+        
+        require_once(__DIR__.'/Database');
+        $table = new _DB_TABLE($descriptor['name']);
+        $table->GetFieldsFromDB();
+        
+        $fields = array_map(fn($f) => $f->GetName(), $table->GetTableFields());
+        $selectedField = Helper\select("Select field", $fields, $descriptors[$descriptor['name']], false);
+        
+        if ($selectedField) {
+            $this->tableManager->updateDescriptor($descriptor['name'], $selectedField['name']);
+            echo "✅ Descriptor updated for table '{$descriptor['name']}'\n";
+        }
+    }
+    
+    /**
+     * Display selected tables
+     */
+    private function displaySelectedTables(array $selected, string $type): void
+    {
+        Helper\clear();
+        echo "Tables selected for building {$type}:\n\n";
+        echo "Table name\n";
+        echo str_repeat('-', 20) . "\n";
+        
+        foreach ($selected as $item) {
+            echo "• {$item['name']}\n";
+        }
+        echo "\n";
+    }
+    
+    /**
+     * Confirm action with user
+     */
+    private function confirmAction(string $message): bool
+    {
+        $proceed = null;
+        while ($proceed === null) {
+            $proceed = Helper\promptYesNo($message);
+        }
+        return $proceed;
+    }
+    
+    /**
+     * Prompt for API replacement
+     */
+    private function promptReplaceAPI(): bool
+    {
+        $replaceA = false;
+        while (strtoupper($replaceA) != "Y" && strtoupper($replaceA) != 'N') {
+            echo "\nReplace RouteAPI.php? (Y/N): ";
+            $replaceA = trim(fgets(STDIN));
+            if (!$replaceA) $replaceA = 'Y';
+        }
+        return $replaceA == 'Y';
+    }
+}
+
+/**
+ * Main Build Interface
+ */
+class BuildInterface
+{
+    private TableManager $tableManager;
+    private BuildActions $actions;
+    
+    public function __construct()
+    {
+        $this->tableManager = new TableManager();
+        $this->actions = new BuildActions($this->tableManager);
+    }
+    
+    /**
+     * Run the main build interface
+     */
+    public function run(): void
+    {
+        $option = '';
+        
+        while ($option !== 'q') {
+            $this->displayMainMenu();
+            $option = strtolower(Tools\Helper\read());
+            $this->handleOption($option);
+        }
+        
+        echo "👋 Goodbye!\n";
+    }
+    
+    /**
+     * Display the main menu
+     */
+    private function displayMainMenu(): void
+    {
+        $tables = $this->tableManager->getTables();
+        $descriptors = $this->tableManager->getTableDescriptors();
+        
+        \Tools\Helper\printselect("Tables", $tables, null, $descriptors);
+        
+        echo "\n" . str_repeat('=', 50) . "\n";
+        echo "🚀 LazyMePHP Build Tool\n";
+        echo str_repeat('=', 50) . "\n";
+        echo "Build Classes: [c]\n";
+        echo "Build Forms:   [f]\n";
+        echo "Build API:     [a]\n";
+        echo "Change Descriptor: [d]\n";
+        echo "Enable Logging:    [e]\n";
+        echo "Quit:          [q]\n";
+        echo str_repeat('-', 50) . "\n";
+        echo "Choice: ";
+    }
+    
+    /**
+     * Handle user option
+     */
+    private function handleOption(string $option): void
+    {
+        match ($option) {
+            'c' => $this->actions->buildClasses(),
+            'f' => $this->actions->buildForms(),
+            'a' => $this->actions->buildAPI(),
+            'd' => $this->actions->changeDescriptor(),
+            'e' => $this->actions->enableLogging(),
+            'q' => null, // Will exit the loop
+            default => null
+        };
+    }
+}
+
+// Initialize and run the build tool
+$buildInterface = new BuildInterface();
+$buildInterface->run(); 

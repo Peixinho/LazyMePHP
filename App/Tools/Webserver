@@ -85,6 +85,49 @@ if ($filePath && is_file($filePath)) {
       // Default to index.php if file doesn't exist
       include $loggingPath . DIRECTORY_SEPARATOR . 'index.php';
     }
+  } elseif (substr($_SERVER["REQUEST_URI"],0,5) == "/docs") {
+    // Handle docs directory - serve static files directly
+    $requestedFile = ltrim(parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH), '/');
+    $fullPath = getcwd() . DIRECTORY_SEPARATOR . $requestedFile;
+    $docsPath = getcwd() . DIRECTORY_SEPARATOR . 'public/docs';
+
+    // If the requested file exists in docs directory, serve it
+    if (file_exists($fullPath) && strpos($fullPath, $docsPath) === 0) {
+      // Determine content type based on file extension
+      $extension = pathinfo($fullPath, PATHINFO_EXTENSION);
+      $contentTypes = [
+        'html' => 'text/html',
+        'json' => 'application/json',
+        'css' => 'text/css',
+        'js' => 'application/javascript',
+        'png' => 'image/png',
+        'jpg' => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'gif' => 'image/gif',
+        'svg' => 'image/svg+xml'
+      ];
+      
+      if (isset($contentTypes[$extension])) {
+        header('Content-Type: ' . $contentTypes[$extension]);
+      }
+      
+      // Serve the file
+      readfile($fullPath);
+      exit;
+    } else {
+      // Default to index.html if file doesn't exist
+      $defaultFile = $docsPath . DIRECTORY_SEPARATOR . 'index.html';
+      if (file_exists($defaultFile)) {
+        header('Content-Type: text/html');
+        readfile($defaultFile);
+        exit;
+      } else {
+        // 404 if docs directory doesn't exist
+        header("HTTP/1.1 404 Not Found");
+        echo "404 Not Found - Documentation not available";
+        exit;
+      }
+    }
   } else
     include getcwd() . DIRECTORY_SEPARATOR . 'public/index.php';
 }

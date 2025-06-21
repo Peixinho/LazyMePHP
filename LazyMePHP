@@ -74,7 +74,7 @@ switch($argv[1]) {
     if (!$port || !is_int($port)) $port = 8080;
     // The webserver command in App/Tools/webserver might need its own bootstrapping or use this one.
     // For now, we ensure this main script is bootstrapped.
-    @exec("php -S 0.0.0.0:".$port." -t ./public App/Tools/Webserver.php"); // Assuming tools/webserver is a php script
+    @exec("php -S 0.0.0.0:".$port." -t ./public App/Tools/Webserver"); // Assuming tools/webserver is a php script
   break;
   case "build":
     // The tools/build script will need to be updated to use the autoloader
