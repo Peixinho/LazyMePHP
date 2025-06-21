@@ -5,6 +5,8 @@
  * @author Duarte Peixinho
  */
 
+declare(strict_types=1);
+
 namespace Controllers;
 use \eftec\bladeone\BladeOne;
 
@@ -17,5 +19,3 @@ class PageNotFoundController {
 		echo $blade->run("_Error.view");
 	}
 }
-
-?>

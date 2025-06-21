@@ -17,9 +17,20 @@ $views = __DIR__ . '/../Views/';
 $cache = __DIR__ . '/../Views/_compiled';
 $blade = new BladeOne($views,$cache);
 
-SimpleRouter::get('/', [Controllers\DefaultController::class, 'default']); 
-SimpleRouter::get('/not-found', [Controllers\PageNotFoundController::class, 'default']);
-SimpleRouter::get('/forbidden', [Controllers\PageNotFoundController::class, 'default']);
+SimpleRouter::get('/', function() : void {
+    global $blade;
+    echo $blade->run("_Default.view");
+}); 
+
+SimpleRouter::get('/not-found', function() : void {
+    global $blade;
+    echo $blade->run("_Error.view");
+});
+
+SimpleRouter::get('/forbidden', function() : void {
+    global $blade;
+    echo $blade->run("_Error.view");
+});
 
 // Load all routes by default
 foreach (glob(__DIR__."/" . '/*.php') as $file) {

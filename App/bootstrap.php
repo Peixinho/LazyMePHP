@@ -21,10 +21,6 @@ if (file_exists(__DIR__.'/../.env')) {
     $dotenv->load();
 }
 
-// Continue with other require_once statements for the framework
-// Ensure use LazyMePHP\Config\Internal\APP; is present if APP::LOG_ACTIVITY() etc. are called directly without full namespace
-// However, new LazyMePHP\Config\Internal\APP() is explicit.
-
 /*
  * Initialize APP Configuration
  */
@@ -39,12 +35,35 @@ require_once __DIR__."/Routes/Routes.php";
  * Routing
  */
 ob_start();
-Pecee\SimpleRouter\SimpleRouter::start();
-$content = ob_get_clean();
-
+try {
+    Pecee\SimpleRouter\SimpleRouter::start();
+    $content = ob_get_clean();
+} catch (\Pecee\SimpleRouter\Exceptions\NotFoundHttpException $exception) {
+    ob_end_clean();
+    // Handle 404 errors
+    \Core\ErrorHandler::handleWebNotFoundError();
+    return;
+} catch (\Throwable $exception) {
+    ob_end_clean();
+    // Handle other errors
+    if (strpos($_SERVER['REQUEST_URI'] ?? '', '/api/') !== false) {
+        // API error - return JSON
+        \Core\ErrorHandler::handleApiError(
+            'Internal server error',
+            'INTERNAL_ERROR',
+            null,
+            $exception
+        );
+    } else {
+        // Web error - show error page
+        \Core\ErrorHandler::handleWebServerError($exception);
+    }
+    return;
+}
 
 /*
  * Runs logging activity
  */
 Core\LazyMePHP::LOG_ACTIVITY();
+
 Core\LazyMePHP::DB_CONNECTION()->Close();

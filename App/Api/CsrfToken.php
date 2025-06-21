@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Pecee\SimpleRouter\SimpleRouter;
 use Core\Security\CsrfProtection;
 

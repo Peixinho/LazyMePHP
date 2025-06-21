@@ -15,6 +15,9 @@ class ErrorUtil
         return mail($to_mail, $subject, $message, $headers);
     }
 
+    /**
+     * Enhanced error handler with better logging and context
+     */
     public static function ErrorHandler(int $errno, string $errstr, string $errfile, int $errline): void
     {
         if (!(error_reporting() & $errno)) {
@@ -23,6 +26,30 @@ class ErrorUtil
         if ($errno === E_NOTICE) {
             return; 
         }
+
+        // Create structured error data
+        $errorData = [
+            'type' => $errno,
+            'message' => $errstr,
+            'file' => $errfile,
+            'line' => $errline,
+            'timestamp' => date('Y-m-d H:i:s'),
+            'url' => $_SERVER['REQUEST_URI'] ?? 'unknown',
+            'method' => $_SERVER['REQUEST_METHOD'] ?? 'unknown',
+            'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+            'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown',
+            'php_version' => phpversion(),
+            'memory_usage' => memory_get_usage(true),
+            'peak_memory' => memory_get_peak_usage(true)
+        ];
+
+        // Log to database if activity logging is enabled
+        if (LazyMePHP::ACTIVITY_LOG()) {
+            self::logErrorToDatabase($errorData);
+        }
+
+        // Log to file for debugging
+        self::logErrorToFile($errorData);
 
         $errorMsg =
         "<div style='margin:5px;z-index:10000;position:absolute;background-color:#A31919;padding:10px;color:#FFFF66;font-family:sans-serif;font-size:8pt;'>
@@ -33,6 +60,8 @@ class ErrorUtil
           <li><b>FILE:</b> $errfile</li>
           <li><b>LINE:</b> $errline<br/></li>
           <li><b>PHP VERSION:</b> ".phpversion()."
+          <li><b>TIME:</b> ".date('Y-m-d H:i:s')."
+          <li><b>URL:</b> ".($_SERVER['REQUEST_URI'] ?? 'unknown')."
           </ul>
           An email with this message was sent to the developer.
           </div>";
@@ -49,6 +78,11 @@ class ErrorUtil
         $messageContent .= "SESSION: ".json_encode($_SESSION)."<br>";
         $messageContent .= "POST: ".json_encode($_POST)."<br>";
         $messageContent .= "GET: ".json_encode($_GET)."<br>";
+        $messageContent .= "<br><b>Error Context:</b><br>";
+        $messageContent .= "URL: ".($errorData['url'])."<br>";
+        $messageContent .= "Method: ".($errorData['method'])."<br>";
+        $messageContent .= "IP: ".($errorData['ip'])."<br>";
+        $messageContent .= "Memory: ".self::formatBytes($errorData['memory_usage'])."<br>";
         
         if (!headers_sent()) {
             self::SendMail($from_mail, $to_mail, $subject, $messageContent);
@@ -56,6 +90,128 @@ class ErrorUtil
         
         echo $errorMsg;
         die();
+    }
+
+    /**
+     * Log error to database for better tracking
+     */
+    private static function logErrorToDatabase(array $errorData): void
+    {
+        try {
+            $db = LazyMePHP::DB_CONNECTION();
+            if (!$db) return;
+
+            // Check if __LOG_ERRORS table exists, if not create it
+            $tableExists = $db->Query("SHOW TABLES LIKE '__LOG_ERRORS'");
+            if (!$tableExists->FetchArray()) {
+                $createTable = "CREATE TABLE __LOG_ERRORS (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    error_type INT,
+                    error_message TEXT,
+                    error_file VARCHAR(500),
+                    error_line INT,
+                    error_url VARCHAR(500),
+                    error_method VARCHAR(10),
+                    error_ip VARCHAR(45),
+                    error_timestamp DATETIME,
+                    error_context JSON,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )";
+                $db->Query($createTable);
+            }
+
+            $query = "INSERT INTO __LOG_ERRORS (
+                error_type, error_message, error_file, error_line, 
+                error_url, error_method, error_ip, error_timestamp, error_context
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+            $context = json_encode([
+                'user_agent' => $errorData['user_agent'],
+                'php_version' => $errorData['php_version'],
+                'memory_usage' => $errorData['memory_usage'],
+                'peak_memory' => $errorData['peak_memory']
+            ]);
+
+            $db->Query($query, [
+                $errorData['type'],
+                $errorData['message'],
+                $errorData['file'],
+                $errorData['line'],
+                $errorData['url'],
+                $errorData['method'],
+                $errorData['ip'],
+                $errorData['timestamp'],
+                $context
+            ]);
+        } catch (\Exception $e) {
+            // Fallback to file logging if database fails
+            error_log("Failed to log error to database: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Log error to file for debugging
+     */
+    private static function logErrorToFile(array $errorData): void
+    {
+        $logDir = __DIR__ . '/../../../logs';
+        if (!is_dir($logDir)) {
+            mkdir($logDir, 0755, true);
+        }
+
+        $logFile = $logDir . '/errors.log';
+        $logEntry = sprintf(
+            "[%s] %s: %s in %s:%d (URL: %s, Method: %s, IP: %s)\n",
+            $errorData['timestamp'],
+            self::getErrorTypeName($errorData['type']),
+            $errorData['message'],
+            $errorData['file'],
+            $errorData['line'],
+            $errorData['url'],
+            $errorData['method'],
+            $errorData['ip']
+        );
+
+        file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
+    }
+
+    /**
+     * Get human-readable error type name
+     */
+    private static function getErrorTypeName(int $type): string
+    {
+        $types = [
+            E_ERROR => 'E_ERROR',
+            E_WARNING => 'E_WARNING',
+            E_PARSE => 'E_PARSE',
+            E_NOTICE => 'E_NOTICE',
+            E_CORE_ERROR => 'E_CORE_ERROR',
+            E_CORE_WARNING => 'E_CORE_WARNING',
+            E_COMPILE_ERROR => 'E_COMPILE_ERROR',
+            E_COMPILE_WARNING => 'E_COMPILE_WARNING',
+            E_USER_ERROR => 'E_USER_ERROR',
+            E_USER_WARNING => 'E_USER_WARNING',
+            E_USER_NOTICE => 'E_USER_NOTICE',
+            E_STRICT => 'E_STRICT',
+            E_RECOVERABLE_ERROR => 'E_RECOVERABLE_ERROR',
+            E_DEPRECATED => 'E_DEPRECATED',
+            E_USER_DEPRECATED => 'E_USER_DEPRECATED'
+        ];
+
+        return $types[$type] ?? 'UNKNOWN';
+    }
+
+    /**
+     * Format bytes to human readable format
+     */
+    private static function formatBytes(int $bytes): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB'];
+        $bytes = max($bytes, 0);
+        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+        $pow = min($pow, count($units) - 1);
+        $bytes /= pow(1024, $pow);
+        return round($bytes, 2) . ' ' . $units[$pow];
     }
 
     public static function FatalErrorShutdownHandler(): void
@@ -74,6 +230,7 @@ class ErrorUtil
         if (session_status() == PHP_SESSION_ACTIVE) {
             $_SESSION['APP']['ERROR']['INTERNAL']['TYPE'] = $type;
             $_SESSION['APP']['ERROR']['INTERNAL']['MESSAGE'] = $message;
+            $_SESSION['APP']['ERROR']['INTERNAL']['TIMESTAMP'] = time();
         }
     }
 
@@ -102,6 +259,54 @@ class ErrorUtil
             return (isset($_SESSION['APP']['ERROR']['INTERNAL']['MESSAGE']) || isset($_SESSION['APP']['ERROR']['DB']['MESSAGE']));
         }
         return false;
+    }
+
+    /**
+     * Get error statistics for monitoring
+     */
+    public static function getErrorStats(?string $dateFrom = null, ?string $dateTo = null): array
+    {
+        try {
+            $db = LazyMePHP::DB_CONNECTION();
+            if (!$db) return [];
+
+            $whereClause = "";
+            $params = [];
+            
+            if ($dateFrom && $dateTo) {
+                $whereClause = "WHERE created_at BETWEEN ? AND ?";
+                $params = [$dateFrom . ' 00:00:00', $dateTo . ' 23:59:59'];
+            } elseif ($dateFrom) {
+                $whereClause = "WHERE created_at >= ?";
+                $params = [$dateFrom . ' 00:00:00'];
+            }
+
+            $query = "SELECT 
+                        error_code,
+                        COUNT(*) as count,
+                        MIN(created_at) as first_occurrence,
+                        MAX(created_at) as last_occurrence
+                      FROM __LOG_ERRORS 
+                      $whereClause 
+                      GROUP BY error_code 
+                      ORDER BY count DESC";
+
+            $result = $db->Query($query, $params);
+            $stats = [];
+            
+            while ($row = $result->FetchArray()) {
+                $stats[] = [
+                    'type' => $row['error_code'],
+                    'count' => $row['count'],
+                    'first_occurrence' => $row['first_occurrence'],
+                    'last_occurrence' => $row['last_occurrence']
+                ];
+            }
+
+            return $stats;
+        } catch (\Exception $e) {
+            return [];
+        }
     }
 }
 

@@ -278,9 +278,9 @@ class Validations {
   static function ValidateRegExp(mixed $value, string $regexp): bool
   {
       if ($value === null || $value === '') {
-          return false;
+          return true; // Empty values are allowed
       }
-      return (is_string($value) && preg_match($regexp, $value) === 1) || empty($value);
+      return is_string($value) && preg_match($regexp, $value) === 1;
   }
 
   static function ValidateDateTime(mixed $value): bool

@@ -21,21 +21,52 @@ function enableLogging() {
     `id` int(255) NOT NULL,
     `date` datetime NOT NULL,
     `user` varchar(255) DEFAULT NULL,
-    `method`varchar(10) DEFAULT NULL);
+    `method` varchar(64) DEFAULT NULL,
+    `status_code` int(3) DEFAULT 200,
+    `response_time` int(10) DEFAULT NULL,
+    `ip_address` varchar(45) DEFAULT NULL,
+    `user_agent` text DEFAULT NULL,
+    `request_uri` text DEFAULT NULL,
+    `trace_id` varchar(64) DEFAULT NULL);
+    
     CREATE TABLE IF NOT EXISTS `__LOG_ACTIVITY_OPTIONS` (
     `id` int(255) NOT NULL,
     `id_log_activity` int(255) NOT NULL,
     `subOption` varchar(255) NOT NULL,
     `value` varchar(255) NOT NULL);
+    
     CREATE TABLE IF NOT EXISTS `__LOG_DATA` (
     `id` int(255) NOT NULL,
     `id_log_activity` int(255) NOT NULL,
     `table` varchar(255) NOT NULL,
     `pk` varchar(255) NULL,
-    `method` varchar(1) NULL,
+    `method` varchar(10) NULL,
     `field` varchar(255) NOT NULL,
     `dataBefore` varchar(255) NULL,
     `dataAfter` varchar(255) NULL);
+    
+    CREATE TABLE IF NOT EXISTS `__LOG_ERRORS` (
+    `id` int(255) NOT NULL AUTO_INCREMENT,
+    `id_log_activity` int(255) NULL,
+    `trace_id` varchar(64) DEFAULT NULL,
+    `error_code` varchar(50) NOT NULL,
+    `error_message` text NOT NULL,
+    `http_status` int(3) DEFAULT 500,
+    `exception_class` varchar(255) DEFAULT NULL,
+    `exception_file` varchar(500) DEFAULT NULL,
+    `exception_line` int(10) DEFAULT NULL,
+    `exception_trace` text DEFAULT NULL,
+    `context` varchar(50) DEFAULT 'API',
+    `severity` varchar(20) DEFAULT 'ERROR',
+    `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_trace_id` (`trace_id`),
+    KEY `idx_error_code` (`error_code`),
+    KEY `idx_http_status` (`http_status`),
+    KEY `idx_created_at` (`created_at`),
+    FOREIGN KEY (`id_log_activity`) REFERENCES `__LOG_ACTIVITY` (`id`) ON DELETE SET NULL
+    );
+    
     ALTER TABLE `__LOG_ACTIVITY`
     ADD PRIMARY KEY (`id`);
     ALTER TABLE `__LOG_ACTIVITY_OPTIONS`
@@ -57,7 +88,7 @@ function enableLogging() {
     ";
     $sqlObj = LazyMePHP::DB_CONNECTION()->Query($queryString);
     LazyMePHP::DB_CONNECTION()->Close();
-    echo "Done enabling logging, press enter to continue...";
+    echo "Done enabling logging with error tracking, press enter to continue...";
     \Tools\Helper\read();
   }
 }

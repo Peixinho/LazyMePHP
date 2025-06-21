@@ -64,7 +64,7 @@ class CsrfProtection
             
             if ($usageCount >= 10 || $timeSinceLastUsed > 1800) { // 10 uses or 30 minutes
                 $session->forget([self::TOKEN_KEY, 'csrf_created_at', 'csrf_usage_count', 'csrf_last_used']);
-                self::getToken(); // Generate new token
+            self::getToken(); // Generate new token
             } else {
                 $session->put('csrf_last_used', time());
             }

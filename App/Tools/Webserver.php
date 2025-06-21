@@ -61,9 +61,31 @@ if ($filePath && is_file($filePath)) {
   // rewrite to our index file
   if (substr($_SERVER["REQUEST_URI"],0,4) == "/api")
     include getcwd() . DIRECTORY_SEPARATOR . 'public/api/index.php';
-  elseif (substr($_SERVER["REQUEST_URI"],0,8) == "/logging") 
-    include getcwd() . DIRECTORY_SEPARATOR . '/logging/index.php';
-  else
+  elseif (substr($_SERVER["REQUEST_URI"],0,8) == "/logging") {
+    // Handle logging directory - check if specific file exists
+    $loggingPath = getcwd() . DIRECTORY_SEPARATOR . 'logging';
+    $requestedFile = ltrim(parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH), '/');
+    $fullPath = getcwd() . DIRECTORY_SEPARATOR . $requestedFile;
+
+    // DEBUG OUTPUT
+    file_put_contents(
+        __DIR__ . '/../../webserver_debug.log',
+        "\n---\nREQUEST_URI: {$_SERVER['REQUEST_URI']}\nrequestedFile: $requestedFile\nfullPath: $fullPath\nloggingPath: $loggingPath\nis_dir(fullPath): " . (is_dir($fullPath) ? 'YES' : 'NO') . "\nfile_exists(fullPath): " . (file_exists($fullPath) ? 'YES' : 'NO') . "\n",
+        FILE_APPEND
+    );
+
+    // If the path is exactly 'logging' (directory), serve index.php
+    if (is_dir($fullPath)) {
+      include $loggingPath . DIRECTORY_SEPARATOR . 'index.php';
+    }
+    // If the requested file exists in logging directory, serve it
+    elseif (file_exists($fullPath) && strpos($fullPath, $loggingPath) === 0) {
+      include $fullPath;
+    } else {
+      // Default to index.php if file doesn't exist
+      include $loggingPath . DIRECTORY_SEPARATOR . 'index.php';
+    }
+  } else
     include getcwd() . DIRECTORY_SEPARATOR . 'public/index.php';
 }
 ?>

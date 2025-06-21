@@ -15,7 +15,7 @@ namespace Core\Validations;
 class ValidationPatterns {
     public const FLOAT = '/^[+-]?\d*\.?\d+$/';
     public const INT = '/^[+-]?\d+$/';
-    public const STRING = '/^[\x20-\x7E\xA0-\xFF]*$/';
+    public const STRING = '/^[\p{L}\p{N}\p{P}\p{Z}\p{S}]*$/u';
     public const DATE = '/^\d{4}([\/\-])\d{2}\1\d{2}$/';
     public const DATETIME = '/^\d{4}([\/\-])\d{2}\1\d{2}(?:[ T]\d{2}:\d{2}(?::\d{2})?)?$/';
     public const ISO_DATE = '/^\d{4}-\d{2}-\d{2}(?:\s\d{2}:\d{2}:\d{2})?$/';

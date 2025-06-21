@@ -23,7 +23,7 @@ class EncryptionUtil
     public static function encrypt(string $plaintext, string $key): string|false
     {
         if (empty($key) || strlen($key) !== SODIUM_CRYPTO_SECRETBOX_KEYBYTES) {
-            return false;
+            return false; 
         }
         $nonce = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
         $cipher = sodium_crypto_secretbox($plaintext, $nonce, $key);

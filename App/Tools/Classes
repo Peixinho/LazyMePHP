@@ -190,9 +190,9 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
                 break;
                 case "string":
                 if ($field->AllowNull())
-                  fwrite($classFile, "\t\t\tif (!empty(\$this->".$field->GetName().") && LazyMePHP::ACTIVITY_LOG() && \$this->".$field->GetName()."!=\$".$field->GetName().")\n\t\t\t\t\$this->__log['".$field->GetName()."']=array(substr(\$this->".$field->GetName().",0,255), substr(\$".$field->GetName().",0,255));");
+                  fwrite($classFile, "\t\t\tif (!empty(\$this->".$field->GetName().") && LazyMePHP::ACTIVITY_LOG() && \$this->".$field->GetName()."!=\$".$field->GetName().")\n\t\t\t\t\$this->__log['".$field->GetName()."']=array(substr(\$this->".$field->GetName()." ?? '',0,255), substr(\$".$field->GetName()." ?? '',0,255));");
                 else
-                  fwrite($classFile, "\t\t\tif (LazyMePHP::ACTIVITY_LOG() && \$this->".$field->GetName()."!=\$".$field->GetName().")\n\t\t\t\t\$this->__log['".$field->GetName()."']=array(substr(\$this->".$field->GetName().",0,255), substr(\$".$field->GetName().",0,255));");
+                  fwrite($classFile, "\t\t\tif (LazyMePHP::ACTIVITY_LOG() && \$this->".$field->GetName()."!=\$".$field->GetName().")\n\t\t\t\t\$this->__log['".$field->GetName()."']=array(substr(\$this->".$field->GetName()." ?? '',0,255), substr(\$".$field->GetName()." ?? '',0,255));");
                 break;
             }
             fwrite($classFile, "\n");
@@ -535,7 +535,21 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
             fwrite($classFile, "\t\t\t}");
             fwrite($classFile, "\n");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\tif (LazyMePHP::ACTIVITY_LOG()) LazyMePHP::LOGDATA(\"".$db->_Tablename."\",\$this->__log,(string)\$this->".$field->GetName().",\$method);");
+            fwrite($classFile, "\t\t\t// Use LoggingHelper for proper change logging");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t\t\tif (LazyMePHP::ACTIVITY_LOG() && !empty(\$this->__log)) {");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t\t\t\tif (\$method === 'I') {");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t\t\t\t\t\\Core\\Helpers\\LoggingHelper::logInsert('".$db->_Tablename."', \$this->__log, (string)\$this->".$field->GetName().");");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t\t\t\t} else {");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t\t\t\t\t\\Core\\Helpers\\LoggingHelper::logUpdate('".$db->_Tablename."', \$this->__log, '".$field->GetName()."', (string)\$this->".$field->GetName().");");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t\t\t\t}");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t\t\t}");
             fwrite($classFile, "\n");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t\t\treturn \$ret;");
@@ -567,15 +581,17 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
             fwrite($classFile, "\n");
             fwrite($classFile, "\t\tif (!isset(\$this->".$field->GetName().")) return false;");
             fwrite($classFile, "\n");
+            fwrite($classFile, "\t\t// Log deletion using LoggingHelper");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t\tif (LazyMePHP::ACTIVITY_LOG()) {");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t\t\t\\Core\\Helpers\\LoggingHelper::logDelete('".$db->_Tablename."', '".$field->GetName()."', (string)\$this->".$field->GetName().");");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t\t}");
+            fwrite($classFile, "\n");
             fwrite($classFile, "\t\t\$sql = \"DELETE FROM ".$db->_Tablename." WHERE ".$field->GetName()."=?\";");
             fwrite($classFile, "\n");
-            fwrite($classFile,"\t\t\$method = \"D\";");
-            fwrite($classFile, "\n");
             fwrite($classFile,"\t\t\$rtn = LazyMePHP::DB_CONNECTION()->Query(\$sql, array(\$this->".$db->_PrimaryFieldName."));");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\$this->__log[' ']=array(\"\",\"\");");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\tif (LazyMePHP::ACTIVITY_LOG()) LazyMePHP::LOGDATA(\"".$db->_Tablename."\",\$this->__log,(string)\$this->".$field->GetName().",\$method);");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t\treturn true;");
             fwrite($classFile, "\n");

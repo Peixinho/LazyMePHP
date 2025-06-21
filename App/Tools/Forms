@@ -527,6 +527,9 @@ class BuildTableForms
         fwrite($controllerFile," */");
         fwrite($controllerFile, "\n");
         fwrite($controllerFile, "\n");
+        fwrite($controllerFile, "declare(strict_types=1);");
+        fwrite($controllerFile, "\n");
+        fwrite($controllerFile, "\n");
         fwrite($controllerFile, "namespace Controllers;");
         fwrite($controllerFile, "\n");
         fwrite($controllerFile, "\n");
@@ -668,13 +671,13 @@ class BuildTableForms
           fwrite($controllerFile, "\t\t];");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\tif (!\$api && CsrfProtection::verifyToken(\$this->request->post('_token')))"); // Use short name
+          fwrite($controllerFile, "\t\tif (!\$api && CsrfProtection::verifyToken(\$this->request->post('_token')))");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\t\$validatedData = \\Core\\Validations\\Validations::ValidateFormData(\$validationRules);"); // Use short name
+          fwrite($controllerFile, "\t\t\t\$validatedData = \\Core\\Validations\\Validations::ValidateFormData(\$validationRules);");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\telse");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\t\$validatedData = \\Core\\Validations\\Validations::ValidateJsonData(json_encode(\$this->request->json()), \$validationRules);"); // Use short name
+          fwrite($controllerFile, "\t\t\t\$validatedData = \\Core\\Validations\\Validations::ValidateJsonData(\$this->request->json(), \$validationRules);");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\tif (\$validatedData['success']) {");

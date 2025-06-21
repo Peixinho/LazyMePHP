@@ -463,12 +463,38 @@ class LazyMePHP
   {
     // Proceed only if activity logging is enabled and a database connection exists.
     if (self::ACTIVITY_LOG() && self::DB_CONNECTION()) {
-      // --- Log main activity ---
-      $logActivityQuery = "INSERT INTO __LOG_ACTIVITY (`date`, `user`, `method`) VALUES (?, ?, ?)";
-      $currentDateTime = date("Y-m-d H:i:s"); // Use standard SQL datetime format
-      $requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'CLI'; // Default to CLI if not an HTTP request
+      // --- Collect request information ---
+      $currentDateTime = date("Y-m-d H:i:s");
+      $requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'CLI';
+      $requestUri = $_SERVER['REQUEST_URI'] ?? '';
+      $ipAddress = $_SERVER['REMOTE_ADDR'] ?? $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['HTTP_CLIENT_IP'] ?? 'unknown';
+      $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+      $statusCode = http_response_code() ?: 200;
       
-      self::DB_CONNECTION()->Query($logActivityQuery, [$currentDateTime, self::$_app_activity_auth, $requestMethod]);
+      // Calculate response time
+      $requestStartTime = $_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true);
+      $responseTime = microtime(true) - $requestStartTime;
+      
+      $traceId = uniqid('req_', true);
+      
+      // --- Log main activity with enhanced information ---
+      $logActivityQuery = "INSERT INTO __LOG_ACTIVITY (
+        `date`, `user`, `method`, `status_code`, `response_time`, 
+        `ip_address`, `user_agent`, `request_uri`, `trace_id`
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+      
+      self::DB_CONNECTION()->Query($logActivityQuery, [
+        $currentDateTime, 
+        self::$_app_activity_auth, 
+        $requestMethod,
+        $statusCode,
+        round($responseTime * 1000), // Convert to milliseconds
+        $ipAddress,
+        $userAgent,
+        $requestUri,
+        $traceId
+      ]);
+      
       $logActivityId = self::DB_CONNECTION()->GetLastInsertedID('__LOG_ACTIVITY');
 
       // If $logActivityId is not valid, we cannot proceed with logging details.
@@ -483,8 +509,10 @@ class LazyMePHP
 
       // --- Log URL/Route parameters for the activity ---
       $urlParts = [];
-      if (function_exists('\LazyMePHP\Helper\url')) { // Check if helper function exists
-          $urlParts = explode('/', (string)\LazyMePHP\Helper\url());
+      if (function_exists('url')) { // Check if helper function exists
+          $urlParts = explode('/', (string)url());
+      } elseif (isset($_SERVER['REQUEST_URI'])) {
+          $urlParts = explode('/', $_SERVER['REQUEST_URI']);
       }
       
       if (!empty($urlParts)) {
@@ -518,6 +546,10 @@ class LazyMePHP
                           $dataBefore = $values[0] ?? null;
                           $dataAfter = $values[1] ?? null;
                           
+                          // Serialize data properly to prevent "Array" strings
+                          $dataBefore = self::serializeLogValue($dataBefore);
+                          $dataAfter = self::serializeLogValue($dataAfter);
+                          
                           $logDataQueryParts[] = "(?, ?, ?, ?, ?, ?, ?)";
                           array_push(
                               $logDataQueryData,
@@ -544,6 +576,27 @@ class LazyMePHP
       }
       // Clear log data for the current request after processing.
       self::$_app_logdata = [];
+    }
+  }
+
+  /**
+   * Serializes a log value to prevent "Array" strings from being stored in the database.
+   *
+   * @param mixed $value The value to be serialized.
+   * @return string The serialized value.
+   */
+  private static function serializeLogValue($value): string
+  {
+    if (is_null($value)) {
+        return 'NULL';
+    } elseif (is_array($value)) {
+        return json_encode($value);
+    } elseif (is_object($value)) {
+        return serialize($value);
+    } elseif (is_resource($value)) {
+        return 'Resource';
+    } else {
+        return (string)$value;
     }
   }
 }
