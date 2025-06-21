@@ -233,17 +233,10 @@ class BuildActions
     }
     
     /**
-     * Enable logging system
+     * Create logging tables
      */
-    public function enableLogging(): void
+    public function createLoggingTables(): void
     {
-        if (!LazyMePHP::ACTIVITY_LOG()) {
-            echo "Logging is not enabled in configuration.\n";
-            return;
-        }
-        
-        echo "Setting up logging system...\n";
-        
         $dbType = LazyMePHP::DB_TYPE();
         $queryString = getLoggingTableSQL($dbType);
         
@@ -255,10 +248,7 @@ class BuildActions
                 LazyMePHP::DB_CONNECTION()->Query($statement);
             }
         }
-        
         LazyMePHP::DB_CONNECTION()->Close();
-        echo "✅ Logging system enabled successfully!\n";
-        \Tools\Helper\read();
     }
     
     /**
@@ -494,6 +484,7 @@ class BuildInterface
     {
         $this->tableManager = new TableManager();
         $this->actions = new BuildActions($this->tableManager);
+        $this->actions->createLoggingTables();
     }
     
     /**
@@ -529,7 +520,6 @@ class BuildInterface
         echo "Build Forms:   [f]\n";
         echo "Build API:     [a]\n";
         echo "Change Descriptor: [d]\n";
-        echo "Enable Logging:    [e]\n";
         echo "Quit:          [q]\n";
         echo str_repeat('-', 50) . "\n";
         echo "Choice: ";
@@ -545,7 +535,6 @@ class BuildInterface
             'f' => $this->actions->buildForms(),
             'a' => $this->actions->buildAPI(),
             'd' => $this->actions->changeDescriptor(),
-            'e' => $this->actions->enableLogging(),
             'q' => null, // Will exit the loop
             default => null
         };

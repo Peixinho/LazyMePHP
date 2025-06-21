@@ -104,44 +104,59 @@ class ErrorUtil
             // Check if __LOG_ERRORS table exists, if not create it
             $tableExists = $db->Query("SHOW TABLES LIKE '__LOG_ERRORS'");
             if (!$tableExists->FetchArray()) {
-                $createTable = "CREATE TABLE __LOG_ERRORS (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    error_type INT,
-                    error_message TEXT,
-                    error_file VARCHAR(500),
-                    error_line INT,
-                    error_url VARCHAR(500),
-                    error_method VARCHAR(10),
-                    error_ip VARCHAR(45),
-                    error_timestamp DATETIME,
-                    error_context JSON,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )";
-                $db->Query($createTable);
+                // Use LoggingTableSQL function for consistent table creation
+                require_once __DIR__ . '/../../Tools/LoggingTableSQL';
+                $dbType = LazyMePHP::DB_TYPE() ?? 'mysql';
+                $createTableSQL = getLoggingTableSQL($dbType);
+                
+                // Execute the SQL statements
+                $statements = explode(';', $createTableSQL);
+                foreach ($statements as $statement) {
+                    $statement = trim($statement);
+                    if (!empty($statement)) {
+                        $db->Query($statement);
+                    }
+                }
             }
 
-            $query = "INSERT INTO __LOG_ERRORS (
-                error_type, error_message, error_file, error_line, 
-                error_url, error_method, error_ip, error_timestamp, error_context
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            // Map error type to severity
+            $severity = match($errorData['type']) {
+                E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR => 'ERROR',
+                E_WARNING, E_CORE_WARNING, E_COMPILE_WARNING, E_USER_WARNING => 'WARNING',
+                E_NOTICE, E_USER_NOTICE => 'INFO',
+                E_DEPRECATED, E_USER_DEPRECATED => 'DEBUG',
+                default => 'ERROR'
+            };
 
-            $context = json_encode([
-                'user_agent' => $errorData['user_agent'],
-                'php_version' => $errorData['php_version'],
-                'memory_usage' => $errorData['memory_usage'],
-                'peak_memory' => $errorData['peak_memory']
-            ]);
+            // Map error type to HTTP status
+            $httpStatus = match($errorData['type']) {
+                E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR => 500,
+                E_WARNING, E_CORE_WARNING, E_COMPILE_WARNING => 500,
+                E_NOTICE, E_USER_NOTICE => 200,
+                E_DEPRECATED, E_USER_DEPRECATED => 200,
+                default => 500
+            };
+
+            // Generate error code from error type
+            $errorCode = self::getErrorTypeName($errorData['type']);
+
+            $query = "INSERT INTO __LOG_ERRORS (
+                error_message, error_code, http_status, severity, context, 
+                file_path, line_number, user_agent, ip_address, request_uri, request_method
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
             $db->Query($query, [
-                $errorData['type'],
                 $errorData['message'],
+                $errorCode,
+                $httpStatus,
+                $severity,
+                'PHP_ERROR',
                 $errorData['file'],
                 $errorData['line'],
-                $errorData['url'],
-                $errorData['method'],
+                $errorData['user_agent'],
                 $errorData['ip'],
-                $errorData['timestamp'],
-                $context
+                $errorData['url'],
+                $errorData['method']
             ]);
         } catch (\Exception $e) {
             // Fallback to file logging if database fails

@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Get database credentials from environment
     $dbUsername = $_ENV['DB_USER'] ?? '';
     $dbPassword = $_ENV['DB_PASSWORD'] ?? '';
-    
+
     if (!empty($username)) {
         // Check if username matches DB_USER
         if ($username === $dbUsername) {

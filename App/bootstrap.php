@@ -44,6 +44,9 @@ date_default_timezone_set($_ENV['APP_TIMEZONE'] ?? 'UTC');
  */
 new Core\LazyMePHP();
 
+// Always log errors and warnings to the database (register first to avoid being overridden)
+set_error_handler(['\Core\Helpers\ErrorUtil', 'ErrorHandler']);
+
 /*
  * Initialize Enhanced Debugging System
  */

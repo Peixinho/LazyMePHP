@@ -294,12 +294,44 @@ $totalPages = ceil($totalErrors / $limit);
             border: 2px solid #e1e8ed;
             border-radius: 10px;
             font-size: 1em;
-            transition: border-color 0.3s ease;
+            transition: all 0.3s ease;
+            background: white;
+            color: #2c3e50;
+            font-family: inherit;
+        }
+
+        .form-group select {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232c3e50' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 16px;
+            padding-right: 40px;
+            cursor: pointer;
+        }
+
+        .form-group select:hover {
+            border-color: #bdc3c7;
+            background-color: #f8f9fa;
         }
 
         .form-group input:focus, .form-group select:focus {
             outline: none;
             border-color: #e74c3c;
+            box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
+            background-color: white;
+        }
+
+        .form-group select option {
+            padding: 10px;
+            background: white;
+            color: #2c3e50;
+        }
+
+        .form-group select option:hover {
+            background: #f8f9fa;
         }
 
         .btn {

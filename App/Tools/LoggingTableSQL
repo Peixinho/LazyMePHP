@@ -1,7 +1,7 @@
 <?php
 // Extracted from App/Tools/build for reuse in tests and build
 
-function getLoggingTableSQL($dbType) {
+function getLoggingTableSQL($dbType) :string {
     switch (strtolower($dbType)) {
         case 'mysql':
             return "
@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS __LOG_ERRORS (
   request_uri VARCHAR(500) DEFAULT NULL,
   request_method VARCHAR(10) DEFAULT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY idx_error_code (error_code),
   KEY idx_severity (severity),
   KEY idx_context (context),
@@ -114,7 +115,8 @@ CREATE TABLE IF NOT EXISTS __LOG_ERRORS (
   ip_address TEXT,
   request_uri TEXT,
   request_method TEXT,
-  created_at TEXT DEFAULT (datetime('now'))
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
 );
 ";
         case 'mssql':
@@ -168,7 +170,8 @@ CREATE TABLE __LOG_ERRORS (
   ip_address NVARCHAR(45) NULL,
   request_uri NVARCHAR(500) NULL,
   request_method NVARCHAR(10) NULL,
-  created_at DATETIME DEFAULT GETDATE()
+  created_at DATETIME DEFAULT GETDATE(),
+  updated_at DATETIME DEFAULT GETDATE()
 );
 ";
         default:

@@ -50,7 +50,10 @@ class DebugToolbar
         // Skip logging system queries to keep debug toolbar clean
         $sqlUpper = strtoupper(trim($sql));
         if (strpos($sqlUpper, 'INSERT INTO __LOG_') === 0 || 
-            strpos($sqlUpper, 'SELECT') === 0 && strpos($sqlUpper, '__LOG_') !== false) {
+            strpos($sqlUpper, 'SELECT') === 0 && strpos($sqlUpper, '__LOG_') !== false ||
+            strpos($sqlUpper, 'SHOW TABLES LIKE') === 0 ||
+            strpos($sqlUpper, 'DESCRIBE __LOG_') === 0 ||
+            strpos($sqlUpper, 'COUNT(*) FROM __LOG_') !== false) {
             return;
         }
         

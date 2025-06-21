@@ -457,7 +457,7 @@ class LazyMePHP
     self::$_app_title = $_ENV['APP_TITLE'] ?? 'LazyMePHP Application';
     self::$_app_version = $_ENV['APP_VERSION'] ?? '1.0';
     self::$_app_description = $_ENV['APP_DESCRIPTION'] ?? 'A LazyMePHP application.';
-    self::$_app_timezone = $_ENV['APP_TIMEZONE'] ?? 'UTC';
+    self::$_app_timezone = trim($_ENV['APP_TIMEZONE'] ?? 'UTC', '"\'');
     self::$_support_email = $_ENV['APP_EMAIL_SUPPORT'] ?? 'noreply@example.com';
     self::$_app_activity_log = ($_ENV['APP_ACTIVITY_LOG'] ?? 'false') === 'true';
     self::$_app_activity_auth = $_ENV['APP_ACTIVITY_AUTH'] ?? ''; // E.g., default system user for logs
@@ -470,10 +470,8 @@ class LazyMePHP
     date_default_timezone_set(self::$_app_timezone);
     
     // Register custom error and shutdown handlers using ErrorUtil.
-    // The @ suppresses errors from these functions themselves, which ErrorUtil should handle.
-
-    //@set_error_handler([\Helpers\ErrorUtil::class, 'ErrorHandler']);
-    //@register_shutdown_function([\Helpers\ErrorUtil::class, 'FatalErrorShutdownHandler']);
+    set_error_handler(['\\Core\\Helpers\\ErrorUtil', 'ErrorHandler']);
+    register_shutdown_function(['\\Core\\Helpers\\ErrorUtil', 'FatalErrorShutdownHandler']);
   }
 
   /**
