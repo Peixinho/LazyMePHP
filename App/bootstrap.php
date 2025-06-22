@@ -151,6 +151,36 @@ try {
     // Handle 404 errors
     \Core\ErrorHandler::handleWebNotFoundError();
     return;
+} catch (\Core\Exceptions\ApiException $exception) {
+    ob_end_clean();
+    // Handle API exceptions with their specific HTTP status codes
+    $httpCode = $exception->getCode();
+    $message = $exception->getMessage();
+    $errorCode = $exception->getErrorCode();
+    $details = $exception->getDetails();
+    
+    if (strpos($_SERVER['REQUEST_URI'] ?? '', '/api/') !== false) {
+        // API error - return JSON with correct status code
+        http_response_code($httpCode);
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => false,
+            'error' => $message,
+            'error_code' => $errorCode,
+            'details' => $details
+        ]);
+    } else {
+        // Web error - redirect to error page or show error
+        if ($httpCode === 403) {
+            // For CSRF errors, redirect back to the previous page with an error message
+            $_SESSION['error'] = 'Security validation failed. Please try again.';
+            header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? '/'));
+            exit;
+        } else {
+            \Core\ErrorHandler::handleWebServerError($exception);
+        }
+    }
+    return;
 } catch (\Throwable $exception) {
     ob_end_clean();
     // Handle other errors

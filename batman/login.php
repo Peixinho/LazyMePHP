@@ -87,7 +87,7 @@ if (isset($_SESSION['is_logged_in']) && $_SESSION['is_logged_in']) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Batman Dashboard</title>
+    <title>Batman Dashboard - Login</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         * {
@@ -143,18 +143,44 @@ if (isset($_SESSION['is_logged_in']) && $_SESSION['is_logged_in']) {
             font-weight: 600;
         }
 
-        .form-group input {
-            width: 100%;
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
             padding: 12px 15px;
             border: 2px solid #e1e8ed;
             border-radius: 10px;
-            font-size: 16px;
+            font-size: 14px;
             transition: border-color 0.3s ease;
+            font-family: inherit;
+            background: rgba(255,255,255,0.7);
+            box-shadow: 0 2px 8px rgba(102,126,234,0.05);
+            color: #2c3e50;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
         }
 
-        .form-group input:focus {
+        .form-group select {
+            background: linear-gradient(135deg, #f8fafc 60%, #e9eafc 100%);
+            border: 2px solid #e1e8ed;
+            color: #2c3e50;
+            padding-right: 40px;
+            position: relative;
+            cursor: pointer;
+            background-image: url('data:image/svg+xml;utf8,<svg fill="%23667eea" height="20" viewBox="0 0 20 20" width="20" xmlns="http://www.w3.org/2000/svg"><path d="M7.293 8.293a1 1 0 011.414 0L10 9.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z"/></svg>');
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 20px 20px;
+        }
+
+        .form-group select:focus {
             outline: none;
             border-color: #667eea;
+            box-shadow: 0 0 0 2px #667eea33;
+        }
+
+        .form-group select::-ms-expand {
+            display: none;
         }
 
         .btn-login {

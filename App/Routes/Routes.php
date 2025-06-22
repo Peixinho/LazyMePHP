@@ -17,18 +17,15 @@ $views = __DIR__ . '/../Views/';
 $cache = __DIR__ . '/../Views/_compiled';
 $blade = new BladeOne($views,$cache);
 
-SimpleRouter::get('/', function() : void {
-    global $blade;
+SimpleRouter::get('/', function() use ($blade) : void {
     echo $blade->run("_Default.view");
 }); 
 
-SimpleRouter::get('/not-found', function() : void {
-    global $blade;
+SimpleRouter::get('/not-found', function() use ($blade) : void {
     echo $blade->run("_Error.view");
 });
 
-SimpleRouter::get('/forbidden', function() : void {
-    global $blade;
+SimpleRouter::get('/forbidden', function() use ($blade) : void {
     echo $blade->run("_Error.view");
 });
 

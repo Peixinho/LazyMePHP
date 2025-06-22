@@ -17,21 +17,29 @@ class CsrfProtection
     const TOKEN_KEY = '_csrf_token';
 
     /**
-     * Generate or retrieve a CSRF token
+     * Generate a new CSRF token (only generates if none exists)
      *
      * @return string
      */
-    public static function getToken()
+    public static function getToken(): string
     {
         $session = Session::getInstance();
-
-        // Generate new token if none exists or expired
-        if (!$session->has(self::TOKEN_KEY) || self::isTokenExpired()) {
-            $session->put(self::TOKEN_KEY, bin2hex(random_bytes(32)));
-            $session->put('csrf_created_at', time());
+        
+        // Check if token already exists
+        $existingToken = $session->get(self::TOKEN_KEY, null);
+        if ($existingToken) {
+            error_log("CSRF Token reused: " . substr($existingToken, 0, 8) . "...");
+            return $existingToken;
         }
-
-        return $session->get(self::TOKEN_KEY);
+        
+        // Generate new token only if none exists
+        $newToken = bin2hex(random_bytes(32));
+        $session->put(self::TOKEN_KEY, $newToken);
+        $session->put('csrf_created_at', time());
+        
+        error_log("CSRF Token generated: " . substr($newToken, 0, 8) . "...");
+        
+        return $newToken;
     }
 
     /**
@@ -43,47 +51,67 @@ class CsrfProtection
     public static function verifyToken(string $token): bool
     {
         $session = Session::getInstance();
-
         $storedToken = $session->get(self::TOKEN_KEY, null);
 
-        if (!$storedToken || self::isTokenExpired()) {
+        error_log("CSRF Verification - Stored token: " . ($storedToken ? substr($storedToken, 0, 8) . "..." : "NULL"));
+        error_log("CSRF Verification - Received token: " . substr($token, 0, 8) . "...");
+
+        if (!$storedToken) {
+            error_log("CSRF Verification failed: No stored token");
             return false;
         }
 
+        // Use hash_equals for timing attack protection
         $isValid = hash_equals($storedToken, $token);
-
+        error_log("CSRF Verification result: " . ($isValid ? "VALID" : "INVALID"));
+        
         if ($isValid) {
-            // Track token usage
-            $usageCount = $session->get('csrf_usage_count', 0);
-            $usageCount++;
-            $session->put('csrf_usage_count', $usageCount);
-            
-            // Regenerate token after 10 uses or if it's been used for more than 30 minutes
-            $lastUsed = $session->get('csrf_last_used', time());
-            $timeSinceLastUsed = time() - $lastUsed;
-            
-            if ($usageCount >= 10 || $timeSinceLastUsed > 1800) { // 10 uses or 30 minutes
-                $session->forget([self::TOKEN_KEY, 'csrf_created_at', 'csrf_usage_count', 'csrf_last_used']);
-            self::getToken(); // Generate new token
-            } else {
-                $session->put('csrf_last_used', time());
-            }
+            // Generate a new token after successful validation to prevent replay attacks
+            $newToken = bin2hex(random_bytes(32));
+            $session->put(self::TOKEN_KEY, $newToken);
+            $session->put('csrf_created_at', time());
+            error_log("CSRF New token generated after validation: " . substr($newToken, 0, 8) . "...");
         }
-
+        
         return $isValid;
     }
 
     /**
-     * Check if token is expired (e.g., after 1 hour)
+     * Check if token exists (for display purposes)
      *
      * @return bool
      */
-    protected static function isTokenExpired(): bool
+    public static function hasToken(): bool
     {
         $session = Session::getInstance();
-        $createdAt = $session->get('csrf_created_at', 0);
-        $expiryTime = 3600; // 1 hour in seconds
-        return (time() - $createdAt) > $expiryTime;
+        return $session->has(self::TOKEN_KEY);
+    }
+
+    /**
+     * Clear CSRF token
+     */
+    public static function clearToken(): void
+    {
+        $session = Session::getInstance();
+        $session->forget([self::TOKEN_KEY, 'csrf_created_at']);
+    }
+
+    /**
+     * Get current token (without generating new one)
+     *
+     * @return string
+     */
+    public static function getCurrentToken(): string
+    {
+        $session = Session::getInstance();
+        $token = $session->get(self::TOKEN_KEY, null);
+        
+        if (!$token) {
+            // Generate token if none exists
+            return self::getToken();
+        }
+        
+        return $token;
     }
 
     /**
@@ -93,6 +121,6 @@ class CsrfProtection
      */
     public static function renderInput(): string
     {
-        return htmlspecialchars(self::getToken());
+        return htmlspecialchars(self::getCurrentToken());
     }
 }

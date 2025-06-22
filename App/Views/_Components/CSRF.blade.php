@@ -5,5 +5,4 @@
  * @author Duarte Peixinho
  */
 ?>
-
-<input type="hidden" name="_token" value="<?=\Core\Security\CsrfProtection::renderInput()?>"/>
+<input type="hidden" name="csrf_token" value="<?=\Core\Security\CsrfProtection::getCurrentToken()?>"/>

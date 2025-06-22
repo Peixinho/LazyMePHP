@@ -49,18 +49,24 @@ try {
     // Get error ID from request
     $errorId = $_GET['error_id'] ?? null;
     
+    // Debug: Log what we received
+    error_log("get-error-details.php: Received error_id = " . var_export($errorId, true));
+    
     if (!$errorId) {
         throw new Exception('Error ID is required');
     }
     
-    // Validate error ID (must be numeric)
-    if (!is_numeric($errorId) || $errorId <= 0) {
-        throw new Exception('Invalid error ID');
+    // Validate error ID (must be numeric and positive)
+    if (!is_numeric($errorId) || intval($errorId) <= 0) {
+        throw new Exception('Invalid error ID: ' . htmlspecialchars($errorId) . ' (type: ' . gettype($errorId) . ')');
     }
+    
+    // Convert to integer for safety
+    $errorId = intval($errorId);
     
     // Additional validation: limit the range to prevent abuse
     if ($errorId > 999999) {
-        throw new Exception('Error ID out of valid range');
+        throw new Exception('Error ID out of valid range: ' . $errorId);
     }
     
     // Database configuration
@@ -81,6 +87,9 @@ try {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES => false
     ]);
+    
+    // Debug: Log successful connection
+    error_log("get-error-details.php: Database connection successful");
     
     // Prepare and execute query
     $stmt = $pdo->prepare("
@@ -106,12 +115,18 @@ try {
         WHERE id = ?
     ");
     
+    // Debug: Log the query and parameters
+    error_log("get-error-details.php: Executing query with error_id = " . $errorId);
+    
     $stmt->execute([$errorId]);
     $error = $stmt->fetch();
     
     if (!$error) {
-        throw new Exception('Error not found');
+        throw new Exception('Error not found with ID: ' . $errorId);
     }
+    
+    // Debug: Log successful fetch
+    error_log("get-error-details.php: Successfully fetched error details");
     
     // Log the access for audit purposes
     $accessLog = [

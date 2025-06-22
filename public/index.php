@@ -8,7 +8,7 @@
 
 // Include the bootstrap file
 require_once __DIR__ . "/../App/bootstrap.php";
-  use Core\LazyMePHP;
+use Core\LazyMePHP;
 
 // Initialize the application
 $app = new LazyMePHP();
@@ -24,8 +24,10 @@ $app = new LazyMePHP();
       <!-- CSS -->
       <link rel="stylesheet" href="/css/css.css">
       <title><?php echo LazyMePHP::TITLE(); ?></title>
+      <!-- JavaScript - Load early to ensure availability -->
+      <script src="/js/LazyMePHP.js"></script>
     </head>
-    <body onload="LazyMePHP.Init()">
+    <body>
       <nav aria-label="Main navigation">
         <ul class="nav-menu">
           <?php foreach (glob(__DIR__."/../App/Routes/" . '/*.php') as $r) { if (substr($r, strrpos($r, "/")+1, strlen($r)) != "Routes.php") { echo "<li><a href=\"/".substr($r,strrpos($r,"/")+1, -4)."\">".substr($r,strrpos($r,"/")+1, -4)."</a>"; } } ?>
@@ -39,22 +41,20 @@ $app = new LazyMePHP();
         <!-- End  -->
       </div>
     </div>
-    <?php
-    $showMessage_S = "";
-    $showMessage_E = "";
-    //Error And Success Messages Generator
-    if (array_key_exists('success', $_GET) && strlen($_GET['success'])>0) foreach (explode(',',$_GET['success']) as $s) {
-      $s = "S$s";
-      $showMessage_S = (strlen($showMessage_S)>0?$showMessage_S."\\n".constant("Messages\Success::{$s}")->value:constant("Messages\Success::{$s}")->value);
-    }
-    if (array_key_exists('error', $_GET) && strlen($_GET['error'])>0) foreach (explode(',',$_GET['error']) as $e) {
-      $e = "E$e";
-      $showMessage_E = (strlen($showMessage_E)>0?$showMessage_E."\\n".constant("\Messages\Error::{$e}")->value:constant("\Messages\Error::{$e}")->value);
-    }
-    ?>
-    <script src="/js/LazyMePHP.js"></script>
+    
     <script>
-    <?php if (strlen($showMessage_E)>0) echo "LazyMePHP.ShowError('$showMessage_E');"; if (strlen($showMessage_S)>0) echo "LazyMePHP.ShowSuccess('$showMessage_S');"; ?>
+      // Initialize LazyMePHP and handle notifications when DOM is ready
+      document.addEventListener('DOMContentLoaded', function() {
+        if (typeof LazyMePHP !== 'undefined' && typeof LazyMePHP.Init === 'function') {
+          LazyMePHP.Init();
+          
+          // Process any session notifications that might be available
+          // This will be handled by the notifications component, but we ensure LazyMePHP is ready
+          console.log('LazyMePHP initialized successfully');
+        } else {
+          console.error('LazyMePHP not available for initialization');
+        }
+      });
     </script>
   </body>
 </html>

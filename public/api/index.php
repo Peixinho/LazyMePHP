@@ -9,6 +9,31 @@ declare(strict_types=1);
  */
 
 namespace API;
+
+// Set CORS headers immediately
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST, GET, DELETE, PUT, OPTIONS, PATCH');
+header('Access-Control-Allow-Headers: Content-Type, X-CSRF-TOKEN, Authorization, X-Requested-With');
+header('Access-Control-Max-Age: 86400'); // 24 hours
+
+// Handle preflight OPTIONS requests
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
+// Configure session for cross-port sharing
+ini_set('session.cookie_domain', 'localhost');
+ini_set('session.cookie_path', '/');
+ini_set('session.cookie_samesite', 'Lax');
+ini_set('session.cookie_secure', '0'); // Allow HTTP for localhost
+ini_set('session.cookie_httponly', '0'); // Allow JavaScript access if needed
+
+// Start session if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 use Core\LazyMePHP;
 use Core\Http\ApiExitException;
 use Core\ErrorHandler;
@@ -47,8 +72,6 @@ foreach(glob(__DIR__."/../../App/Api/" . "/*.php") as $r)
  * Output result
  */
 header('Content-type: application/json');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, GET, DELETE, PUT');
 
 // Start performance monitoring for API requests
 if (class_exists('Core\Helpers\PerformanceUtil')) {
@@ -96,34 +119,6 @@ if (class_exists('Core\Helpers\PerformanceUtil')) {
     exit; // Exit gracefully instead of throwing ApiExitException
 });
 
-// CSRF protection for API endpoints
-$method = $_SERVER['REQUEST_METHOD'] ?? null;
-$requestUri = $_SERVER['REQUEST_URI'] ?? '';
-
-// Skip CSRF protection for certain endpoints
-$skipCsrfEndpoints = [
-    '/api/csrf-token',
-];
-
-$shouldSkipCsrf = false;
-foreach ($skipCsrfEndpoints as $endpoint) {
-    if (strpos($requestUri, $endpoint) !== false) {
-        $shouldSkipCsrf = true;
-        break;
-    }
-}
-
-if (in_array($method, ['POST', 'PUT', 'DELETE']) && !$shouldSkipCsrf) {
-    $csrfToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
-    if (!\Core\Security\CsrfProtection::verifyToken($csrfToken)) {
-        ErrorHandler::handleApiError(
-            'Invalid CSRF token',
-            'UNAUTHORIZED'
-        );
-        exit; // Exit gracefully instead of throwing ApiExitException
-    }
-}
-
 \Pecee\SimpleRouter\SimpleRouter::start();
 
 // End performance monitoring and log if slow
@@ -142,5 +137,18 @@ if (class_exists('Core\Helpers\PerformanceUtil')) {
  */
 LazyMePHP::LOG_ACTIVITY();
 LazyMePHP::DB_CONNECTION()->Close();
+
+// Load environment variables
+$envFile = __DIR__ . '/../../.env';
+if (file_exists($envFile)) {
+    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos($line, '=') !== false && strpos($line, '#') !== 0) {
+            list($key, $value) = explode('=', $line, 2);
+            $_ENV[trim($key)] = trim($value);
+            putenv(trim($key) . '=' . trim($value));
+        }
+    }
+}
 
 ?>

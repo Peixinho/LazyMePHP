@@ -316,7 +316,7 @@ $extensionCategories = [
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Debug Dashboard - Batman Dashboard</title>
+    <title>Batman Dashboard - Debug</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -481,36 +481,34 @@ $extensionCategories = [
 
         .nav-tabs {
             display: flex;
-            gap: 10px;
-            margin-bottom: 30px;
-            flex-wrap: wrap;
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
             border-radius: 15px;
-            padding: 15px;
+            padding: 10px;
+            margin-bottom: 30px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            gap: 5px;
         }
 
         .nav-tab {
-            background: rgba(255, 255, 255, 0.9);
-            color: #2c3e50;
-            text-decoration: none;
             padding: 12px 20px;
+            text-decoration: none;
+            color: #7f8c8d;
             border-radius: 10px;
-            font-weight: 600;
             transition: all 0.3s ease;
             display: flex;
             align-items: center;
             gap: 8px;
+            font-weight: 500;
         }
 
         .nav-tab:hover {
-            background: rgba(255, 255, 255, 1);
-            transform: translateY(-2px);
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
         }
 
         .nav-tab.active {
-            background: #667eea;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
         }
 
@@ -531,13 +529,24 @@ $extensionCategories = [
             transform: translateY(-2px);
         }
 
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
         .btn-danger {
-            background: #e74c3c;
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
             color: white;
         }
 
         .btn-danger:hover {
-            background: #c0392b;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(231, 76, 60, 0.3);
         }
 
         .logs-table {
@@ -622,6 +631,46 @@ $extensionCategories = [
                 flex-direction: column;
             }
         }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            padding: 12px 15px;
+            border: 2px solid #e1e8ed;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+            font-family: inherit;
+            background: rgba(255,255,255,0.7);
+            box-shadow: 0 2px 8px rgba(102,126,234,0.05);
+            color: #2c3e50;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+        }
+
+        .form-group select {
+            background: linear-gradient(135deg, #f8fafc 60%, #e9eafc 100%);
+            border: 2px solid #e1e8ed;
+            color: #2c3e50;
+            padding-right: 40px;
+            position: relative;
+            cursor: pointer;
+            background-image: url('data:image/svg+xml;utf8,<svg fill="%23667eea" height="20" viewBox="0 0 20 20" width="20" xmlns="http://www.w3.org/2000/svg"><path d="M7.293 8.293a1 1 0 011.414 0L10 9.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z"/></svg>');
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 20px 20px;
+        }
+
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px #667eea33;
+        }
+
+        .form-group select::-ms-expand {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -630,36 +679,44 @@ $extensionCategories = [
             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                 <div>
                     <h1>
-                        <i class="fas fa-bug"></i>
-                        Debug Dashboard
+                        <i class="fas fa-bat"></i>
+                        Batman Dashboard
                     </h1>
-                    <p>System information, performance metrics, and debugging tools</p>
+                    <p>Debug - System information, performance metrics, and debugging tools</p>
                     <?php if (isset($_SESSION['is_logged_in']) && $_SESSION['is_logged_in']): ?>
-                        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e1e8ed; display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <strong>Welcome, <?php echo htmlspecialchars($_SESSION['user_name'] ?? $_SESSION['username']); ?></strong>
-                                <?php if (isset($_SESSION['user_email'])): ?>
-                                    <br><small style="color: #7f8c8d;"><?php echo htmlspecialchars($_SESSION['user_email']); ?></small>
-                                <?php endif; ?>
-                            </div>
-                            <a href="logout.php" class="btn btn-danger">
-                                <i class="fas fa-sign-out-alt"></i> Logout
-                            </a>
+                        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e1e8ed;">
+                            <strong>Welcome, <?php echo htmlspecialchars($_SESSION['user_name'] ?? $_SESSION['username']); ?></strong>
+                            <?php if (isset($_SESSION['user_email'])): ?>
+                                <br><small style="color: #7f8c8d;"><?php echo htmlspecialchars($_SESSION['user_email']); ?></small>
+                            <?php endif; ?>
                         </div>
                     <?php endif; ?>
                 </div>
+                <?php if (isset($_SESSION['is_logged_in']) && $_SESSION['is_logged_in']): ?>
+                    <div style="display: flex; align-items: center;">
+                        <a href="logout.php" class="btn btn-danger">
+                            <i class="fas fa-sign-out-alt"></i> Logout
+                        </a>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
 
         <div class="nav-tabs">
-            <a href="/batman/index.php?debug=1" class="nav-tab">
+            <a href="/index.php" class="nav-tab">
                 <i class="fas fa-activity"></i> Activity Logs
             </a>
-            <a href="/batman/errors.php?debug=1" class="nav-tab">
+            <a href="/errors.php" class="nav-tab">
                 <i class="fas fa-exclamation-triangle"></i> Error Logs
             </a>
-            <a href="/batman/debug.php?debug=1" class="nav-tab active">
+            <a href="/debug.php" class="nav-tab active">
                 <i class="fas fa-bug"></i> Debug Dashboard
+            </a>
+            <a href="/test.php" class="nav-tab">
+                <i class="fas fa-vial"></i> Testing Tools
+            </a>
+            <a href="/api-client.php" class="nav-tab">
+                <i class="fas fa-code"></i> API Client
             </a>
         </div>
 
