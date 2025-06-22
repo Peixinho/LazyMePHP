@@ -461,7 +461,7 @@ class BuildTableForms
         }
         fwrite($viewFile, "\t</tr>");
         fwrite($viewFile, "\n");
-        fwrite($viewFile, "\t@foreach(\$".$db->GetTableName()."->GetList() as \$member)");
+        fwrite($viewFile, "\t@foreach(\$".$db->GetTableName()."->GetList(false) as \$member)");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "\t<tr>");
         fwrite($viewFile, "\n");
