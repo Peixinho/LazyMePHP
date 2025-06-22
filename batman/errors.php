@@ -242,6 +242,39 @@ $totalPages = ceil($totalErrors / $limit);
             font-size: 1.1em;
         }
 
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-tab {
+            padding: 12px 20px;
+            border-radius: 10px;
+            text-decoration: none;
+            color: #2c3e50;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-tab:hover {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+        }
+
+        .nav-tab.active {
+            background: #667eea;
+            color: white;
+        }
+
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -366,7 +399,7 @@ $totalPages = ceil($totalErrors / $limit);
         }
 
         .btn {
-            padding: 12px 20px;
+            padding: 12px 25px;
             border: none;
             border-radius: 10px;
             font-size: 1em;
@@ -398,6 +431,15 @@ $totalPages = ceil($totalErrors / $limit);
         .btn-secondary:hover {
             background: #6a757a;
             transform: translateY(-1px);
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
         }
 
         .btn-sm {
@@ -778,8 +820,37 @@ $totalPages = ceil($totalErrors / $limit);
 <body>
     <div class="container">
         <div class="header">
-            <h1><i class="fas fa-exclamation-triangle"></i> Error Logs Dashboard</h1>
-            <p>Monitor and analyze application errors in real-time</p>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <h1><i class="fas fa-exclamation-triangle"></i> Error Logs Dashboard</h1>
+                    <p>Monitor and analyze application errors in real-time</p>
+                    <?php if (isset($_SESSION['is_logged_in']) && $_SESSION['is_logged_in']): ?>
+                        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e1e8ed; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong>Welcome, <?php echo htmlspecialchars($_SESSION['user_name'] ?? $_SESSION['username']); ?></strong>
+                                <?php if (isset($_SESSION['user_email'])): ?>
+                                    <br><small style="color: #7f8c8d;"><?php echo htmlspecialchars($_SESSION['user_email']); ?></small>
+                                <?php endif; ?>
+                            </div>
+                            <a href="logout.php" class="btn btn-danger">
+                                <i class="fas fa-sign-out-alt"></i> Logout
+                            </a>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+
+        <div class="nav-tabs">
+            <a href="/batman/index.php?debug=1" class="nav-tab">
+                <i class="fas fa-activity"></i> Activity Logs
+            </a>
+            <a href="/batman/errors.php?debug=1" class="nav-tab active">
+                <i class="fas fa-exclamation-triangle"></i> Error Logs
+            </a>
+            <a href="/batman/debug.php?debug=1" class="nav-tab">
+                <i class="fas fa-bug"></i> Debug Dashboard
+            </a>
         </div>
 
         <!-- Statistics Cards -->
@@ -841,9 +912,9 @@ $totalPages = ceil($totalErrors / $limit);
                 <div class="form-group">
                     <label>&nbsp;</label>
                     <div style="display: flex; gap: 10px;">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-search"></i> Filter
-                        </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i> Filter
+                    </button>
                         <a href="errors.php" class="btn btn-secondary">
                             <i class="fas fa-times"></i> Clear
                         </a>
@@ -907,7 +978,7 @@ $totalPages = ceil($totalErrors / $limit);
                                 </td>
                                 <td><?php echo htmlspecialchars($error['error_code'] ?: 'N/A'); ?></td>
                                 <td class="message-cell">
-                                    <?php echo htmlspecialchars($error['error_message'] ?: 'N/A'); ?>
+                                        <?php echo htmlspecialchars($error['error_message'] ?: 'N/A'); ?>
                                 </td>
                                 <td>
                                     <span class="severity-badge severity-<?php echo strtolower($error['severity'] ?? 'unknown'); ?>">
@@ -917,7 +988,7 @@ $totalPages = ceil($totalErrors / $limit);
                                 <td>
                                     <span class="status-badge status-<?php echo $error['http_status'] ?? 'unknown'; ?>">
                                         <?php echo htmlspecialchars($error['http_status'] ?? 'N/A'); ?>
-                                    </span>
+                                        </span>
                                 </td>
                                 <td class="file-cell">
                                     <?php echo htmlspecialchars(basename($error['file_path'] ?? 'N/A')); ?>
@@ -1001,8 +1072,8 @@ $totalPages = ceil($totalErrors / $limit);
 
             // Close modal when clicking X
             closeBtn.addEventListener('click', function() {
-                modal.classList.remove('show');
-            });
+                    modal.classList.remove('show');
+                });
 
             // Close modal when clicking outside
             window.addEventListener('click', function(e) {
@@ -1031,19 +1102,19 @@ $totalPages = ceil($totalErrors / $limit);
                     <p>Loading error details...</p>
                 </div>
             `;
-
+                
             // Fetch error details
             fetch(`get-error-details.php?error_id=${errorId}`)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.success && data.error) {
-                        const error = data.error;
-                        errorDetails.innerHTML = `
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success && data.error) {
+                            const error = data.error;
+                            errorDetails.innerHTML = `
                             <div class="error-detail-section">
                                 <h4><i class="fas fa-info-circle"></i> Basic Information</h4>
                                 <div class="error-detail-row">
@@ -1127,31 +1198,31 @@ $totalPages = ceil($totalErrors / $limit);
                             ${error.stack_trace ? `
                             <div class="error-detail-section">
                                 <h4><i class="fas fa-code"></i> Stack Trace</h4>
-                                <div class="error-detail-value">
+                                    <div class="error-detail-value">
                                     <pre style="background: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 0.9em; max-height: 300px; overflow-y: auto;">${error.stack_trace}</pre>
+                                    </div>
                                 </div>
-                            </div>
-                            ` : ''}
+                                ` : ''}
                             
-                            ${error.context_data ? `
+                                ${error.context_data ? `
                             <div class="error-detail-section">
                                 <h4><i class="fas fa-database"></i> Context Data</h4>
-                                <div class="error-detail-value">
+                                    <div class="error-detail-value">
                                     <pre style="background: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 0.9em; max-height: 300px; overflow-y: auto;">${error.context_data}</pre>
+                                    </div>
                                 </div>
-                            </div>
-                            ` : ''}
-                        `;
-                    } else {
+                                ` : ''}
+                            `;
+                        } else {
                         errorDetails.innerHTML = '<p>Error loading details: ' + (data.error || 'Unknown error') + '</p>';
-                    }
-                })
-                .catch(error => {
-                    console.error('Error fetching error details:', error);
-                    errorDetails.innerHTML = '<p>Error loading details: ' + error.message + '</p>';
-                });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching error details:', error);
+                        errorDetails.innerHTML = '<p>Error loading details: ' + error.message + '</p>';
+                    });
         }
-
+        
         function initializeCharts() {
             // Chart data from PHP
             const trendData = <?php echo json_encode($trendData ?? []); ?>;

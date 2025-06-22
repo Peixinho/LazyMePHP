@@ -133,7 +133,7 @@ class PerformanceUtil
                 $memoryBytes = $memoryUsage['current'];
                 $memoryMb = $memoryUsage['current_mb'];
             }
-            
+
             $query = "INSERT INTO __LOG_PERFORMANCE (
                 operation_name, duration_ms, memory_bytes, memory_mb,
                 url, method, ip, user_agent

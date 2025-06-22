@@ -517,12 +517,12 @@ $extensionCategories = [
         .btn {
             background: #667eea;
             color: white;
-            padding: 10px 20px;
+            padding: 12px 25px;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             text-decoration: none;
             display: inline-block;
-            font-weight: 600;
+            font-weight: 500;
             transition: all 0.3s ease;
         }
 
@@ -533,6 +533,7 @@ $extensionCategories = [
 
         .btn-danger {
             background: #e74c3c;
+            color: white;
         }
 
         .btn-danger:hover {
@@ -641,7 +642,7 @@ $extensionCategories = [
                                     <br><small style="color: #7f8c8d;"><?php echo htmlspecialchars($_SESSION['user_email']); ?></small>
                                 <?php endif; ?>
                             </div>
-                            <a href="/batman/logout.php" class="btn btn-danger">
+                            <a href="logout.php" class="btn btn-danger">
                                 <i class="fas fa-sign-out-alt"></i> Logout
                             </a>
                         </div>

@@ -349,6 +349,15 @@ $totalPages = ceil($totalActivities / $limit);
             box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
         }
 
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
         .logs-section {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
@@ -841,7 +850,7 @@ $totalPages = ceil($totalActivities / $limit);
                                     <br><small style="color: #7f8c8d;"><?php echo htmlspecialchars($_SESSION['user_email']); ?></small>
                                 <?php endif; ?>
                             </div>
-                            <a href="logout.php" class="btn" style="background: #e74c3c; color: white; padding: 8px 15px; font-size: 0.9em;">
+                            <a href="logout.php" class="btn btn-danger">
                                 <i class="fas fa-sign-out-alt"></i> Logout
                             </a>
                         </div>

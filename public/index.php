@@ -8,7 +8,7 @@
 
 // Include the bootstrap file
 require_once __DIR__ . "/../App/bootstrap.php";
-use Core\LazyMePHP;
+  use Core\LazyMePHP;
 
 // Initialize the application
 $app = new LazyMePHP();

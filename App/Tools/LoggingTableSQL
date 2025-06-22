@@ -8,14 +8,18 @@ function getLoggingTableSQL($dbType) :string {
 CREATE TABLE IF NOT EXISTS __LOG_ACTIVITY (
   id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
   date DATETIME NOT NULL,
-  user VARCHAR(255) DEFAULT NULL,
+  `user` VARCHAR(255) DEFAULT NULL,
   method VARCHAR(64) DEFAULT NULL,
   status_code INT DEFAULT 200,
   response_time INT DEFAULT NULL,
   ip_address VARCHAR(45) DEFAULT NULL,
   user_agent TEXT DEFAULT NULL,
   request_uri TEXT DEFAULT NULL,
-  trace_id VARCHAR(64) DEFAULT NULL
+  trace_id VARCHAR(64) DEFAULT NULL,
+  KEY idx_date (date),
+  KEY idx_method (method),
+  KEY idx_status_code (status_code),
+  KEY idx_user (`user`)
 );
 
 CREATE TABLE IF NOT EXISTS __LOG_ACTIVITY_OPTIONS (
@@ -24,7 +28,8 @@ CREATE TABLE IF NOT EXISTS __LOG_ACTIVITY_OPTIONS (
   subOption VARCHAR(255) NOT NULL,
   value VARCHAR(255) NOT NULL,
   KEY id_log_activity (id_log_activity),
-  FOREIGN KEY (id_log_activity) REFERENCES __LOG_ACTIVITY(id)
+  KEY idx_suboption (subOption),
+  FOREIGN KEY (id_log_activity) REFERENCES __LOG_ACTIVITY(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS __LOG_DATA (
@@ -37,7 +42,10 @@ CREATE TABLE IF NOT EXISTS __LOG_DATA (
   dataBefore VARCHAR(255) NULL,
   dataAfter VARCHAR(255) NULL,
   KEY id_log_activity (id_log_activity),
-  FOREIGN KEY (id_log_activity) REFERENCES __LOG_ACTIVITY(id)
+  KEY idx_table (`table`),
+  KEY idx_method (method),
+  KEY idx_field (field),
+  FOREIGN KEY (id_log_activity) REFERENCES __LOG_ACTIVITY(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS __LOG_ERRORS (
@@ -62,7 +70,9 @@ CREATE TABLE IF NOT EXISTS __LOG_ERRORS (
   KEY idx_error_code (error_code),
   KEY idx_severity (severity),
   KEY idx_context (context),
-  KEY idx_created_at (created_at)
+  KEY idx_created_at (created_at),
+  KEY idx_http_status (http_status),
+  KEY idx_request_method (request_method)
 );
 
 CREATE TABLE IF NOT EXISTS __LOG_PERFORMANCE (
@@ -78,7 +88,8 @@ CREATE TABLE IF NOT EXISTS __LOG_PERFORMANCE (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY idx_operation_name (operation_name),
   KEY idx_duration_ms (duration_ms),
-  KEY idx_created_at (created_at)
+  KEY idx_created_at (created_at),
+  KEY idx_method (method)
 );
 ";
         case 'sqlite':
@@ -88,7 +99,7 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS __LOG_ACTIVITY (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   date TEXT NOT NULL,
-  user TEXT,
+  [user] TEXT,
   method TEXT,
   status_code INTEGER DEFAULT 200,
   response_time INTEGER,
@@ -98,25 +109,38 @@ CREATE TABLE IF NOT EXISTS __LOG_ACTIVITY (
   trace_id TEXT
 );
 
+CREATE INDEX IF NOT EXISTS idx_activity_date ON __LOG_ACTIVITY (date);
+CREATE INDEX IF NOT EXISTS idx_activity_method ON __LOG_ACTIVITY (method);
+CREATE INDEX IF NOT EXISTS idx_activity_status_code ON __LOG_ACTIVITY (status_code);
+CREATE INDEX IF NOT EXISTS idx_activity_user ON __LOG_ACTIVITY ([user]);
+
 CREATE TABLE IF NOT EXISTS __LOG_ACTIVITY_OPTIONS (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   id_log_activity INTEGER NOT NULL,
   subOption TEXT NOT NULL,
   value TEXT NOT NULL,
-  FOREIGN KEY (id_log_activity) REFERENCES __LOG_ACTIVITY(id)
+  FOREIGN KEY (id_log_activity) REFERENCES __LOG_ACTIVITY(id) ON DELETE CASCADE
 );
+
+CREATE INDEX IF NOT EXISTS idx_activity_options_log_id ON __LOG_ACTIVITY_OPTIONS (id_log_activity);
+CREATE INDEX IF NOT EXISTS idx_activity_options_suboption ON __LOG_ACTIVITY_OPTIONS (subOption);
 
 CREATE TABLE IF NOT EXISTS __LOG_DATA (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   id_log_activity INTEGER NOT NULL,
-  `table` TEXT NOT NULL,
+  [table] TEXT NOT NULL,
   pk TEXT,
   method TEXT,
   field TEXT NOT NULL,
   dataBefore TEXT,
   dataAfter TEXT,
-  FOREIGN KEY (id_log_activity) REFERENCES __LOG_ACTIVITY(id)
+  FOREIGN KEY (id_log_activity) REFERENCES __LOG_ACTIVITY(id) ON DELETE CASCADE
 );
+
+CREATE INDEX IF NOT EXISTS idx_data_log_id ON __LOG_DATA (id_log_activity);
+CREATE INDEX IF NOT EXISTS idx_data_table ON __LOG_DATA ([table]);
+CREATE INDEX IF NOT EXISTS idx_data_method ON __LOG_DATA (method);
+CREATE INDEX IF NOT EXISTS idx_data_field ON __LOG_DATA (field);
 
 CREATE TABLE IF NOT EXISTS __LOG_ERRORS (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -138,6 +162,14 @@ CREATE TABLE IF NOT EXISTS __LOG_ERRORS (
   updated_at TEXT DEFAULT (datetime('now'))
 );
 
+CREATE INDEX IF NOT EXISTS idx_error_id ON __LOG_ERRORS (error_id);
+CREATE INDEX IF NOT EXISTS idx_error_code ON __LOG_ERRORS (error_code);
+CREATE INDEX IF NOT EXISTS idx_error_severity ON __LOG_ERRORS (severity);
+CREATE INDEX IF NOT EXISTS idx_error_context ON __LOG_ERRORS (context);
+CREATE INDEX IF NOT EXISTS idx_error_created_at ON __LOG_ERRORS (created_at);
+CREATE INDEX IF NOT EXISTS idx_error_http_status ON __LOG_ERRORS (http_status);
+CREATE INDEX IF NOT EXISTS idx_error_request_method ON __LOG_ERRORS (request_method);
+
 CREATE TABLE IF NOT EXISTS __LOG_PERFORMANCE (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   operation_name TEXT NOT NULL,
@@ -148,15 +180,18 @@ CREATE TABLE IF NOT EXISTS __LOG_PERFORMANCE (
   method TEXT,
   ip TEXT,
   user_agent TEXT,
-  created_at TEXT DEFAULT (datetime('now')),
-  KEY idx_operation_name (operation_name),
-  KEY idx_duration_ms (duration_ms),
-  KEY idx_created_at (created_at)
+  created_at TEXT DEFAULT (datetime('now'))
 );
+
+CREATE INDEX IF NOT EXISTS idx_performance_operation_name ON __LOG_PERFORMANCE (operation_name);
+CREATE INDEX IF NOT EXISTS idx_performance_duration_ms ON __LOG_PERFORMANCE (duration_ms);
+CREATE INDEX IF NOT EXISTS idx_performance_created_at ON __LOG_PERFORMANCE (created_at);
+CREATE INDEX IF NOT EXISTS idx_performance_method ON __LOG_PERFORMANCE (method);
 ";
         case 'mssql':
         case 'sqlsrv':
             return "
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='__LOG_ACTIVITY' AND xtype='U')
 CREATE TABLE __LOG_ACTIVITY (
   id INT IDENTITY(1,1) PRIMARY KEY,
   date DATETIME NOT NULL,
@@ -170,14 +205,16 @@ CREATE TABLE __LOG_ACTIVITY (
   trace_id NVARCHAR(64) NULL
 );
 
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='__LOG_ACTIVITY_OPTIONS' AND xtype='U')
 CREATE TABLE __LOG_ACTIVITY_OPTIONS (
   id INT IDENTITY(1,1) PRIMARY KEY,
   id_log_activity INT NOT NULL,
   subOption NVARCHAR(255) NOT NULL,
   value NVARCHAR(255) NOT NULL,
-  FOREIGN KEY (id_log_activity) REFERENCES __LOG_ACTIVITY(id)
+  FOREIGN KEY (id_log_activity) REFERENCES __LOG_ACTIVITY(id) ON DELETE CASCADE
 );
 
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='__LOG_DATA' AND xtype='U')
 CREATE TABLE __LOG_DATA (
   id INT IDENTITY(1,1) PRIMARY KEY,
   id_log_activity INT NOT NULL,
@@ -187,9 +224,10 @@ CREATE TABLE __LOG_DATA (
   field NVARCHAR(255) NOT NULL,
   dataBefore NVARCHAR(255) NULL,
   dataAfter NVARCHAR(255) NULL,
-  FOREIGN KEY (id_log_activity) REFERENCES __LOG_ACTIVITY(id)
+  FOREIGN KEY (id_log_activity) REFERENCES __LOG_ACTIVITY(id) ON DELETE CASCADE
 );
 
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='__LOG_ERRORS' AND xtype='U')
 CREATE TABLE __LOG_ERRORS (
   id INT IDENTITY(1,1) PRIMARY KEY,
   error_id NVARCHAR(36) NOT NULL,
@@ -210,7 +248,8 @@ CREATE TABLE __LOG_ERRORS (
   updated_at DATETIME DEFAULT GETDATE()
 );
 
-CREATE TABLE IF NOT EXISTS __LOG_PERFORMANCE (
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='__LOG_PERFORMANCE' AND xtype='U')
+CREATE TABLE __LOG_PERFORMANCE (
   id INT IDENTITY(1,1) PRIMARY KEY,
   operation_name NVARCHAR(255) NOT NULL,
   duration_ms DECIMAL(10,2) NOT NULL,
@@ -220,11 +259,76 @@ CREATE TABLE IF NOT EXISTS __LOG_PERFORMANCE (
   method NVARCHAR(10) DEFAULT NULL,
   ip NVARCHAR(45) DEFAULT NULL,
   user_agent NVARCHAR(MAX) DEFAULT NULL,
-  created_at DATETIME DEFAULT GETDATE(),
-  KEY idx_operation_name (operation_name),
-  KEY idx_duration_ms (duration_ms),
-  KEY idx_created_at (created_at)
+  created_at DATETIME DEFAULT GETDATE()
 );
+
+-- Create indexes for __LOG_ACTIVITY table
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_activity_date' AND object_id = OBJECT_ID('__LOG_ACTIVITY'))
+CREATE INDEX idx_activity_date ON __LOG_ACTIVITY (date);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_activity_method' AND object_id = OBJECT_ID('__LOG_ACTIVITY'))
+CREATE INDEX idx_activity_method ON __LOG_ACTIVITY (method);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_activity_status_code' AND object_id = OBJECT_ID('__LOG_ACTIVITY'))
+CREATE INDEX idx_activity_status_code ON __LOG_ACTIVITY (status_code);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_activity_user' AND object_id = OBJECT_ID('__LOG_ACTIVITY'))
+CREATE INDEX idx_activity_user ON __LOG_ACTIVITY ([user]);
+
+-- Create indexes for __LOG_ACTIVITY_OPTIONS table
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_activity_options_log_id' AND object_id = OBJECT_ID('__LOG_ACTIVITY_OPTIONS'))
+CREATE INDEX idx_activity_options_log_id ON __LOG_ACTIVITY_OPTIONS (id_log_activity);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_activity_options_suboption' AND object_id = OBJECT_ID('__LOG_ACTIVITY_OPTIONS'))
+CREATE INDEX idx_activity_options_suboption ON __LOG_ACTIVITY_OPTIONS (subOption);
+
+-- Create indexes for __LOG_DATA table
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_data_log_id' AND object_id = OBJECT_ID('__LOG_DATA'))
+CREATE INDEX idx_data_log_id ON __LOG_DATA (id_log_activity);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_data_table' AND object_id = OBJECT_ID('__LOG_DATA'))
+CREATE INDEX idx_data_table ON __LOG_DATA ([table]);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_data_method' AND object_id = OBJECT_ID('__LOG_DATA'))
+CREATE INDEX idx_data_method ON __LOG_DATA (method);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_data_field' AND object_id = OBJECT_ID('__LOG_DATA'))
+CREATE INDEX idx_data_field ON __LOG_DATA (field);
+
+-- Create indexes for __LOG_ERRORS table
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_error_id' AND object_id = OBJECT_ID('__LOG_ERRORS'))
+CREATE INDEX idx_error_id ON __LOG_ERRORS (error_id);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_error_code' AND object_id = OBJECT_ID('__LOG_ERRORS'))
+CREATE INDEX idx_error_code ON __LOG_ERRORS (error_code);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_error_severity' AND object_id = OBJECT_ID('__LOG_ERRORS'))
+CREATE INDEX idx_error_severity ON __LOG_ERRORS (severity);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_error_context' AND object_id = OBJECT_ID('__LOG_ERRORS'))
+CREATE INDEX idx_error_context ON __LOG_ERRORS (context);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_error_created_at' AND object_id = OBJECT_ID('__LOG_ERRORS'))
+CREATE INDEX idx_error_created_at ON __LOG_ERRORS (created_at);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_error_http_status' AND object_id = OBJECT_ID('__LOG_ERRORS'))
+CREATE INDEX idx_error_http_status ON __LOG_ERRORS (http_status);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_error_request_method' AND object_id = OBJECT_ID('__LOG_ERRORS'))
+CREATE INDEX idx_error_request_method ON __LOG_ERRORS (request_method);
+
+-- Create indexes for __LOG_PERFORMANCE table
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_performance_operation_name' AND object_id = OBJECT_ID('__LOG_PERFORMANCE'))
+CREATE INDEX idx_performance_operation_name ON __LOG_PERFORMANCE (operation_name);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_performance_duration_ms' AND object_id = OBJECT_ID('__LOG_PERFORMANCE'))
+CREATE INDEX idx_performance_duration_ms ON __LOG_PERFORMANCE (duration_ms);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_performance_created_at' AND object_id = OBJECT_ID('__LOG_PERFORMANCE'))
+CREATE INDEX idx_performance_created_at ON __LOG_PERFORMANCE (created_at);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_performance_method' AND object_id = OBJECT_ID('__LOG_PERFORMANCE'))
+CREATE INDEX idx_performance_method ON __LOG_PERFORMANCE (method);
 ";
         default:
             throw new Exception("Unsupported DB type: $dbType");
