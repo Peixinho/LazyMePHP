@@ -137,6 +137,9 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Batman Dashboard - API Client</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -652,11 +655,55 @@ try {
             line-height: 1.5;
         }
 
-        .json-key { color: #60a5fa; }
-        .json-string { color: #34d399; }
-        .json-number { color: #fbbf24; }
-        .json-boolean { color: #f87171; }
-        .json-null { color: #9ca3af; }
+        .json-response {
+            background: #1e293b;
+            color: #e5e7eb;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.5;
+            overflow-x: auto;
+            border: 1px solid #374151;
+        }
+
+        .json-response pre {
+            margin: 0;
+            color: #e5e7eb;
+            background: transparent !important;
+        }
+
+        .json-response code {
+            background: transparent !important;
+            color: #e5e7eb !important;
+            padding: 0 !important;
+            font-family: 'Courier New', monospace !important;
+        }
+
+        /* Override Prism.js theme for better integration */
+        .json-response .token.property {
+            color: #60a5fa !important;
+        }
+
+        .json-response .token.string {
+            color: #34d399 !important;
+        }
+
+        .json-response .token.number {
+            color: #fbbf24 !important;
+        }
+
+        .json-response .token.boolean {
+            color: #f87171 !important;
+        }
+
+        .json-response .token.null {
+            color: #9ca3af !important;
+        }
+
+        .json-response .token.punctuation {
+            color: #e5e7eb !important;
+        }
 
         /* Loading States */
         .loading {
@@ -860,8 +907,8 @@ try {
                 <div class="base-url-section">
                     <h3><i class="fas fa-link"></i> Base URL</h3>
                     <div class="form-group">
-                        <label for="base_url">API Base URL</label>
-                        <input type="url" id="base_url" name="base_url" value="<?php echo htmlspecialchars($baseUrl); ?>" placeholder="http://localhost:8000" required>
+                        <label for="base-url">API Base URL</label>
+                        <input type="url" id="base-url" name="base_url" value="<?php echo htmlspecialchars($baseUrl); ?>" placeholder="http://localhost:8000" required>
                         <div class="url-preview" id="url-preview">
                             <strong>Full URL:</strong> <span id="full-url"><?php echo htmlspecialchars($baseUrl); ?>/</span><span id="endpoint-preview"></span>
                         </div>
@@ -1059,37 +1106,53 @@ try {
         // Discover routes
         function discoverRoutes() {
             const baseUrl = document.getElementById('base-url').value;
+            const apiPath = document.getElementById('api_path').value;
+            
             if (!baseUrl) {
                 alert('Please enter a base URL first');
                 return;
             }
 
-            fetch('discover-routes.php')
-                .then(response => response.json())
-                .then(data => {
-                    const container = document.getElementById('discovered-routes');
-                    container.innerHTML = '';
-                    
-                    if (data.routes && data.routes.length > 0) {
-                        data.routes.forEach(route => {
-                            const card = document.createElement('div');
-                            card.className = 'route-card';
-                            card.innerHTML = `
-                                <div class="route-method">${route.method}</div>
-                                <div class="route-path">${route.path}</div>
-                                <div class="route-description">${route.description || 'No description'}</div>
-                            `;
-                            card.onclick = () => fillRequestFromRoute(route);
-                            container.appendChild(card);
-                        });
-                    } else {
-                        container.innerHTML = '<p>No routes discovered</p>';
-                    }
+            fetch('discover-routes.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    path: apiPath
                 })
-                .catch(error => {
-                    console.error('Error discovering routes:', error);
-                    document.getElementById('discovered-routes').innerHTML = '<p>Error discovering routes</p>';
-                });
+            })
+            .then(response => response.json())
+            .then(data => {
+                const container = document.getElementById('discovered-routes');
+                const routesList = document.getElementById('routes-list');
+                
+                container.style.display = 'block';
+                routesList.innerHTML = '';
+                
+                if (data.success && data.routes && data.routes.length > 0) {
+                    data.routes.forEach(route => {
+                        const card = document.createElement('div');
+                        card.className = 'route-card';
+                        card.innerHTML = `
+                            <div class="route-method method-${route.method.toLowerCase()}">${route.method}</div>
+                            <div class="route-path">${route.path}</div>
+                            <div class="route-description">${route.description || 'No description'}</div>
+                        `;
+                        card.onclick = () => fillRequestFromRoute(route);
+                        routesList.appendChild(card);
+                    });
+                } else {
+                    routesList.innerHTML = `<p>${data.message || 'No routes discovered'}</p>`;
+                }
+            })
+            .catch(error => {
+                console.error('Error discovering routes:', error);
+                const container = document.getElementById('discovered-routes');
+                const routesList = document.getElementById('routes-list');
+                container.style.display = 'block';
+                routesList.innerHTML = '<p>Error discovering routes: ' + error.message + '</p>';
+            });
         }
 
         // Fill request form from route
@@ -1242,7 +1305,7 @@ try {
                     const parsed = JSON.parse(bodyContent);
                     const formatted = JSON.stringify(parsed, null, 2);
                     
-                    // Apply syntax highlighting
+                    // Apply syntax highlighting with Prism.js
                     bodyElement.className = 'json-response';
                     bodyElement.innerHTML = `<pre><code class="language-json">${formatted}</code></pre>`;
                     
@@ -1251,9 +1314,14 @@ try {
                         Prism.highlightElement(bodyElement.querySelector('code'));
                     }
                 } catch (e) {
-                    bodyElement.textContent = bodyContent;
+                    bodyElement.className = 'json-response';
+                    bodyElement.innerHTML = `<pre><code class="language-json">${bodyContent}</code></pre>`;
+                    if (window.Prism) {
+                        Prism.highlightElement(bodyElement.querySelector('code'));
+                    }
                 }
             } else {
+                bodyElement.className = '';
                 bodyElement.textContent = bodyContent;
             }
         }

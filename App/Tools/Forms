@@ -133,7 +133,14 @@ class BuildTableForms
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\t\t'controller' => '".$db->GetTableName()."',");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\t\t'".$db->GetTableName()."' => \$data['".$db->GetTableName()."'], 'filters' => \$data['filters'], 'length' => \$data['length'], 'current' => \$request->get('page')??1, 'limit' => LazyMePHP::NRESULTS()]);");
+          fwrite($routerFile, "\t\t'".$db->GetTableName()."' => \$data['".$db->GetTableName()."'], 'filters' => \$data['filters'], 'length' => \$data['length'], 'current' => \$request->get('page')??1, 'limit' => LazyMePHP::NRESULTS()");
+          // Add foreign table data
+          foreach ($db->GetTableFields() as $field) {
+            if ($field->HasForeignKey() && !is_null($field->GetForeignField())) {
+              fwrite($routerFile, ", '".$field->GetForeignTable()."' => \$data['".$field->GetForeignTable()."']");
+            }
+          }
+          fwrite($routerFile, "]);");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "});");
           fwrite($routerFile, "\n");
@@ -150,6 +157,12 @@ class BuildTableForms
           fwrite($routerFile, "\t\t'controller' => '".$db->GetTableName()."',");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\t\t'".$db->GetTableName()."' => \$data['".$db->GetTableName()."']");
+          // Add foreign table data
+          foreach ($db->GetTableFields() as $field) {
+            if ($field->HasForeignKey() && !is_null($field->GetForeignField())) {
+              fwrite($routerFile, ",\n\t\t'".$field->GetForeignTable()."' => \$data['".$field->GetForeignTable()."']");
+            }
+          }
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\t]);");
           fwrite($routerFile, "\n");
@@ -168,6 +181,12 @@ class BuildTableForms
           fwrite($routerFile, "\t\t'controller' => '".$db->GetTableName()."',");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\t\t'".$db->GetTableName()."' => \$data['".$db->GetTableName()."']");
+          // Add foreign table data
+          foreach ($db->GetTableFields() as $field) {
+            if ($field->HasForeignKey() && !is_null($field->GetForeignField())) {
+              fwrite($routerFile, ",\n\t\t'".$field->GetForeignTable()."' => \$data['".$field->GetForeignTable()."']");
+            }
+          }
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\t]);");
           fwrite($routerFile, "\n");
@@ -479,7 +498,7 @@ class BuildTableForms
         foreach ($db->GetTableFields() as $field) {
           if ($primaryKey) { 
             if ($field->HasForeignKey()) 
-            fwrite($viewFile, "\t\t<td>{{\$member->".$field->GetName()."_OBJ->GetDescriptor()}}</td>");
+            fwrite($viewFile, "\t\t<td>{{\$member->get".ucfirst($field->GetName())."_OBJ() ? \$member->get".ucfirst($field->GetName())."_OBJ()->GetDescriptor() : ''}}</td>");
             else
             fwrite($viewFile, "\t\t<td>{{\$member->Get".ucfirst($field->GetName())."()}}</td>");
 

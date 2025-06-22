@@ -251,26 +251,8 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
 
           if ($field->HasForeignKey())
           {
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t/** @var ".$field->GetForeignTable()." ".$field->GetName()."_OBJ */");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\tpublic ".$field->GetForeignTable()." \$".$field->GetName()."_OBJ {");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\tget {");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\treturn \$this->".$field->GetName()."_OBJ;");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t}");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\tset(".$field->GetForeignTable()." \$".$field->GetName()."_OBJ) {");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\t\$this->".$field->GetName()."_OBJ = \$".$field->GetName()."_OBJ;");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t}");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t}");
-            fwrite($classFile, "\n");
+            // Remove the old property declarations with get/set syntax
+            // These are now replaced with proper property declarations above
           }
 
           if ($field->IsPrimaryKey())
@@ -282,6 +264,22 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
             fwrite($classFile, "\n");
             fwrite($classFile, "\tprivate bool \$buildForeignMembers = true;");
             fwrite($classFile, "\n");
+            
+            // Add foreign key object property declarations
+            foreach ($db->_Tablefields as $field2)
+            {
+              if ($field2->HasForeignKey() && $field2->GetForeignField())
+              {
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t/** @var ".$field2->GetForeignTable()."|null ".$field2->GetName()."_OBJ */");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\tprotected ?".$field2->GetForeignTable()." \$".$field2->GetName()."_OBJ = null;");
+                fwrite($classFile, "\n");
+                // Add public getter
+                fwrite($classFile, "\tpublic function get".ucfirst($field2->GetName())."_OBJ(): ?".$field2->GetForeignTable()." { return \$this->".$field2->GetName()."_OBJ; }\n");
+              }
+            }
+            
             fwrite($classFile, "\n");
             fwrite($classFile, "\t/**");
             fwrite($classFile, "\n");
