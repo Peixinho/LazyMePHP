@@ -39,6 +39,7 @@ $dateFrom = $_GET['date_from'] ?? date('Y-m-d', strtotime('-7 days'));
 $dateTo = $_GET['date_to'] ?? date('Y-m-d');
 $severity = $_GET['severity'] ?? '';
 $errorCode = $_GET['error_code'] ?? '';
+$errorId = $_GET['error_id'] ?? '';
 $page = max(1, intval($_GET['page'] ?? 1));
 $limit = 50;
 $offset = ($page - 1) * $limit;
@@ -51,8 +52,25 @@ $db = LazyMePHP::DB_CONNECTION();
 $errorLogs = [];
 $totalErrors = 0;
 
+// Debug information
+$debugInfo = [];
+
 if ($db) {
     try {
+        // Check if table exists
+        $tableCheck = $db->Query("SHOW TABLES LIKE '__LOG_ERRORS'");
+        $debugInfo['table_exists'] = $tableCheck && $tableCheck->GetCount() > 0;
+        
+        if ($debugInfo['table_exists']) {
+            // Check total records
+            $totalCheck = $db->Query("SELECT COUNT(*) as total FROM __LOG_ERRORS");
+            $debugInfo['total_records'] = $totalCheck ? $totalCheck->FetchArray()['total'] : 0;
+            
+            // Check recent records
+            $recentCheck = $db->Query("SELECT COUNT(*) as total FROM __LOG_ERRORS WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)");
+            $debugInfo['recent_records'] = $recentCheck ? $recentCheck->FetchArray()['total'] : 0;
+        }
+        
         // Build filter conditions
         $whereConditions = [];
         $params = [];
@@ -73,6 +91,11 @@ if ($db) {
             $params[] = "%$errorCode%";
         }
         
+        if ($errorId) {
+            $whereConditions[] = "error_id LIKE ?";
+            $params[] = "%$errorId%";
+        }
+        
         $whereClause = !empty($whereConditions) ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
         
         // Get total count
@@ -82,7 +105,7 @@ if ($db) {
         
         // Get paginated results
         $query = "SELECT 
-                    id, error_code, error_message, http_status, severity, context, file_path, line_number, stack_trace, context_data, user_agent, ip_address, request_uri, request_method, created_at, updated_at
+                    id, error_id, error_code, error_message, http_status, severity, context, file_path, line_number, stack_trace, context_data, user_agent, ip_address, request_uri, request_method, created_at, updated_at
                   FROM __LOG_ERRORS 
                   $whereClause 
                   ORDER BY created_at DESC 
@@ -95,9 +118,17 @@ if ($db) {
         while ($row = $result->FetchArray()) {
             $errorLogs[] = $row;
         }
+        
+        $debugInfo['query_executed'] = true;
+        $debugInfo['params'] = $params;
+        $debugInfo['where_clause'] = $whereClause;
+        
     } catch (Exception $e) {
-        // Silently handle database errors
+        $debugInfo['error'] = $e->getMessage();
+        $debugInfo['error_trace'] = $e->getTraceAsString();
     }
+} else {
+    $debugInfo['db_connection'] = 'Failed to get database connection';
 }
 
 // Prepare chart data
@@ -358,6 +389,33 @@ $totalPages = ceil($totalErrors / $limit);
             transform: translateY(-2px);
         }
 
+        .btn-secondary {
+            background: #7f8c8d;
+            color: white;
+            margin-left: 10px;
+        }
+
+        .btn-secondary:hover {
+            background: #6a757a;
+            transform: translateY(-1px);
+        }
+
+        .btn-sm {
+            padding: 8px 12px;
+            font-size: 0.9em;
+        }
+
+        .btn-outline-primary {
+            background: transparent;
+            color: #e74c3c;
+            border: 2px solid #e74c3c;
+        }
+
+        .btn-outline-primary:hover {
+            background: #e74c3c;
+            color: white;
+        }
+
         .charts-section {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
@@ -384,62 +442,20 @@ $totalPages = ceil($totalErrors / $limit);
         .chart-container {
             background: white;
             border-radius: 15px;
-            padding: 16px 10px 10px 10px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-            min-width: 0;
-            min-height: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: stretch;
-            justify-content: flex-start;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
         }
 
         .chart-title {
             color: #2c3e50;
-            font-size: 1em;
             font-weight: 600;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
             text-align: center;
         }
 
         .chart-canvas {
             width: 100% !important;
-            height: 300px !important;
-            max-width: 100%;
-            display: block;
-        }
-
-        .nav-tabs {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        }
-
-        .nav-tab {
-            padding: 12px 20px;
-            border-radius: 10px;
-            text-decoration: none;
-            color: #2c3e50;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .nav-tab:hover {
-            background: rgba(231, 76, 60, 0.1);
-            color: #e74c3c;
-        }
-
-        .nav-tab.active {
-            background: #e74c3c;
-            color: white;
+            height: 250px !important;
         }
 
         .logs-section {
@@ -462,25 +478,59 @@ $totalPages = ceil($totalErrors / $limit);
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            font-size: 0.9em;
         }
 
         .logs-table th {
             background: #f8f9fa;
-            padding: 15px;
+            padding: 12px 8px;
             text-align: left;
             font-weight: 600;
             color: #2c3e50;
             border-bottom: 2px solid #e1e8ed;
+            white-space: nowrap;
         }
 
         .logs-table td {
-            padding: 15px;
+            padding: 12px 8px;
             border-bottom: 1px solid #e1e8ed;
             vertical-align: top;
         }
 
         .logs-table tr:hover {
             background: #f8f9fa;
+        }
+
+        .logs-table .message-cell {
+            max-width: 250px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .logs-table .file-cell {
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .logs-table .uri-cell {
+            max-width: 180px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .logs-table .user-agent-cell {
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .severity-badge {
@@ -491,10 +541,25 @@ $totalPages = ceil($totalErrors / $limit);
             text-transform: uppercase;
         }
 
-        .severity-error { background: #f8d7da; color: #721c24; }
-        .severity-warning { background: #fff3cd; color: #856404; }
-        .severity-info { background: #d1ecf1; color: #0c5460; }
-        .severity-debug { background: #d4edda; color: #155724; }
+        .severity-error {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .severity-warning {
+            background: #f39c12;
+            color: white;
+        }
+
+        .severity-info {
+            background: #3498db;
+            color: white;
+        }
+
+        .severity-debug {
+            background: #95a5a6;
+            color: white;
+        }
 
         .status-badge {
             padding: 4px 8px;
@@ -503,29 +568,19 @@ $totalPages = ceil($totalErrors / $limit);
             font-weight: 500;
         }
 
-        .status-200 { background: #d4edda; color: #155724; }
-        .status-404 { background: #fff3cd; color: #856404; }
-        .status-500 { background: #f8d7da; color: #721c24; }
-
-        .pagination {
-            margin: 20px 0;
-            text-align: center;
-        }
-
-        .pagination a, .pagination span {
-            display: inline-block;
-            margin: 0 4px;
-            padding: 6px 12px;
-            border-radius: 6px;
-            background: #f1f5f9;
-            color: #222;
-            text-decoration: none;
-        }
-
-        .pagination .current {
+        .status-500 {
             background: #e74c3c;
-            color: #fff;
-            font-weight: bold;
+            color: white;
+        }
+
+        .status-404 {
+            background: #f39c12;
+            color: white;
+        }
+
+        .status-200 {
+            background: #27ae60;
+            color: white;
         }
 
         .empty-state {
@@ -537,14 +592,44 @@ $totalPages = ceil($totalErrors / $limit);
         .empty-state i {
             font-size: 4em;
             margin-bottom: 20px;
-            opacity: 0.5;
+            color: #bdc3c7;
         }
 
         .empty-state h3 {
-            margin-bottom: 10px;
             color: #2c3e50;
+            margin-bottom: 10px;
         }
 
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 30px;
+        }
+
+        .pagination a, .pagination span {
+            padding: 10px 15px;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #2c3e50;
+            background: white;
+            border: 2px solid #e1e8ed;
+            transition: all 0.3s ease;
+        }
+
+        .pagination a:hover {
+            border-color: #e74c3c;
+            color: #e74c3c;
+        }
+
+        .pagination .current {
+            background: #e74c3c;
+            color: white;
+            border-color: #e74c3c;
+        }
+
+        /* Modal Styles */
         .modal {
             display: none;
             position: fixed;
@@ -558,112 +643,97 @@ $totalPages = ceil($totalErrors / $limit);
         }
 
         .modal.show {
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: block;
         }
 
         .modal-content {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 20px;
-            border-radius: 20px;
-            width: 95%;
+            background: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 15px;
+            width: 90%;
             max-width: 800px;
             max-height: 80vh;
-            overflow-y: auto;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-            position: relative;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
         }
 
         .modal-header {
+            background: #e74c3c;
+            color: white;
+            padding: 20px 30px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #e1e8ed;
         }
 
-        .modal-header h2 {
-            color: #2c3e50;
+        .modal-header h3 {
             margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
         .close {
-            color: #7f8c8d;
+            color: white;
             font-size: 28px;
             font-weight: bold;
             cursor: pointer;
-            transition: color 0.3s ease;
+            transition: opacity 0.3s ease;
         }
 
         .close:hover {
-            color: #e74c3c;
+            opacity: 0.7;
         }
 
-        .error-details {
-            margin-top: 20px;
+        .modal-body {
+            padding: 30px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .error-detail-section {
+            margin-bottom: 30px;
+        }
+
+        .error-detail-section h4 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 2px solid #e1e8ed;
+            padding-bottom: 10px;
         }
 
         .error-detail-row {
             display: flex;
-            margin-bottom: 15px;
-            border-bottom: 1px solid #e1e8ed;
-            padding-bottom: 15px;
+            margin-bottom: 10px;
+            align-items: flex-start;
         }
 
         .error-detail-label {
             font-weight: 600;
             color: #2c3e50;
-            width: 150px;
-            flex-shrink: 0;
+            min-width: 150px;
+            margin-right: 15px;
         }
 
         .error-detail-value {
             flex: 1;
-            color: #34495e;
+            color: #555;
             word-break: break-word;
         }
 
-        .error-detail-value pre {
-            background: #f8f9fa;
-            padding: 10px;
-            border-radius: 6px;
-            overflow-x: auto;
-            font-size: 12px;
-            margin: 5px 0;
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
         }
 
-        .error-detail-value code {
-            background: #f1f3f4;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-        }
-
-        .view-details {
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.9em;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .view-details:hover {
-            background: #5a67d8;
-            transform: translateY(-1px);
-        }
-
-        .view-details i {
-            font-size: 0.8em;
+        .loading i {
+            font-size: 2em;
+            margin-bottom: 15px;
         }
 
         @media (max-width: 768px) {
@@ -679,10 +749,6 @@ $totalPages = ceil($totalErrors / $limit);
                 grid-template-columns: 1fr;
             }
             
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-            
             .logs-table {
                 font-size: 0.9em;
             }
@@ -694,7 +760,7 @@ $totalPages = ceil($totalErrors / $limit);
             .modal-content {
                 width: 95%;
                 margin: 10% auto;
-                padding: 20px;
+                padding: 0;
             }
             
             .error-detail-row {
@@ -702,7 +768,8 @@ $totalPages = ceil($totalErrors / $limit);
             }
             
             .error-detail-label {
-                width: 100%;
+                min-width: auto;
+                margin-right: 0;
                 margin-bottom: 5px;
             }
         }
@@ -711,86 +778,48 @@ $totalPages = ceil($totalErrors / $limit);
 <body>
     <div class="container">
         <div class="header">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div>
-                    <h1>
-                        <i class="fas fa-exclamation-triangle"></i>
-                        Error Logs
-                    </h1>
-                    <p>Monitor and analyze application errors and exceptions</p>
-                    <?php if (isset($_SESSION['is_logged_in']) && $_SESSION['is_logged_in']): ?>
-                        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e1e8ed; display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <strong>Welcome, <?php echo htmlspecialchars($_SESSION['user_name'] ?? $_SESSION['username']); ?></strong>
-                                <?php if (isset($_SESSION['user_email'])): ?>
-                                    <br><small style="color: #7f8c8d;"><?php echo htmlspecialchars($_SESSION['user_email']); ?></small>
-                                <?php endif; ?>
-                            </div>
-                            <a href="logout.php" class="btn" style="background: #e74c3c; color: white; padding: 8px 15px; font-size: 0.9em;">
-                                <i class="fas fa-sign-out-alt"></i> Logout
-                            </a>
-                        </div>
-                    <?php endif; ?>
-                </div>
-            </div>
+            <h1><i class="fas fa-exclamation-triangle"></i> Error Logs Dashboard</h1>
+            <p>Monitor and analyze application errors in real-time</p>
         </div>
 
-        <div class="nav-tabs">
-            <a href="/batman/index.php?debug=1" class="nav-tab">
-                <i class="fas fa-activity"></i> Activity Logs
-            </a>
-            <a href="/batman/errors.php?debug=1" class="nav-tab active">
-                <i class="fas fa-exclamation-triangle"></i> Error Logs
-            </a>
-            <a href="/batman/debug.php?debug=1" class="nav-tab">
-                <i class="fas fa-bug"></i> Debug Dashboard
-            </a>
-        </div>
-
+        <!-- Statistics Cards -->
         <div class="stats-grid">
             <div class="stat-card">
-                <h3><i class="fas fa-exclamation-triangle"></i> Total Errors</h3>
+                <h3><i class="fas fa-exclamation-circle"></i> Total Errors</h3>
                 <div class="value"><?php echo number_format($totalErrors); ?></div>
-                <div class="label">Errors in selected period</div>
-            </div>
-            
-            <div class="stat-card">
-                <h3><i class="fas fa-chart-line"></i> Error Rate</h3>
-                <div class="value"><?php echo count($stats); ?></div>
-                <div class="label">Different error types</div>
+                <div class="label">In selected period</div>
             </div>
             
             <div class="stat-card">
                 <h3><i class="fas fa-calendar"></i> Date Range</h3>
-                <div class="value"><?php echo date('M j', strtotime($dateFrom)); ?></div>
-                <div class="label">to <?php echo date('M j', strtotime($dateTo)); ?></div>
+                <div class="value"><?php echo date('M j', strtotime($dateFrom)); ?> - <?php echo date('M j', strtotime($dateTo)); ?></div>
+                <div class="label">Filter period</div>
             </div>
             
             <div class="stat-card">
-                <h3><i class="fas fa-clock"></i> Recent</h3>
-                <div class="value"><?php echo count($errorLogs); ?></div>
-                <div class="label">Errors on this page</div>
+                <h3><i class="fas fa-list"></i> Current Page</h3>
+                <div class="value"><?php echo $page; ?> / <?php echo max(1, $totalPages); ?></div>
+                <div class="label">Showing <?php echo count($errorLogs); ?> of <?php echo $totalErrors; ?> errors</div>
             </div>
         </div>
 
+        <!-- Filters -->
         <div class="filters">
-            <h3><i class="fas fa-filter"></i> Filters</h3>
+            <h3><i class="fas fa-filter"></i> Filter Errors</h3>
             <form method="GET">
-                <input type="hidden" name="debug" value="1">
-                
                 <div class="form-group">
-                    <label>Date From</label>
-                    <input type="date" name="date_from" value="<?php echo htmlspecialchars($dateFrom); ?>">
+                    <label for="date_from">Date From:</label>
+                    <input type="date" id="date_from" name="date_from" value="<?php echo htmlspecialchars($dateFrom); ?>">
                 </div>
                 
                 <div class="form-group">
-                    <label>Date To</label>
-                    <input type="date" name="date_to" value="<?php echo htmlspecialchars($dateTo); ?>">
+                    <label for="date_to">Date To:</label>
+                    <input type="date" id="date_to" name="date_to" value="<?php echo htmlspecialchars($dateTo); ?>">
                 </div>
                 
                 <div class="form-group">
-                    <label>Severity</label>
-                    <select name="severity">
+                    <label for="severity">Severity:</label>
+                    <select id="severity" name="severity">
                         <option value="">All Severities</option>
                         <option value="ERROR" <?php echo $severity === 'ERROR' ? 'selected' : ''; ?>>ERROR</option>
                         <option value="WARNING" <?php echo $severity === 'WARNING' ? 'selected' : ''; ?>>WARNING</option>
@@ -800,15 +829,25 @@ $totalPages = ceil($totalErrors / $limit);
                 </div>
                 
                 <div class="form-group">
-                    <label>Error Code</label>
-                    <input type="text" name="error_code" value="<?php echo htmlspecialchars($errorCode); ?>" placeholder="Filter by error code">
+                    <label for="error_code">Error Code:</label>
+                    <input type="text" id="error_code" name="error_code" value="<?php echo htmlspecialchars($errorCode); ?>" placeholder="e.g., E_ERROR">
+                </div>
+                
+                <div class="form-group">
+                    <label for="error_id">Error ID:</label>
+                    <input type="text" id="error_id" name="error_id" value="<?php echo htmlspecialchars($errorId); ?>" placeholder="e.g., 123e4567-e89b-12d3-a456-426614174000">
                 </div>
                 
                 <div class="form-group">
                     <label>&nbsp;</label>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-search"></i> Filter
-                    </button>
+                    <div style="display: flex; gap: 10px;">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i> Filter
+                        </button>
+                        <a href="errors.php" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Clear
+                        </a>
+                    </div>
                 </div>
             </form>
         </div>
@@ -828,6 +867,7 @@ $totalPages = ceil($totalErrors / $limit);
             </div>
         </div>
 
+        <!-- Error Logs Table -->
         <div class="logs-section">
             <h3><i class="fas fa-list"></i> Recent Error Logs</h3>
             
@@ -842,6 +882,7 @@ $totalPages = ceil($totalErrors / $limit);
                     <thead>
                         <tr>
                             <th>Date</th>
+                            <th>Error ID</th>
                             <th>Error Code</th>
                             <th>Message</th>
                             <th>Severity</th>
@@ -849,57 +890,44 @@ $totalPages = ceil($totalErrors / $limit);
                             <th>File</th>
                             <th>Line</th>
                             <th>Request URI</th>
-                            <th>User Agent</th>
-                            <th>IP Address</th>
                             <th>Details</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($errorLogs as $i => $error): ?>
+                        <?php foreach ($errorLogs as $error): ?>
                             <tr>
                                 <td>
                                     <strong><?php echo date('M j, Y', strtotime($error['created_at'])); ?></strong><br>
                                     <small><?php echo date('H:i:s', strtotime($error['created_at'])); ?></small>
                                 </td>
                                 <td>
-                                    <strong><?php echo htmlspecialchars($error['error_code'] ?: 'N/A'); ?></strong>
+                                    <code style="font-size: 0.8em; background: #f8f9fa; padding: 2px 4px; border-radius: 3px;">
+                                        <?php echo htmlspecialchars(substr($error['error_id'] ?? 'N/A', 0, 8) . '...'); ?>
+                                    </code>
+                                </td>
+                                <td><?php echo htmlspecialchars($error['error_code'] ?: 'N/A'); ?></td>
+                                <td class="message-cell">
+                                    <?php echo htmlspecialchars($error['error_message'] ?: 'N/A'); ?>
                                 </td>
                                 <td>
-                                    <div style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                        <?php echo htmlspecialchars($error['error_message'] ?: 'N/A'); ?>
-                                    </div>
-                                </td>
-                                <td>
-                                    <span class="severity-badge severity-<?php echo strtolower($error['severity']); ?>">
-                                        <?php echo htmlspecialchars($error['severity']); ?>
+                                    <span class="severity-badge severity-<?php echo strtolower($error['severity'] ?? 'unknown'); ?>">
+                                        <?php echo htmlspecialchars($error['severity'] ?? 'Unknown'); ?>
                                     </span>
                                 </td>
                                 <td>
-                                    <?php if ($error['http_status']): ?>
-                                        <span class="status-badge status-<?php echo $error['http_status']; ?>">
-                                            <?php echo $error['http_status']; ?>
-                                        </span>
-                                    <?php else: ?>
-                                        <span>-</span>
-                                    <?php endif; ?>
+                                    <span class="status-badge status-<?php echo $error['http_status'] ?? 'unknown'; ?>">
+                                        <?php echo htmlspecialchars($error['http_status'] ?? 'N/A'); ?>
+                                    </span>
+                                </td>
+                                <td class="file-cell">
+                                    <?php echo htmlspecialchars(basename($error['file_path'] ?? 'N/A')); ?>
+                                </td>
+                                <td><?php echo htmlspecialchars($error['line_number'] ?: 'N/A'); ?></td>
+                                <td class="uri-cell">
+                                    <?php echo htmlspecialchars($error['request_uri'] ?: 'N/A'); ?>
                                 </td>
                                 <td>
-                                    <small><?php echo htmlspecialchars(basename($error['file_path'] ?: 'N/A')); ?></small>
-                                </td>
-                                <td>
-                                    <small><?php echo $error['line_number'] ?: 'N/A'; ?></small>
-                                </td>
-                                <td>
-                                    <small><?php echo htmlspecialchars($error['request_uri'] ?: 'N/A'); ?></small>
-                                </td>
-                                <td>
-                                    <small><?php echo htmlspecialchars($error['user_agent'] ?: 'N/A'); ?></small>
-                                </td>
-                                <td>
-                                    <small><?php echo htmlspecialchars($error['ip_address'] ?: 'N/A'); ?></small>
-                                </td>
-                                <td>
-                                    <button class="view-details" data-error-id="<?php echo $error['id']; ?>">
+                                    <button class="btn btn-sm btn-outline-primary view-details" data-error-id="<?php echo $error['id']; ?>">
                                         <i class="fas fa-eye"></i> Details
                                     </button>
                                 </td>
@@ -935,49 +963,46 @@ $totalPages = ceil($totalErrors / $limit);
         </div>
     </div>
 
-    <!-- Error Details Modal - Root Level -->
-    <div id="error-details-modal" class="modal">
+    <!-- Error Details Modal -->
+    <div id="errorModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2><i class="fas fa-exclamation-triangle"></i> Error Details</h2>
+                <h3><i class="fas fa-exclamation-triangle"></i> Error Details</h3>
                 <span class="close">&times;</span>
             </div>
-            <div class="error-details">
-                <!-- Error details will be loaded here dynamically -->
+            <div id="errorDetails" class="modal-body">
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Loading error details...</p>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Initialize modal functionality
             initializeModal();
-            // Initialize Charts
             initializeCharts();
         });
 
         function initializeModal() {
-            const viewDetailsButtons = document.querySelectorAll('.view-details');
-            const modal = document.getElementById('error-details-modal');
-            const closeModal = document.querySelector('.close');
-            const errorDetails = document.querySelector('.error-details');
+            const modal = document.getElementById('errorModal');
+            const closeBtn = document.querySelector('.close');
+            const errorDetails = document.getElementById('errorDetails');
 
-            console.log('Found view-details buttons:', viewDetailsButtons.length);
-
-            viewDetailsButtons.forEach(button => {
+            // Add click event to all view details buttons
+            document.querySelectorAll('.view-details').forEach(button => {
                 button.addEventListener('click', function(e) {
                     e.preventDefault();
                     const errorId = this.getAttribute('data-error-id');
-                    console.log('View details clicked for error ID:', errorId);
-                    fetchErrorDetails(errorId);
+                    showErrorDetails(errorId);
                 });
             });
 
-            if (closeModal) {
-                closeModal.addEventListener('click', function() {
-                    modal.classList.remove('show');
-                });
-            }
+            // Close modal when clicking X
+            closeBtn.addEventListener('click', function() {
+                modal.classList.remove('show');
+            });
 
             // Close modal when clicking outside
             window.addEventListener('click', function(e) {
@@ -992,67 +1017,90 @@ $totalPages = ceil($totalErrors / $limit);
                     modal.classList.remove('show');
                 }
             });
+        }
 
-            function fetchErrorDetails(errorId) {
-                const url = window.location.origin + '/batman/get-error-details.php?error_id=' + errorId;
-                
-                console.log('Fetching error details from:', url);
-                
-                fetch(url)
-                    .then(response => {
-                        if (!response.ok) {
-                            if (response.status === 401) {
-                                // Authentication required - redirect to login
-                                window.location.href = '/batman/login.php?redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
-                                throw new Error('Authentication required. Redirecting to login...');
-                            } else if (response.status === 403) {
-                                // Insufficient privileges
-                                throw new Error('Insufficient privileges to view error details');
-                            }
-                            throw new Error(`HTTP error! status: ${response.status}`);
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        if (data.success && data.error) {
-                            const error = data.error;
-                            
-                            errorDetails.innerHTML = `
+        function showErrorDetails(errorId) {
+            const modal = document.getElementById('errorModal');
+            const errorDetails = document.getElementById('errorDetails');
+            
+            // Show modal with loading state
+            modal.classList.add('show');
+            errorDetails.innerHTML = `
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Loading error details...</p>
+                </div>
+            `;
+
+            // Fetch error details
+            fetch(`get-error-details.php?error_id=${errorId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success && data.error) {
+                        const error = data.error;
+                        errorDetails.innerHTML = `
+                            <div class="error-detail-section">
+                                <h4><i class="fas fa-info-circle"></i> Basic Information</h4>
                                 <div class="error-detail-row">
-                                    <div class="error-detail-label">Error Message:</div>
-                                    <div class="error-detail-value">${error.error_message || 'N/A'}</div>
+                                    <div class="error-detail-label">Error ID:</div>
+                                    <div class="error-detail-value">
+                                        <code style="background: #f8f9fa; padding: 4px 8px; border-radius: 4px; font-family: monospace;">
+                                            ${error.error_id || 'N/A'}
+                                        </code>
+                                    </div>
                                 </div>
                                 <div class="error-detail-row">
                                     <div class="error-detail-label">Error Code:</div>
-                                    <div class="error-detail-value"><code>${error.error_code || 'N/A'}</code></div>
+                                    <div class="error-detail-value">${error.error_code || 'N/A'}</div>
+                                </div>
+                                <div class="error-detail-row">
+                                    <div class="error-detail-label">Message:</div>
+                                    <div class="error-detail-value">${error.error_message || 'N/A'}</div>
                                 </div>
                                 <div class="error-detail-row">
                                     <div class="error-detail-label">HTTP Status:</div>
-                                    <div class="error-detail-value"><span class="status-badge status-${error.http_status}">${error.http_status || 'N/A'}</span></div>
+                                    <div class="error-detail-value">${error.http_status || 'N/A'}</div>
                                 </div>
                                 <div class="error-detail-row">
                                     <div class="error-detail-label">Severity:</div>
-                                    <div class="error-detail-value"><span class="severity-badge severity-${error.severity ? error.severity.toLowerCase() : 'unknown'}">${error.severity || 'N/A'}</span></div>
+                                    <div class="error-detail-value">
+                                        <span class="severity-badge severity-${(error.severity || 'unknown').toLowerCase()}">
+                                            ${error.severity || 'Unknown'}
+                                        </span>
+                                    </div>
                                 </div>
                                 <div class="error-detail-row">
                                     <div class="error-detail-label">Context:</div>
-                                    <div class="error-detail-value"><span class="context-badge context-${error.context ? error.context.toLowerCase() : 'unknown'}">${error.context || 'N/A'}</span></div>
+                                    <div class="error-detail-value">${error.context || 'N/A'}</div>
                                 </div>
+                            </div>
+                            
+                            <div class="error-detail-section">
+                                <h4><i class="fas fa-map-marker-alt"></i> Location</h4>
                                 <div class="error-detail-row">
-                                    <div class="error-detail-label">File Path:</div>
+                                    <div class="error-detail-label">File:</div>
                                     <div class="error-detail-value">${error.file_path || 'N/A'}</div>
                                 </div>
                                 <div class="error-detail-row">
-                                    <div class="error-detail-label">Line Number:</div>
+                                    <div class="error-detail-label">Line:</div>
                                     <div class="error-detail-value">${error.line_number || 'N/A'}</div>
                                 </div>
+                            </div>
+                            
+                            <div class="error-detail-section">
+                                <h4><i class="fas fa-globe"></i> Request Information</h4>
                                 <div class="error-detail-row">
                                     <div class="error-detail-label">Request URI:</div>
                                     <div class="error-detail-value">${error.request_uri || 'N/A'}</div>
                                 </div>
                                 <div class="error-detail-row">
                                     <div class="error-detail-label">Request Method:</div>
-                                    <div class="error-detail-value"><code>${error.request_method || 'N/A'}</code></div>
+                                    <div class="error-detail-value">${error.request_method || 'N/A'}</div>
                                 </div>
                                 <div class="error-detail-row">
                                     <div class="error-detail-label">IP Address:</div>
@@ -1062,53 +1110,56 @@ $totalPages = ceil($totalErrors / $limit);
                                     <div class="error-detail-label">User Agent:</div>
                                     <div class="error-detail-value">${error.user_agent || 'N/A'}</div>
                                 </div>
+                            </div>
+                            
+                            <div class="error-detail-section">
+                                <h4><i class="fas fa-clock"></i> Timestamps</h4>
                                 <div class="error-detail-row">
-                                    <div class="error-detail-label">Created At:</div>
+                                    <div class="error-detail-label">Created:</div>
                                     <div class="error-detail-value">${error.created_at || 'N/A'}</div>
                                 </div>
-                                ${error.stack_trace ? `
                                 <div class="error-detail-row">
-                                    <div class="error-detail-label">Stack Trace:</div>
-                                    <div class="error-detail-value">
-                                        <pre>${error.stack_trace}</pre>
-                                    </div>
+                                    <div class="error-detail-label">Updated:</div>
+                                    <div class="error-detail-value">${error.updated_at || 'N/A'}</div>
                                 </div>
-                                ` : ''}
-                                ${error.context_data ? `
-                                <div class="error-detail-row">
-                                    <div class="error-detail-label">Context Data:</div>
-                                    <div class="error-detail-value">
-                                        <pre>${error.context_data}</pre>
-                                    </div>
+                            </div>
+                            
+                            ${error.stack_trace ? `
+                            <div class="error-detail-section">
+                                <h4><i class="fas fa-code"></i> Stack Trace</h4>
+                                <div class="error-detail-value">
+                                    <pre style="background: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 0.9em; max-height: 300px; overflow-y: auto;">${error.stack_trace}</pre>
                                 </div>
-                                ` : ''}
-                            `;
-                        } else {
-                            errorDetails.innerHTML = '<p>Error details not found.</p>';
-                        }
-                        modal.classList.add('show');
-                    })
-                    .catch(error => {
-                        console.error('Error fetching error details:', error);
-                        if (error.message.includes('Authentication required')) {
-                            // Don't show modal for auth errors - user will be redirected
-                            return;
-                        }
-                        errorDetails.innerHTML = '<p>Error loading details: ' + error.message + '</p>';
-                        modal.classList.add('show');
-                    });
-            }
+                            </div>
+                            ` : ''}
+                            
+                            ${error.context_data ? `
+                            <div class="error-detail-section">
+                                <h4><i class="fas fa-database"></i> Context Data</h4>
+                                <div class="error-detail-value">
+                                    <pre style="background: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 0.9em; max-height: 300px; overflow-y: auto;">${error.context_data}</pre>
+                                </div>
+                            </div>
+                            ` : ''}
+                        `;
+                    } else {
+                        errorDetails.innerHTML = '<p>Error loading details: ' + (data.error || 'Unknown error') + '</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching error details:', error);
+                    errorDetails.innerHTML = '<p>Error loading details: ' + error.message + '</p>';
+                });
         }
-        
+
         function initializeCharts() {
             // Chart data from PHP
             const trendData = <?php echo json_encode($trendData ?? []); ?>;
             const severityData = <?php echo json_encode($severityData ?? []); ?>;
-            const statusData = <?php echo json_encode($statusData ?? []); ?>;
             
             // Error Trends Chart
             const trendCtx = document.getElementById('trendChart');
-            if (trendCtx) {
+            if (trendCtx && Object.keys(trendData).length > 0) {
                 const trendLabels = Object.keys(trendData);
                 const trendValues = Object.values(trendData);
                 
@@ -1153,7 +1204,7 @@ $totalPages = ceil($totalErrors / $limit);
 
             // Severity Distribution Chart
             const severityCtx = document.getElementById('severityChart');
-            if (severityCtx) {
+            if (severityCtx && Object.keys(severityData).length > 0) {
                 const severityLabels = Object.keys(severityData);
                 const severityValues = Object.values(severityData);
                 

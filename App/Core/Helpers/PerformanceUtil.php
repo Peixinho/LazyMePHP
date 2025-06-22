@@ -16,6 +16,16 @@ class PerformanceUtil
     private static bool $enabled = true;
 
     /**
+     * Initialize performance monitoring settings
+     */
+    public static function initialize(): void
+    {
+        // Load from environment variable, default to true if not set
+        $envEnabled = $_ENV['APP_PERFORMANCE_MONITORING'] ?? 'true';
+        self::$enabled = $envEnabled === 'true';
+    }
+
+    /**
      * Start a performance timer
      */
     public static function startTimer(string $name): void
@@ -104,47 +114,43 @@ class PerformanceUtil
     /**
      * Log slow operations to database
      */
-    private static function logSlowOperation(string $operation, array $metrics): void
+    public static function logSlowOperation(string $operation, $metrics, array $context = []): void
     {
-        if (!LazyMePHP::ACTIVITY_LOG()) return;
+        if (!self::$enabled) return;
 
         try {
             $db = LazyMePHP::DB_CONNECTION();
             if (!$db) return;
 
-            // Check if __LOG_PERFORMANCE table exists
-            $tableExists = $db->Query("SHOW TABLES LIKE '__LOG_PERFORMANCE'");
-            if (!$tableExists->FetchArray()) {
-                $createTable = "CREATE TABLE __LOG_PERFORMANCE (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    operation_name VARCHAR(255),
-                    duration_ms DECIMAL(10,2),
-                    memory_bytes BIGINT,
-                    memory_mb DECIMAL(10,2),
-                    url VARCHAR(500),
-                    method VARCHAR(10),
-                    ip VARCHAR(45),
-                    user_agent TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )";
-                $db->Query($createTable);
+            // Handle both array metrics and direct duration
+            if (is_array($metrics)) {
+                $durationMs = $metrics['duration_ms'];
+                $memoryBytes = $metrics['memory_bytes'];
+                $memoryMb = $metrics['memory_mb'];
+            } else {
+                $durationMs = $metrics; // Direct duration in ms
+                $memoryUsage = self::getMemoryUsage();
+                $memoryBytes = $memoryUsage['current'];
+                $memoryMb = $memoryUsage['current_mb'];
             }
-
+            
             $query = "INSERT INTO __LOG_PERFORMANCE (
                 operation_name, duration_ms, memory_bytes, memory_mb,
                 url, method, ip, user_agent
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
-            $db->Query($query, [
+            $params = [
                 $operation,
-                $metrics['duration_ms'],
-                $metrics['memory_bytes'],
-                $metrics['memory_mb'],
+                $durationMs,
+                $memoryBytes,
+                $memoryMb,
                 $_SERVER['REQUEST_URI'] ?? 'unknown',
                 $_SERVER['REQUEST_METHOD'] ?? 'unknown',
                 $_SERVER['REMOTE_ADDR'] ?? 'unknown',
                 $_SERVER['HTTP_USER_AGENT'] ?? 'unknown'
-            ]);
+            ];
+
+            $db->Query($query, $params);
         } catch (\Exception $e) {
             // Silently fail - performance logging shouldn't break the app
         }
@@ -190,11 +196,11 @@ class PerformanceUtil
             while ($row = $result->FetchArray()) {
                 $stats[] = [
                     'operation' => $row['operation_name'],
-                    'count' => $row['count'],
-                    'avg_duration' => round($row['avg_duration'], 2),
-                    'max_duration' => round($row['max_duration'], 2),
-                    'avg_memory' => round($row['avg_memory'], 2),
-                    'max_memory' => round($row['max_memory'], 2),
+                    'count' => (int)$row['count'],
+                    'avg_duration' => round((float)$row['avg_duration'], 2),
+                    'max_duration' => round((float)$row['max_duration'], 2),
+                    'avg_memory' => round((float)$row['avg_memory'], 2),
+                    'max_memory' => round((float)$row['max_memory'], 2),
                     'first_occurrence' => $row['first_occurrence'],
                     'last_occurrence' => $row['last_occurrence']
                 ];
@@ -237,5 +243,22 @@ class PerformanceUtil
     {
         self::$timers = [];
         self::$memorySnapshots = [];
+    }
+
+    /**
+     * Get the slow operation threshold in seconds
+     */
+    public static function getSlowOperationThreshold(): float
+    {
+        return 1.0; // Default 1 second threshold
+    }
+
+    /**
+     * Set the slow operation threshold in seconds
+     */
+    public static function setSlowOperationThreshold(float $threshold): void
+    {
+        // This is a simple implementation - in a real app you might want to store this in config
+        // For now, we'll just use the default threshold
     }
 } 

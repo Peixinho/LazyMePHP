@@ -469,9 +469,10 @@ class LazyMePHP
     // Set the default timezone for all date/time functions.
     date_default_timezone_set(self::$_app_timezone);
     
-    // Register custom error and shutdown handlers using ErrorUtil.
-    set_error_handler(['\\Core\\Helpers\\ErrorUtil', 'ErrorHandler']);
-    register_shutdown_function(['\\Core\\Helpers\\ErrorUtil', 'FatalErrorShutdownHandler']);
+    // Initialize PerformanceUtil with environment settings
+    if (class_exists('\\Core\\Helpers\\PerformanceUtil')) {
+        \Core\Helpers\PerformanceUtil::initialize();
+    }
   }
 
   /**

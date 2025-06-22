@@ -44,39 +44,20 @@ date_default_timezone_set($_ENV['APP_TIMEZONE'] ?? 'UTC');
  */
 new Core\LazyMePHP();
 
-// Always log errors and warnings to the database (register first to avoid being overridden)
+/*
+ * Set up unified error handling (register only once)
+ */
 set_error_handler(['\Core\Helpers\ErrorUtil', 'ErrorHandler']);
+set_exception_handler(function(\Throwable $exception) {
+    // Pass uncaught exceptions to ErrorUtil::ErrorHandler
+    \Core\Helpers\ErrorUtil::ErrorHandler(E_ERROR, $exception->getMessage(), $exception->getFile(), $exception->getLine());
+});
 
 /*
  * Initialize Enhanced Debugging System
  */
 if (Core\LazyMePHP::DEBUG_MODE()) {
     \Core\Debug\DebugHelper::initialize();
-    
-    // Set up enhanced error handling for debug mode
-    set_error_handler(function($errno, $errstr, $errfile, $errline) {
-        if (!(error_reporting() & $errno)) {
-            return false; // Let PHP handle it normally
-        }
-        
-        $debugToolbar = \Core\Debug\DebugToolbar::getInstance();
-        $debugToolbar->addError($errstr, $errfile, $errline);
-        
-        return false; // Let PHP continue with normal error handling
-    });
-    
-    set_exception_handler(function(\Throwable $exception) {
-        $debugToolbar = \Core\Debug\DebugToolbar::getInstance();
-        $debugToolbar->addError(
-            $exception->getMessage(),
-            $exception->getFile(),
-            $exception->getLine(),
-            $exception->getTraceAsString()
-        );
-        
-        // Log to error handler
-        \Core\ErrorHandler::logError($exception, 'Uncaught Exception');
-    });
     
     // Register shutdown function to inject debug toolbar
     register_shutdown_function(function() {
@@ -141,61 +122,6 @@ if (\Core\LazyMePHP::ACTIVITY_LOG()) {
 }
 
 /*
- * Set up global error handling
- */
-if (!\Core\LazyMePHP::DEBUG_MODE()) {
-    // Production error handling
-    set_error_handler(function($errno, $errstr, $errfile, $errline) {
-        if (!(error_reporting() & $errno)) {
-            return false;
-        }
-        
-        // Log to error handler without displaying
-        $exception = new \ErrorException($errstr, 0, $errno, $errfile, $errline);
-        \Core\ErrorHandler::logError($exception, 'Error');
-        
-        return true; // Don't execute PHP internal error handler
-    });
-    
-    set_exception_handler(function(\Throwable $exception) {
-        \Core\ErrorHandler::logError($exception, 'Uncaught Exception');
-        
-        // Show generic error page in production
-        if (!headers_sent()) {
-            http_response_code(500);
-            header('Content-Type: text/html; charset=utf-8');
-        }
-        
-        echo '<!DOCTYPE html>
-        <html>
-        <head>
-            <title>Internal Server Error</title>
-            <style>
-                body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
-                .error-container { max-width: 600px; margin: 0 auto; }
-                .error-code { font-size: 72px; color: #e74c3c; margin: 0; }
-                .error-message { font-size: 24px; color: #2c3e50; margin: 20px 0; }
-                .error-description { color: #7f8c8d; line-height: 1.6; }
-            </style>
-        </head>
-        <body>
-            <div class="error-container">
-                <h1 class="error-code">500</h1>
-                <h2 class="error-message">Internal Server Error</h2>
-                <p class="error-description">
-                    We apologize, but something went wrong on our end. 
-                    Our team has been notified and is working to fix the issue.
-                </p>
-                <p class="error-description">
-                    Please try again later or contact support if the problem persists.
-                </p>
-            </div>
-        </body>
-        </html>';
-    });
-}
-
-/*
  * Add memory snapshot for bootstrap completion
  */
 if (\Core\LazyMePHP::DEBUG_MODE()) {
@@ -211,6 +137,12 @@ require_once __DIR__."/Routes/Routes.php";
  * Routing
  */
 ob_start();
+
+// Start performance monitoring for the entire request
+if (class_exists('Core\Helpers\PerformanceUtil')) {
+    \Core\Helpers\PerformanceUtil::startTimer('request_total');
+}
+
 try {
     Pecee\SimpleRouter\SimpleRouter::start();
     $content = ob_get_clean();
@@ -237,9 +169,25 @@ try {
     return;
 }
 
+// End performance monitoring and log if slow
+if (class_exists('Core\Helpers\PerformanceUtil')) {
+    $metrics = \Core\Helpers\PerformanceUtil::endTimer('request_total');
+    if ($metrics && $metrics['duration_ms'] > 1000) {
+        \Core\Helpers\PerformanceUtil::logSlowOperation(
+            'request_total',
+            $metrics
+        );
+    }
+}
+
 /*
  * Runs logging activity
  */
 Core\LazyMePHP::LOG_ACTIVITY();
 
 Core\LazyMePHP::DB_CONNECTION()->Close();
+
+/*
+ * Register fatal error shutdown handler (must be last to have priority)
+ */
+register_shutdown_function(['\Core\Helpers\ErrorUtil', 'FatalErrorShutdownHandler']);

@@ -57,6 +57,7 @@ Key environment variables:
 - `APP_EMAIL_SUPPORT`: Email address for support or error notifications (e.g., `"support@example.com"`).
 - `APP_ACTIVITY_LOG`: Set to `"true"` to enable activity logging, `"false"` to disable.
 - `APP_ACTIVITY_AUTH`: Identifier for the user performing actions when activity logging is enabled. This can be a static string or you might set this dynamically in your application based on logged-in user, e.g. `$_SESSION['user_id']`. The `.env` value serves as a default or fallback.
+- `APP_PERFORMANCE_MONITORING`: Set to `"true"` to enable performance monitoring and logging, `"false"` to disable. When enabled, slow operations (>1 second) are logged to the `__LOG_PERFORMANCE` table and can be viewed in the Batman dashboard.
 - `APP_MOD_REWRITE`: Set to `"true"` if URL rewriting (like Apache's mod_rewrite) is enabled, `"false"` otherwise.
 
 # LazyMePHP Auto Generation Tools

@@ -86,6 +86,7 @@ try {
     $stmt = $pdo->prepare("
         SELECT 
             id,
+            error_id,
             error_message,
             error_code,
             http_status,

@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS __LOG_DATA (
 
 CREATE TABLE IF NOT EXISTS __LOG_ERRORS (
   id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  error_id VARCHAR(36) NOT NULL,
   error_message TEXT NOT NULL,
   error_code VARCHAR(50) NOT NULL,
   http_status INT NOT NULL,
@@ -57,9 +58,26 @@ CREATE TABLE IF NOT EXISTS __LOG_ERRORS (
   request_method VARCHAR(10) DEFAULT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_error_id (error_id),
   KEY idx_error_code (error_code),
   KEY idx_severity (severity),
   KEY idx_context (context),
+  KEY idx_created_at (created_at)
+);
+
+CREATE TABLE IF NOT EXISTS __LOG_PERFORMANCE (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  operation_name VARCHAR(255) NOT NULL,
+  duration_ms DECIMAL(10,2) NOT NULL,
+  memory_bytes BIGINT NOT NULL,
+  memory_mb DECIMAL(10,2) NOT NULL,
+  url VARCHAR(500) DEFAULT NULL,
+  method VARCHAR(10) DEFAULT NULL,
+  ip VARCHAR(45) DEFAULT NULL,
+  user_agent TEXT DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_operation_name (operation_name),
+  KEY idx_duration_ms (duration_ms),
   KEY idx_created_at (created_at)
 );
 ";
@@ -102,6 +120,7 @@ CREATE TABLE IF NOT EXISTS __LOG_DATA (
 
 CREATE TABLE IF NOT EXISTS __LOG_ERRORS (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  error_id TEXT NOT NULL,
   error_message TEXT NOT NULL,
   error_code TEXT NOT NULL,
   http_status INTEGER NOT NULL,
@@ -117,6 +136,22 @@ CREATE TABLE IF NOT EXISTS __LOG_ERRORS (
   request_method TEXT,
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS __LOG_PERFORMANCE (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  operation_name TEXT NOT NULL,
+  duration_ms DECIMAL(10,2) NOT NULL,
+  memory_bytes INTEGER NOT NULL,
+  memory_mb DECIMAL(10,2) NOT NULL,
+  url TEXT,
+  method TEXT,
+  ip TEXT,
+  user_agent TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  KEY idx_operation_name (operation_name),
+  KEY idx_duration_ms (duration_ms),
+  KEY idx_created_at (created_at)
 );
 ";
         case 'mssql':
@@ -157,6 +192,7 @@ CREATE TABLE __LOG_DATA (
 
 CREATE TABLE __LOG_ERRORS (
   id INT IDENTITY(1,1) PRIMARY KEY,
+  error_id NVARCHAR(36) NOT NULL,
   error_message NVARCHAR(MAX) NOT NULL,
   error_code NVARCHAR(50) NOT NULL,
   http_status INT NOT NULL,
@@ -172,6 +208,22 @@ CREATE TABLE __LOG_ERRORS (
   request_method NVARCHAR(10) NULL,
   created_at DATETIME DEFAULT GETDATE(),
   updated_at DATETIME DEFAULT GETDATE()
+);
+
+CREATE TABLE IF NOT EXISTS __LOG_PERFORMANCE (
+  id INT IDENTITY(1,1) PRIMARY KEY,
+  operation_name NVARCHAR(255) NOT NULL,
+  duration_ms DECIMAL(10,2) NOT NULL,
+  memory_bytes BIGINT NOT NULL,
+  memory_mb DECIMAL(10,2) NOT NULL,
+  url NVARCHAR(500) DEFAULT NULL,
+  method NVARCHAR(10) DEFAULT NULL,
+  ip NVARCHAR(45) DEFAULT NULL,
+  user_agent NVARCHAR(MAX) DEFAULT NULL,
+  created_at DATETIME DEFAULT GETDATE(),
+  KEY idx_operation_name (operation_name),
+  KEY idx_duration_ms (duration_ms),
+  KEY idx_created_at (created_at)
 );
 ";
         default:

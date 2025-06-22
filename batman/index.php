@@ -671,6 +671,156 @@ $totalPages = ceil($totalActivities / $limit);
                 grid-template-columns: 1fr;
             }
         }
+
+        /* Performance Monitoring Styles */
+        .performance-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .performance-section h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .performance-breakdown {
+            margin-top: 25px;
+        }
+
+        .performance-breakdown h4 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .performance-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .performance-table th {
+            background: #f8f9fa;
+            padding: 15px 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #2c3e50;
+            border-bottom: 2px solid #e1e8ed;
+            font-size: 0.9em;
+        }
+
+        .performance-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e1e8ed;
+            vertical-align: middle;
+            font-size: 0.9em;
+        }
+
+        .performance-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .duration {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.85em;
+        }
+
+        .duration.normal {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .duration.warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .duration.critical {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .memory {
+            color: #667eea;
+            font-weight: 500;
+            font-size: 0.85em;
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.8em;
+            font-weight: 500;
+        }
+
+        .badge-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .performance-chart {
+            margin-top: 25px;
+        }
+
+        .performance-chart h4 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .chart-canvas {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #7f8c8d;
+        }
+
+        .empty-state i {
+            font-size: 3em;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .empty-state h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .empty-state p {
+            font-size: 1em;
+            line-height: 1.5;
+        }
+
+        .empty-state code {
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: #667eea;
+        }
     </style>
 </head>
 <body>
@@ -728,7 +878,13 @@ $totalPages = ceil($totalActivities / $limit);
             <div class="stat-card">
                 <h3><i class="fas fa-tachometer-alt"></i> Performance</h3>
                 <div class="value"><?php echo count($perfStats); ?></div>
-                <div class="label">Slow operations tracked</div>
+                <div class="label">
+                    <?php if (PerformanceUtil::isEnabled()): ?>
+                        Slow operations tracked
+                    <?php else: ?>
+                        <span style="color: #e74c3c;">Monitoring disabled</span>
+                    <?php endif; ?>
+                </div>
             </div>
             
             <div class="stat-card">
@@ -802,6 +958,132 @@ $totalPages = ceil($totalActivities / $limit);
                     <canvas id="methodChart" class="chart-canvas"></canvas>
                 </div>
             </div>
+        </div>
+
+        <!-- Performance Monitoring Section -->
+        <div class="performance-section">
+            <h3><i class="fas fa-tachometer-alt"></i> Performance Monitoring</h3>
+            
+            <?php if (PerformanceUtil::isEnabled()): ?>
+                <!-- Performance Overview Cards -->
+                <div class="stats-grid">
+                    <?php
+                    $totalSlowOps = array_sum(array_column($perfStats, 'count'));
+                    $avgDuration = $totalSlowOps > 0 ? array_sum(array_column($perfStats, 'avg_duration')) / count($perfStats) : 0;
+                    $maxDuration = $totalSlowOps > 0 ? max(array_column($perfStats, 'max_duration')) : 0;
+                    $totalMemory = array_sum(array_column($perfStats, 'avg_memory'));
+                    ?>
+                    
+                    <div class="stat-card">
+                        <h4><i class="fas fa-clock"></i> Total Slow Operations</h4>
+                        <div class="value"><?php echo number_format($totalSlowOps); ?></div>
+                        <div class="label">Operations > 1 second</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <h4><i class="fas fa-chart-line"></i> Average Duration</h4>
+                        <div class="value"><?php echo round($avgDuration, 2); ?>ms</div>
+                        <div class="label">Across all operations</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <h4><i class="fas fa-exclamation-triangle"></i> Slowest Operation</h4>
+                        <div class="value"><?php echo round($maxDuration, 2); ?>ms</div>
+                        <div class="label">Peak response time</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <h4><i class="fas fa-memory"></i> Memory Usage</h4>
+                        <div class="value"><?php echo round($totalMemory, 2); ?>MB</div>
+                        <div class="label">Average memory per operation</div>
+                    </div>
+                </div>
+
+                <!-- Performance Breakdown Table -->
+                <?php if (!empty($perfStats)): ?>
+                    <div class="performance-breakdown">
+                        <h4><i class="fas fa-list"></i> Performance Breakdown by Operation Type</h4>
+                        <table class="performance-table">
+                            <thead>
+                                <tr>
+                                    <th>Operation Type</th>
+                                    <th>Count</th>
+                                    <th>Avg Duration</th>
+                                    <th>Max Duration</th>
+                                    <th>Avg Memory</th>
+                                    <th>Max Memory</th>
+                                    <th>First Seen</th>
+                                    <th>Last Seen</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($perfStats as $stat): ?>
+                                    <tr>
+                                        <td>
+                                            <strong><?php echo htmlspecialchars($stat['operation']); ?></strong>
+                                            <?php
+                                            $operationType = $stat['operation'];
+                                            $icon = 'fas fa-cog';
+                                            if (strpos($operationType, 'db_query') === 0) {
+                                                $icon = 'fas fa-database';
+                                            } elseif (strpos($operationType, 'api_') === 0) {
+                                                $icon = 'fas fa-code';
+                                            } elseif (strpos($operationType, 'request_') === 0) {
+                                                $icon = 'fas fa-globe';
+                                            }
+                                            ?>
+                                            <i class="<?php echo $icon; ?>" style="margin-left: 8px; color: #667eea;"></i>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-primary"><?php echo number_format($stat['count']); ?></span>
+                                        </td>
+                                        <td>
+                                            <span class="duration <?php echo $stat['avg_duration'] > 5000 ? 'critical' : ($stat['avg_duration'] > 2000 ? 'warning' : 'normal'); ?>">
+                                                <?php echo round($stat['avg_duration'], 2); ?>ms
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="duration <?php echo $stat['max_duration'] > 10000 ? 'critical' : ($stat['max_duration'] > 5000 ? 'warning' : 'normal'); ?>">
+                                                <?php echo round($stat['max_duration'], 2); ?>ms
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="memory"><?php echo round($stat['avg_memory'], 2); ?>MB</span>
+                                        </td>
+                                        <td>
+                                            <span class="memory"><?php echo round($stat['max_memory'], 2); ?>MB</span>
+                                        </td>
+                                        <td>
+                                            <small><?php echo date('M j, H:i', strtotime($stat['first_occurrence'])); ?></small>
+                                        </td>
+                                        <td>
+                                            <small><?php echo date('M j, H:i', strtotime($stat['last_occurrence'])); ?></small>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Performance Chart -->
+                    <div class="performance-chart">
+                        <h4><i class="fas fa-chart-bar"></i> Performance Trends</h4>
+                        <canvas id="performanceChart" class="chart-canvas"></canvas>
+                    </div>
+                <?php else: ?>
+                    <div class="empty-state">
+                        <i class="fas fa-check-circle"></i>
+                        <h3>No Performance Issues Detected</h3>
+                        <p>All operations are performing within acceptable limits (under 1 second).</p>
+                    </div>
+                <?php endif; ?>
+            <?php else: ?>
+                <div class="empty-state">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h3>Performance Monitoring Disabled</h3>
+                    <p>Enable performance monitoring by setting <code>APP_PERFORMANCE_MONITORING="true"</code> in your .env file.</p>
+                </div>
+            <?php endif; ?>
         </div>
 
         <div class="logs-section">
@@ -1022,6 +1304,75 @@ $totalPages = ceil($totalActivities / $limit);
                 }
             } else {
                 console.error('Method chart canvas not found');
+            }
+
+            // Performance Chart
+            const perfCtx = document.getElementById('performanceChart');
+            if (perfCtx && <?php echo json_encode(!empty($perfStats)); ?>) {
+                const perfLabels = <?php echo json_encode(array_column($perfStats, 'operation')); ?>;
+                const perfAvgDurations = <?php echo json_encode(array_column($perfStats, 'avg_duration')); ?>;
+                const perfMaxDurations = <?php echo json_encode(array_column($perfStats, 'max_duration')); ?>;
+                
+                console.log('Performance data:', { 
+                    labels: perfLabels, 
+                    avgDurations: perfAvgDurations, 
+                    maxDurations: perfMaxDurations 
+                });
+                
+                try {
+                    new Chart(perfCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: perfLabels,
+                            datasets: [{
+                                label: 'Average Duration (ms)',
+                                data: perfAvgDurations,
+                                backgroundColor: 'rgba(102,126,234,0.8)',
+                                borderColor: '#667eea',
+                                borderWidth: 1
+                            }, {
+                                label: 'Max Duration (ms)',
+                                data: perfMaxDurations,
+                                backgroundColor: 'rgba(245,87,108,0.8)',
+                                borderColor: '#f5576c',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { 
+                                legend: { 
+                                    position: 'top',
+                                    labels: {
+                                        usePointStyle: true,
+                                        padding: 20
+                                    }
+                                } 
+                            },
+                            scales: { 
+                                y: { 
+                                    beginAtZero: true,
+                                    title: {
+                                        display: true,
+                                        text: 'Duration (ms)'
+                                    }
+                                },
+                                x: {
+                                    title: {
+                                        display: true,
+                                        text: 'Operation Type'
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    console.log('Performance chart initialized successfully');
+                } catch (error) {
+                    console.error('Error initializing performance chart:', error);
+                }
+            } else {
+                console.log('Performance chart canvas not found or no data available');
             }
         }
 

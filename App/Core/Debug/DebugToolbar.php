@@ -18,7 +18,6 @@ class DebugToolbar
 {
     private static ?DebugToolbar $instance = null;
     private array $queries = [];
-    private array $errors = [];
     private float $startTime;
     private int $startMemory;
     private array $requestInfo = [];
@@ -61,22 +60,6 @@ class DebugToolbar
             'sql' => $sql,
             'time' => $time,
             'params' => $params,
-            'timestamp' => microtime(true)
-        ];
-    }
-    
-    /**
-     * Add an error to the debug log
-     */
-    public function addError(string $message, string $file = '', int $line = 0, string $trace = ''): void
-    {
-        if (!$this->enabled) return;
-        
-        $this->errors[] = [
-            'message' => $message,
-            'file' => $file,
-            'line' => $line,
-            'trace' => $trace,
             'timestamp' => microtime(true)
         ];
     }
@@ -138,7 +121,7 @@ class DebugToolbar
     {
         return [
             'queries' => $this->queries,
-            'errors' => $this->errors,
+            'errors' => \Core\Helpers\ErrorUtil::getCurrentRequestErrors(),
             'execution_time' => $this->getExecutionTime(),
             'memory' => $this->getMemoryUsage(),
             'request' => $this->requestInfo,

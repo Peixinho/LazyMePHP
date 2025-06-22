@@ -50,6 +50,11 @@ header('Content-type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, GET, DELETE, PUT');
 
+// Start performance monitoring for API requests
+if (class_exists('Core\Helpers\PerformanceUtil')) {
+    \Core\Helpers\PerformanceUtil::startTimer('api_request');
+}
+
 \Pecee\SimpleRouter\SimpleRouter::get('/api/not-found', function() {
     ErrorHandler::handleNotFoundError('API endpoint');
 });
@@ -120,6 +125,17 @@ if (in_array($method, ['POST', 'PUT', 'DELETE']) && !$shouldSkipCsrf) {
 }
 
 \Pecee\SimpleRouter\SimpleRouter::start();
+
+// End performance monitoring and log if slow
+if (class_exists('Core\Helpers\PerformanceUtil')) {
+    $metrics = \Core\Helpers\PerformanceUtil::endTimer('api_request');
+    if ($metrics && $metrics['duration_ms'] > 1000) {
+        \Core\Helpers\PerformanceUtil::logSlowOperation(
+            'api_request',
+            $metrics
+        );
+    }
+}
 
 /*
  * Runs logging activity

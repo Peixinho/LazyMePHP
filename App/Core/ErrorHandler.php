@@ -45,6 +45,18 @@ class ErrorHandler
     ];
 
     /**
+     * Generate a unique error ID (UUID v4)
+     */
+    private static function generateErrorId(): string
+    {
+        // Generate a random UUID v4
+        $data = random_bytes(16);
+        $data[6] = chr((ord($data[6]) & 0x0f) | 0x40); // set version to 0100
+        $data[8] = chr((ord($data[8]) & 0x3f) | 0x80); // set bits 6-7 to 10
+        return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
+    }
+
+    /**
      * Enhanced API error handler with detailed debugging information
      */
     public static function handleApiError(
@@ -66,9 +78,10 @@ class ErrorHandler
         }
         
         $httpCode = self::ERROR_CODES[$code] ?? 500;
+        $errorId = self::generateErrorId();
         
         // Log the error to database with enhanced context
-        self::logErrorToDatabase($message, $code, $httpCode, $exception, 'API', $context);
+        self::logErrorToDatabase($message, $code, $httpCode, $exception, 'API', $context, $errorId);
         
         http_response_code($httpCode);
         header('Content-Type: application/json');
@@ -76,6 +89,7 @@ class ErrorHandler
         $response = [
             'success' => false,
             'error' => [
+                'id' => $errorId,
                 'message' => $message,
                 'code' => $code,
                 'http_code' => $httpCode,
@@ -269,7 +283,8 @@ class ErrorHandler
         int $httpStatus, 
         ?\Throwable $exception = null, 
         string $context = 'API',
-        ?array $additionalContext = null
+        ?array $additionalContext = null,
+        ?string $errorId = null
     ): void {
         if (self::isTestEnvironment()) return;
         
@@ -289,7 +304,7 @@ class ErrorHandler
             $line = $exception ? $exception->getLine() : 0;
             $contextData = $additionalContext ? json_encode($additionalContext) : '';
 
-            $sql = "INSERT INTO __LOG_ERRORS (error_message, error_code, http_status, severity, context, file_path, line_number, stack_trace, context_data, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+            $sql = "INSERT INTO __LOG_ERRORS (error_message, error_code, http_status, severity, context, file_path, line_number, stack_trace, context_data, created_at, error_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)";
             
             $db->Query($sql, [
                 $message,
@@ -300,7 +315,8 @@ class ErrorHandler
                 $file,
                 $line,
                 $stackTrace,
-                $contextData
+                $contextData,
+                $errorId
             ]);
 
         } catch (\Throwable $e) {
@@ -488,7 +504,8 @@ class ErrorHandler
      */
     public static function handleWebNotFoundError(string $url = ''): void {
         $message = "Page not found: " . ($url ?: $_SERVER['REQUEST_URI'] ?? 'unknown');
-        self::logErrorToDatabase($message, 'NOT_FOUND', 404, null, 'WEBPAGE');
+        $errorId = self::generateErrorId();
+        self::logErrorToDatabase($message, 'NOT_FOUND', 404, null, 'WEBPAGE', null, $errorId);
         
         // Skip exit in test environment
         if ((php_sapi_name() === 'cli' || defined('STDIN')) && self::isTestEnvironment()) {
@@ -496,11 +513,18 @@ class ErrorHandler
         }
         
         http_response_code(404);
-        echo '<h1>404 - Page Not Found</h1>';
-        echo '<p>The requested page could not be found.</p>';
-        if (self::isDebugMode()) {
-            echo '<p><strong>URL:</strong> ' . htmlspecialchars($url ?: $_SERVER['REQUEST_URI'] ?? 'unknown') . '</p>';
-        }
+        
+        // Use ErrorPage for consistent error display
+        $errorData = [
+            'error_id' => $errorId,
+            'type' => '404 - Page Not Found',
+            'message' => 'The requested page could not be found.',
+            'file' => $url ?: $_SERVER['REQUEST_URI'] ?? 'unknown',
+            'line' => '',
+            'trace' => ''
+        ];
+        
+        echo \Core\Helpers\ErrorPage::generate($errorData);
         exit;
     }
 
@@ -509,7 +533,8 @@ class ErrorHandler
      */
     public static function handleWebServerError(\Throwable $exception): void {
         $message = "Server error: " . $exception->getMessage();
-        self::logErrorToDatabase($message, 'INTERNAL_ERROR', 500, $exception, 'WEBPAGE');
+        $errorId = self::generateErrorId();
+        self::logErrorToDatabase($message, 'INTERNAL_ERROR', 500, $exception, 'WEBPAGE', null, $errorId);
         
         // Skip exit in test environment
         if ((php_sapi_name() === 'cli' || defined('STDIN')) && self::isTestEnvironment()) {
@@ -517,12 +542,18 @@ class ErrorHandler
         }
         
         http_response_code(500);
-        echo '<h1>500 - Internal Server Error</h1>';
-        echo '<p>An internal server error occurred.</p>';
-        if (self::isDebugMode()) {
-            echo '<p><strong>Error:</strong> ' . htmlspecialchars($exception->getMessage()) . '</p>';
-            echo '<p><strong>File:</strong> ' . htmlspecialchars($exception->getFile()) . ':' . $exception->getLine() . '</p>';
-        }
+        
+        // Use ErrorPage for consistent error display
+        $errorData = [
+            'error_id' => $errorId,
+            'type' => '500 - Internal Server Error',
+            'message' => 'An internal server error occurred.',
+            'file' => $exception->getFile(),
+            'line' => $exception->getLine(),
+            'trace' => $exception->getTraceAsString()
+        ];
+        
+        echo \Core\Helpers\ErrorPage::generate($errorData);
         exit;
     }
 

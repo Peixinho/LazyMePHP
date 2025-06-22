@@ -211,11 +211,22 @@ final class MySQL extends ISQL
                 \Core\Debug\DebugToolbar::getInstance()->addQuery($query, $executionTime, $params);
             }
             
+            // Log slow queries to performance monitoring
+            if (class_exists('Core\Helpers\PerformanceUtil') && $executionTime > 1.0) {
+                \Core\Helpers\PerformanceUtil::logSlowOperation(
+                    'db_query_mysql',
+                    [
+                        'duration_ms' => $executionTime * 1000,
+                        'memory_bytes' => memory_get_usage(true),
+                        'memory_mb' => memory_get_usage(true) / 1024 / 1024
+                    ]
+                );
+            }
+            
         } catch (PDOException $e) {
             // Log query error to debug toolbar (development only)
             $executionTime = microtime(true) - $startTime;
             if (class_exists('Core\Debug\DebugToolbar')) {
-                \Core\Debug\DebugToolbar::getInstance()->addError("Query failed: {$e->getMessage()}", __FILE__, __LINE__);
                 \Core\Debug\DebugToolbar::getInstance()->addQuery($query, $executionTime, $params);
             }
             

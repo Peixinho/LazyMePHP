@@ -6,8 +6,13 @@
 * @author Duarte Peixinho
 */
 
-  require_once __DIR__."/../App/bootstrap.php";
-  use Core\LazyMePHP;
+// Include the bootstrap file
+require_once __DIR__ . "/../App/bootstrap.php";
+use Core\LazyMePHP;
+
+// Initialize the application
+$app = new LazyMePHP();
+
 ?>
 
 <?php if (filter_input(INPUT_GET, "render")!="no") : ?>
