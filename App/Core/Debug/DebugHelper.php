@@ -298,7 +298,7 @@ class DebugHelper
     /**
      * Dump debug information to a file
      */
-    public static function dumpDebugInfo(string $filename = null): string
+    public static function dumpDebugInfo(?string $filename = null): string
     {
         if (!$filename) {
             $filename = 'debug_' . date('Y-m-d_H-i-s') . '_' . uniqid() . '.json';
