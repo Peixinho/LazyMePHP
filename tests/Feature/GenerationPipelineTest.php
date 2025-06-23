@@ -3,7 +3,7 @@
 use Core\LazyMePHP;
 use Tools\API\BuildTableAPI;
 use Tools\Forms\BuildTableForms;
-use Tools\Classes\BuildTableClasses;
+use Tools\Models\BuildTableClasses;
 
 require_once __DIR__ . '/../../App/Tools/API';
 require_once __DIR__ . '/../../App/Tools/Forms';
@@ -141,12 +141,12 @@ describe('Generation Pipeline Test', function () {
             }
         }
         
-        // Remove generated class files from App/Classes
-        $classFilesToRemove = [
-            __DIR__ . '/../../App/Classes/TestUsers.php',
-            __DIR__ . '/../../App/Classes/TestProducts.php'
+        // Remove generated class files from App/Models
+        $testFiles = [
+            __DIR__ . '/../../App/Models/TestUsers.php',
+            __DIR__ . '/../../App/Models/TestProducts.php'
         ];
-        foreach ($classFilesToRemove as $file) {
+        foreach ($testFiles as $file) {
             if (file_exists($file)) {
                 // unlink($file); // Temporarily disabled for debugging
             }
@@ -214,7 +214,7 @@ describe('Generation Pipeline Test', function () {
     });
     
     it('should generate class files', function () {
-        if (!class_exists('Tools\Classes\BuildTableClasses')) {
+        if (!class_exists('Tools\Models\BuildTableClasses')) {
             $this->markTestSkipped('BuildTableClasses class not found');
         }
         
@@ -264,9 +264,9 @@ describe('Generation Pipeline Test', function () {
     
     it('should serve and respond to API requests for generated files', function () {
         // Generate class files first (needed by controllers)
-        if (class_exists('Tools\Classes\BuildTableClasses')) {
+        if (class_exists('Tools\Models\BuildTableClasses')) {
             new BuildTableClasses(
-                __DIR__ . '/../../App/Classes',  // classesPath - use actual Classes directory
+                __DIR__ . '/../../App/Models',  // classesPath - use actual Classes directory
                 ['TestUsers', 'TestProducts'],
                 []
             );
@@ -277,7 +277,7 @@ describe('Generation Pipeline Test', function () {
             new BuildTableForms(
                 __DIR__ . '/../../App/Controllers',  // controllersPath - use actual Controllers directory
                 $this->generatedViewsPath,  // viewsPath
-                __DIR__ . '/../../App/Classes', // classesPath - use actual Classes directory
+                __DIR__ . '/../../App/Models', // classesPath - use actual Classes directory
                 $this->generatedRoutesPath,  // routesPath
                 ['TestUsers', 'TestProducts'], // tablesList
                 true,  // replaceRouteForms
@@ -317,8 +317,8 @@ describe('Generation Pipeline Test', function () {
         expect(file_exists(__DIR__ . '/../../App/Controllers/TestProducts.php'))->toBeTrue();
         
         // Test that classes were generated correctly
-        expect(file_exists(__DIR__ . '/../../App/Classes/TestUsers.php'))->toBeTrue();
-        expect(file_exists(__DIR__ . '/../../App/Classes/TestProducts.php'))->toBeTrue();
+        expect(file_exists(__DIR__ . '/../../App/Models/TestUsers.php'))->toBeTrue();
+        expect(file_exists(__DIR__ . '/../../App/Models/TestProducts.php'))->toBeTrue();
         
         echo "\n[API Test] All API components generated successfully\n";
     });
@@ -339,7 +339,7 @@ describe('Generation Pipeline Test', function () {
                 false
             );
         }
-        if (class_exists('Tools\Classes\BuildTableClasses')) {
+        if (class_exists('Tools\Models\BuildTableClasses')) {
             new BuildTableClasses(
                 $this->generatedClassesPath,
                 ['TestUsers'],
@@ -364,9 +364,9 @@ describe('Generation Pipeline Test', function () {
     
     it('should test controller CRUD operations directly', function () {
         // Generate class files first (needed by controllers)
-        if (class_exists('Tools\Classes\BuildTableClasses')) {
+        if (class_exists('Tools\Models\BuildTableClasses')) {
             new BuildTableClasses(
-                __DIR__ . '/../../App/Classes',  // classesPath - use actual Classes directory
+                __DIR__ . '/../../App/Models',  // classesPath - use actual Classes directory
                 ['TestUsers', 'TestProducts'],
                 []
             );
@@ -377,7 +377,7 @@ describe('Generation Pipeline Test', function () {
             new BuildTableForms(
                 __DIR__ . '/../../App/Controllers',  // controllersPath - use actual Controllers directory
                 $this->generatedViewsPath,  // viewsPath
-                __DIR__ . '/../../App/Classes', // classesPath - use actual Classes directory
+                __DIR__ . '/../../App/Models', // classesPath - use actual Classes directory
                 $this->generatedRoutesPath,  // routesPath
                 ['TestUsers', 'TestProducts'], // tablesList
                 true,  // replaceRouteForms
@@ -386,9 +386,9 @@ describe('Generation Pipeline Test', function () {
         }
         
         // Test TestUsers class CRUD operations directly
-        if (class_exists('\Classes\TestUsers')) {
+        if (class_exists('\Models\TestUsers')) {
             // Test CREATE operation
-            $createdUser = new \Classes\TestUsers();
+            $createdUser = new \Models\TestUsers();
             $createdUser->SetUsername('testuser_crud');
             $createdUser->SetEmail('testuser_crud@test.com');
             $createdUser->SetPassword('testpass123');
@@ -400,13 +400,13 @@ describe('Generation Pipeline Test', function () {
             expect($userId)->toBeGreaterThan(0);
             
             // Test READ operation
-            $readUser = new \Classes\TestUsers($userId);
+            $readUser = new \Models\TestUsers($userId);
             expect($readUser->GetUsername())->toBe('testuser_crud');
             expect($readUser->GetEmail())->toBe('testuser_crud@test.com');
             expect($readUser->GetIs_active())->toBeTrue();
             
             // Test UPDATE operation
-            $updateUser = new \Classes\TestUsers($userId);
+            $updateUser = new \Models\TestUsers($userId);
             $updateUser->SetUsername('testuser_crud_updated');
             $updateUser->SetEmail('testuser_crud_updated@test.com');
             $updateUser->SetIs_active(false);
@@ -414,7 +414,7 @@ describe('Generation Pipeline Test', function () {
             expect($updateResult)->toBeTruthy();
             
             // Verify update
-            $updatedUser = new \Classes\TestUsers($userId);
+            $updatedUser = new \Models\TestUsers($userId);
             expect($updatedUser->GetUsername())->toBe('testuser_crud_updated');
             expect($updatedUser->GetEmail())->toBe('testuser_crud_updated@test.com');
             expect($updatedUser->GetIs_active())->toBeFalse();
@@ -424,7 +424,7 @@ describe('Generation Pipeline Test', function () {
             expect($deleteResult)->toBeTrue();
             
             // Verify deletion
-            $deletedUser = new \Classes\TestUsers($userId);
+            $deletedUser = new \Models\TestUsers($userId);
             expect($deletedUser->GetId())->toBeNull();
             
             echo "\n[CRUD Test] TestUsers class CRUD operations completed successfully\n";
@@ -433,9 +433,9 @@ describe('Generation Pipeline Test', function () {
         }
         
         // Test TestProducts class CRUD operations directly
-        if (class_exists('\Classes\TestProducts')) {
+        if (class_exists('\Models\TestProducts')) {
             // Test CREATE operation
-            $createdProduct = new \Classes\TestProducts();
+            $createdProduct = new \Models\TestProducts();
             $createdProduct->SetName('Test Product CRUD');
             $createdProduct->SetDescription('Test product for CRUD operations');
             $createdProduct->SetPrice(29.99);
@@ -448,13 +448,13 @@ describe('Generation Pipeline Test', function () {
             expect($productId)->toBeGreaterThan(0);
             
             // Test READ operation
-            $readProduct = new \Classes\TestProducts($productId);
+            $readProduct = new \Models\TestProducts($productId);
             expect($readProduct->GetName())->toBe('Test Product CRUD');
             expect($readProduct->GetPrice())->toBe(29.99);
             expect($readProduct->GetIs_available())->toBeTrue();
             
             // Test UPDATE operation
-            $updateProduct = new \Classes\TestProducts($productId);
+            $updateProduct = new \Models\TestProducts($productId);
             $updateProduct->SetName('Test Product CRUD Updated');
             $updateProduct->SetPrice(39.99);
             $updateProduct->SetIs_available(false);
@@ -462,7 +462,7 @@ describe('Generation Pipeline Test', function () {
             expect($updateResult)->toBeTruthy();
             
             // Verify update
-            $updatedProduct = new \Classes\TestProducts($productId);
+            $updatedProduct = new \Models\TestProducts($productId);
             expect($updatedProduct->GetName())->toBe('Test Product CRUD Updated');
             expect($updatedProduct->GetPrice())->toBe(39.99);
             expect($updatedProduct->GetIs_available())->toBeFalse();
@@ -472,7 +472,7 @@ describe('Generation Pipeline Test', function () {
             expect($deleteResult)->toBeTrue();
             
             // Verify deletion
-            $deletedProduct = new \Classes\TestProducts($productId);
+            $deletedProduct = new \Models\TestProducts($productId);
             expect($deletedProduct->GetId())->toBeNull();
             
             echo "\n[CRUD Test] TestProducts class CRUD operations completed successfully\n";

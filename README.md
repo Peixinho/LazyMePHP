@@ -67,11 +67,11 @@ php LazyMePHP build
 ```
 
 # Be aware before using ...!
-If you are running this tool after initial generation and you've made changes to generated Forms, API or Classes (you shouldn't change your generated classes anyway), your changes could be lost, this tool is table based, so if you changed some specific table form or api, don't select it.
+If you are running this tool after initial generation and you've made changes to generated Forms, API or Models (you shouldn't change your generated classes anyway), your changes could be lost, this tool is table based, so if you changed some specific table form or api, don't select it.
 
 After this, you will have a list of your database tables, where you can select what to build and some other options:
 -**d** : Changes Table Descriptors
--**c** : Build Classes
+-**c** : Build Models
 -**f** : Build Forms
 -**a** : Build API
 -**e**: Enable Logging
@@ -118,13 +118,13 @@ http://localhost:8080
  - The file RoutingForms.php is by default in /src/Controllers/RouterForms.php is the one that defines the Routes to each Controller using simple-php-router, and each Controller requires its View file, but this should be considered boilerplate and they should be edited and placed in src/Routes/Routes.php
 
  ```
-## Classes
+## Models
 
 Every table generated will have a class that works as follows:
- - Each Table will have a Class File by default in /src/Classes/[Table Name].php 
- - All Classes will be in namespace \LazyMePHP\Classes
+ - Each Table will have a Model File by default in /src/Models/[Table Name].php
+ - All Models will be in namespace \LazyMePHP\Models
  - All Class columns have getters and setters *Get*[Column Name], *Set*[Column Name]
- - All Classes have Save method, if Id is provided when constructing object:
+ - All Models have Save method, if Id is provided when constructing object:
     ```
     $user = new User(); $user->Save(); // Will act as an INSERT
     ...
@@ -134,12 +134,12 @@ Every table generated will have a class that works as follows:
  - Foreign members can be built automatically
     ```
     // Country
-    $pt = new \LazyMePHP\Classes\Country();
+    $pt = new \LazyMePHP\Models\Country();
     $pt->SetCountryName('Portugal');
     $pt->Save();
     
     // User
-    $user = new \LazyMePHP\Classes\User();
+    $user = new \LazyMePHP\Models\User();
     $user->SetName('Peter');
     $user->SetAge('30');
     $user->SetCountryId($pt->Getid());
@@ -147,7 +147,7 @@ Every table generated will have a class that works as follows:
     echo $user->GetId(); // e.g. 123 - id is the primary key in User Table
     
     // Retrieving user data and changing it
-    $user = new \LazyMePHP\Classes\User(123);
+    $user = new \LazyMePHP\Models\User(123);
     echo $user->GetName(); // 'Peter'
     $user->Setname('John');
     $user->Save();
@@ -158,13 +158,13 @@ Every table generated will have a class that works as follows:
     $user->GetCountryIdObject()->Save();
     
     # Not building Foreign members
-    $user = new \LazyMePHP\Classes\User(5, false); // this won't query foreign tables
+    $user = new \LazyMePHP\Models\User(5, false); // this won't query foreign tables
 
     ```
  - Every class will have a *table*_list class, that allows you to select a list of that class type
  - Every List have a *FindBy*[Foreign Column Name], *FindBy*[Foreign Column Name]*Like*, *OrderBy*[Foreign Column name], *GroupBy*[Foreign Column], *Limit*
     ```
-    $users = new \LazyMePHP\Classes\User_List();
+    $users = new \LazyMePHP\Models\User_List();
     $users->FindByNameLike('John');
     $users->OrderByAge();
     // As in regular classes, you can or not build foreign tables, by default is building them

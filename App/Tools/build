@@ -64,7 +64,7 @@ class ProgressBar
 class BuildConfig
 {
     public const DESCRIPTORS_FILE = '.descriptors';
-    public const CLASSES_OUTPUT_DIR = 'App/Classes';
+    public const MODELS_OUTPUT_DIR = 'App/Models';
     public const CONTROLLERS_OUTPUT_DIR = 'App/Controllers';
     public const VIEWS_OUTPUT_DIR = 'App/Views';
     public const ROUTES_OUTPUT_DIR = 'App/Routes';
@@ -283,32 +283,32 @@ class BuildActions
     /**
      * Build classes for selected tables
      */
-    public function buildClasses(): void
+    public function buildModels(): void
     {
-        require_once(__DIR__.'/Classes');
+        require_once(__DIR__.'/Models');
         
         $tables = $this->tableManager->getTables();
         $descriptors = $this->tableManager->getTableDescriptors();
         
-        $selectedClasses = Helper\select("🎯 Select Tables to Build Classes", $tables, null, true, $descriptors);
+        $selectedModels = Helper\select("🎯 Select Tables to Build Models", $tables, null, true, $descriptors);
         
-        if (!$selectedClasses) {
+        if (!$selectedModels) {
             return;
         }
         
-        $this->displaySelectedTables($selectedClasses, "Classes");
+        $this->displaySelectedTables($selectedModels, "Models");
         
-        if (!$this->confirmAction("🚀 Do you want to proceed with building classes?")) {
+        if (!$this->confirmAction("🚀 Do you want to proceed with building models?")) {
             return;
         }
         
-        $tableList = array_column($selectedClasses, 'name');
+        $tableList = array_column($selectedModels, 'name');
         
-        echo "\n🚀 Generating classes...\n";
-        $progressBar = new ProgressBar("Building Classes", count($tableList));
+        echo "\n🚀 Generating models...\n";
+        $progressBar = new ProgressBar("Building Models", count($tableList));
         
         // Build classes with progress tracking
-        $builder = new Tools\Classes\BuildTableClasses(BuildConfig::CLASSES_OUTPUT_DIR, $tableList, $descriptors);
+        $builder = new Tools\Models\BuildTableModels(BuildConfig::MODELS_OUTPUT_DIR, $tableList, $descriptors);
         
         // Simulate progress for each table
         foreach ($tableList as $table) {
@@ -318,7 +318,7 @@ class BuildActions
         
         $progressBar->finish();
         
-        echo "✅ Classes built successfully!\n";
+        echo "✅ Models built successfully!\n";
         \Tools\Helper\read();
     }
     
@@ -357,7 +357,7 @@ class BuildActions
         $builder = new Tools\Forms\BuildTableForms(
             BuildConfig::CONTROLLERS_OUTPUT_DIR,
             BuildConfig::VIEWS_OUTPUT_DIR,
-            BuildConfig::CLASSES_OUTPUT_DIR,
+            BuildConfig::MODELS_OUTPUT_DIR,
             BuildConfig::ROUTES_OUTPUT_DIR,
             $tableList,
             $replaceRoutes == 'Y',
@@ -534,7 +534,7 @@ class BuildInterface
         echo "\n" . str_repeat('=', 60) . "\n";
         echo "🚀 LazyMePHP Build Tool - Code Generator\n";
         echo str_repeat('=', 60) . "\n";
-        echo "📦 [c] Build Classes     - Generate PHP model classes from database tables\n";
+        echo "📦 [c] Build Models     - Generate PHP model classes from database tables\n";
         echo "📝 [f] Build Forms       - Create HTML forms for data input/editing\n";
         echo "🔌 [a] Build API         - Generate REST API endpoints and routes\n";
         echo "🏷️  [d] Change Descriptor - Modify table display fields for better UX\n";
@@ -550,7 +550,7 @@ class BuildInterface
     private function handleOption(string $option): void
     {
         match ($option) {
-            'c' => $this->actions->buildClasses(),
+            'c' => $this->actions->buildModels(),
             'f' => $this->actions->buildForms(),
             'a' => $this->actions->buildAPI(),
             'd' => $this->actions->changeDescriptor(),

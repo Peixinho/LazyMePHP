@@ -594,9 +594,9 @@ class BuildTableForms
         fwrite($controllerFile, "\n");
         fwrite($controllerFile, "\tfunction edit(?int \$".$field->GetName()." = null) : array {");
         fwrite($controllerFile, "\n");
-        fwrite($controllerFile, "\t\tif (isset(\$".$field->GetName().")) \$".$db->GetTableName()." = new \Classes\\".$db->GetTableName()."(\$".$field->GetName().");");
+        fwrite($controllerFile, "\t\tif (isset(\$".$field->GetName().")) \$".$db->GetTableName()." = new \Models\\".$db->GetTableName()."(\$".$field->GetName().");");
         fwrite($controllerFile, "\n");
-        fwrite($controllerFile, "\t\telse \$".$db->GetTableName()." = new \Classes\\".$db->GetTableName()."();");
+        fwrite($controllerFile, "\t\telse \$".$db->GetTableName()." = new \Models\\".$db->GetTableName()."();");
         fwrite($controllerFile, "\n");
         fwrite($controllerFile, "\n");
 
@@ -604,7 +604,7 @@ class BuildTableForms
         foreach ($db->GetTableFields() as $field)
         {
           if ($field->GetForeignField()) {
-            fwrite($controllerFile, "\t\t\$".$field->GetForeignTable()." = new \Classes\\".$field->GetForeignTable()."_List();");
+            fwrite($controllerFile, "\t\t\$".$field->GetForeignTable()." = new \Models\\".$field->GetForeignTable()."_List();");
             fwrite($controllerFile, "\n");
             fwrite($controllerFile, "\t\t\$".$field->GetForeignTable()."->FindAll();");
             fwrite($controllerFile, "\n");
@@ -630,7 +630,7 @@ class BuildTableForms
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\tfunction save(?int \$".$primaryKey->GetName()." = null, \$api = false) : mixed {");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\$obj = new \\Classes\\".$db->GetTableName()."(\$".$primaryKey->GetName().");");
+          fwrite($controllerFile, "\t\t\$obj = new \\Models\\".$db->GetTableName()."(\$".$primaryKey->GetName().");");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\$validationRules = [");
           fwrite($controllerFile, "\n");
@@ -755,7 +755,7 @@ class BuildTableForms
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\tif (\$".$primaryKey->GetName().") {");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\t\$obj = new \Classes\\".$db->GetTableName()."(\$".$primaryKey->GetName().");");
+          fwrite($controllerFile, "\t\t\t\$obj = new \Models\\".$db->GetTableName()."(\$".$primaryKey->GetName().");");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\t\$obj->Delete();");
           fwrite($controllerFile, "\n");
@@ -772,7 +772,7 @@ class BuildTableForms
           fwrite($controllerFile, "\tfunction index(?int \$page = null, ?int \$limit = null) : array {");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\$".$db->GetTableName()." = new \Classes\\".$db->GetTableName()."_List();");
+          fwrite($controllerFile, "\t\t\$".$db->GetTableName()." = new \Models\\".$db->GetTableName()."_List();");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\$filters = array();");
 
@@ -823,7 +823,7 @@ class BuildTableForms
           {
             if ($field->GetForeignField()) {
               fwrite($controllerFile, "\n");
-              fwrite($controllerFile, "\t\t\$".$field->GetForeignTable()." = new \Classes\\".$field->GetForeignTable()."_List();");
+              fwrite($controllerFile, "\t\t\$".$field->GetForeignTable()." = new \Models\\".$field->GetForeignTable()."_List();");
               fwrite($controllerFile, "\n");
               fwrite($controllerFile, "\t\t\$".$field->GetForeignTable()."->FindAll();");
               fwrite($controllerFile, "\n");

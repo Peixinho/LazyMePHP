@@ -1,5 +1,5 @@
 .env
-App/Classes
+App/Models
 App/Controllers
 App/Routes
 App/Views
