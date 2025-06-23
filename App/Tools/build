@@ -272,7 +272,7 @@ class BuildActions
         $tables = $this->tableManager->getTables();
         $descriptors = $this->tableManager->getTableDescriptors();
         
-        $selectedClasses = Helper\select("Select Tables to build classes", $tables, null, true, $descriptors);
+        $selectedClasses = Helper\select("🎯 Select Tables to Build Classes", $tables, null, true, $descriptors);
         
         if (!$selectedClasses) {
             return;
@@ -280,7 +280,7 @@ class BuildActions
         
         $this->displaySelectedTables($selectedClasses, "Classes");
         
-        if (!$this->confirmAction("Do you want to continue")) {
+        if (!$this->confirmAction("🚀 Do you want to proceed with building classes?")) {
             return;
         }
         
@@ -315,7 +315,7 @@ class BuildActions
         $descriptors = $this->tableManager->getTableDescriptors();
         
         Helper\clear();
-        $selectedForms = Helper\select("Select Tables to build forms", $tables, null, true, $descriptors);
+        $selectedForms = Helper\select("🎯 Select Tables to Build Forms", $tables, null, true, $descriptors);
         
         if (!$selectedForms) {
             return;
@@ -323,10 +323,10 @@ class BuildActions
         
         $this->displaySelectedTables($selectedForms, "Forms");
         
-        $replaceRoutes = Helper\promptYesNo("Replace RouteForms");
-        $buildViews = Helper\promptYesNo("Build Views");
+        $replaceRoutes = Helper\promptYesNo("🔄 Replace existing RouteForms.php?");
+        $buildViews = Helper\promptYesNo("👁️  Build corresponding Views?");
         
-        if (!$this->confirmAction("Proceed")) {
+        if (!$this->confirmAction("🚀 Do you want to proceed with building forms?")) {
             return;
         }
         
@@ -368,7 +368,7 @@ class BuildActions
         $tables = $this->tableManager->getTables();
         $descriptors = $this->tableManager->getTableDescriptors();
         
-        $selectedAPI = Helper\select("Select Tables to build API", $tables, null, true, $descriptors);
+        $selectedAPI = Helper\select("🎯 Select Tables to Build API", $tables, null, true, $descriptors);
         
         if (!$selectedAPI) {
             return;
@@ -378,7 +378,7 @@ class BuildActions
         
         $replaceAPI = $this->promptReplaceAPI();
         
-        if (!$this->confirmAction("Do you want to continue")) {
+        if (!$this->confirmAction("🚀 Do you want to proceed with building API?")) {
             return;
         }
         
@@ -410,22 +410,22 @@ class BuildActions
         $tables = $this->tableManager->getTables();
         $descriptors = $this->tableManager->getTableDescriptors();
         
-        $descriptor = Helper\select("Select Table to change descriptor", $tables, null, false, $descriptors);
+        $descriptor = \Tools\Helper\select("🎯 Select Table to Change Descriptor", $tables, null, false, $descriptors);
         
         if (!$descriptor) {
             return;
         }
         
         require_once(__DIR__.'/Database');
-        $table = new _DB_TABLE($descriptor['name']);
+        $table = new Tools\Database\_DB_TABLE($descriptor['name']);
         $table->GetFieldsFromDB();
         
         $fields = array_map(fn($f) => $f->GetName(), $table->GetTableFields());
-        $selectedField = Helper\select("Select field", $fields, $descriptors[$descriptor['name']], false);
+        $selectedField = \Tools\Helper\select("🎯 Select Field to Use as Descriptor", $fields, $descriptors[$descriptor['name']], false);
         
         if ($selectedField) {
             $this->tableManager->updateDescriptor($descriptor['name'], $selectedField['name']);
-            echo "✅ Descriptor updated for table '{$descriptor['name']}'\n";
+            echo "✅ Descriptor updated for table '{$descriptor['name']}' to use field '{$selectedField['name']}'\n";
         }
     }
     
@@ -434,9 +434,9 @@ class BuildActions
      */
     private function displaySelectedTables(array $selected, string $type): void
     {
-        Helper\clear();
-        echo "Tables selected for building {$type}:\n\n";
-        echo "Table name\n";
+        \Tools\Helper\clear();
+        echo "📋 Tables selected for building {$type}:\n\n";
+        echo "📊 Table name\n";
         echo str_repeat('-', 20) . "\n";
         
         foreach ($selected as $item) {
@@ -464,7 +464,7 @@ class BuildActions
     {
         $replaceA = false;
         while (strtoupper($replaceA) != "Y" && strtoupper($replaceA) != 'N') {
-            echo "\nReplace RouteAPI.php? (Y/N): ";
+            echo "\n🔄 Replace existing RouteAPI.php? (Y/N): ";
             $replaceA = trim(fgets(STDIN));
             if (!$replaceA) $replaceA = 'Y';
         }
@@ -513,15 +513,16 @@ class BuildInterface
         
         \Tools\Helper\printselect("Tables", $tables, null, $descriptors);
         
-        echo "\n" . str_repeat('=', 50) . "\n";
-        echo "🚀 LazyMePHP Build Tool\n";
-        echo str_repeat('=', 50) . "\n";
-        echo "Build Classes: [c]\n";
-        echo "Build Forms:   [f]\n";
-        echo "Build API:     [a]\n";
-        echo "Change Descriptor: [d]\n";
-        echo "Quit:          [q]\n";
-        echo str_repeat('-', 50) . "\n";
+        echo "\n" . str_repeat('=', 60) . "\n";
+        echo "🚀 LazyMePHP Build Tool - Code Generator\n";
+        echo str_repeat('=', 60) . "\n";
+        echo "📦 [c] Build Classes     - Generate PHP model classes from database tables\n";
+        echo "📝 [f] Build Forms       - Create HTML forms for data input/editing\n";
+        echo "🔌 [a] Build API         - Generate REST API endpoints and routes\n";
+        echo "🏷️  [d] Change Descriptor - Modify table display fields for better UX\n";
+        echo "❌ [q] Quit              - Exit the build tool\n";
+        echo str_repeat('-', 60) . "\n";
+        echo "💡 Tip: Select tables from the list above, then choose an option below\n";
         echo "Choice: ";
     }
     

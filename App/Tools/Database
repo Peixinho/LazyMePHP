@@ -304,6 +304,9 @@ class _DB_TABLE {
     /** @var string Primary Field Name */
 	protected $_PrimaryFieldName;
 
+    /** @var bool Is View */
+    protected $_IsView = false;
+
     /**
      * Constructor
      *
@@ -315,7 +318,50 @@ class _DB_TABLE {
 	function __construct($tablename)
 	{
 		$this->_Tablename = $tablename;
+        $this->detectIfView();
 	}
+
+    /**
+     * Detect if the table is a view and set $_IsView
+     */
+    protected function detectIfView()
+    {
+        $dbType = \Core\LazyMePHP::DB_TYPE();
+        $table = $this->_Tablename;
+        $isView = false;
+        switch ($dbType) {
+            case 'mysql':
+                $query = "SELECT TABLE_NAME FROM information_schema.VIEWS WHERE TABLE_SCHEMA='".\Core\LazyMePHP::DB_NAME()."' AND TABLE_NAME='".$table."'";
+                break;
+            case 'mssql':
+                $query = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_NAME='".$table."'";
+                break;
+            case 'sqlite':
+                $query = "SELECT name FROM sqlite_master WHERE type='view' AND name='".$table."'";
+                break;
+            default:
+                $query = null;
+        }
+        if ($query) {
+            $sqlObj = \Core\LazyMePHP::DB_CONNECTION()->Query($query);
+            if ($sqlObj && $sqlObj->FetchObject()) {
+                $isView = true;
+            }
+        }
+        $this->_IsView = $isView;
+    }
+
+    /**
+     * IsView
+     *
+     * Returns true if this table is a view
+     *
+     * @return bool
+     */
+    public function IsView()
+    {
+        return $this->_IsView;
+    }
 
 	/**
 	 * GetTableName

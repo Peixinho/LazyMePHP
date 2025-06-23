@@ -99,6 +99,10 @@ class BuildTableClasses extends _DB_TABLE
 	{
 		$db->GetFieldsFromDB();
 
+        // Track generated members and methods to prevent duplicates
+        $generatedMembers = array();
+        $generatedMethods = array();
+
     if (UNLINK($classesPath."/".$db->GetTableName().".php"))
     {
       if (TOUCH($classesPath."/".$db->GetTableName().".php"))
@@ -155,7 +159,7 @@ class BuildTableClasses extends _DB_TABLE
         fwrite($classFile, "\t */");
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\tpublic function GetDescriptor() : mixed { return \$this->".(key_exists($db->_Tablename, $tableDescriptors)?$tableDescriptors[$db->_Tablename]:$db->_PrimaryFieldName)."; }");
+        fwrite($classFile, "\tpublic function GetDescriptor() : mixed { return \$this->".(key_exists($db->_Tablename, $tableDescriptors)?$tableDescriptors[$db->_Tablename]:($db->IsView() || !$db->_PrimaryFieldName ? (count($db->_Tablefields) > 0 ? $db->_Tablefields[0]->GetName() : 'id') : $db->_PrimaryFieldName))."; }");
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t/**");
@@ -172,89 +176,140 @@ class BuildTableClasses extends _DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\t */");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\tpublic function GetPrimaryKey() : ?int { return \$this->".$db->_PrimaryFieldName."; }");
+        fwrite($classFile, "\tpublic function GetPrimaryKey() : ?int { return \$this->".($db->IsView() || !$db->_PrimaryFieldName ? (count($db->_Tablefields) > 0 ? $db->_Tablefields[0]->GetName() : 'id') : $db->_PrimaryFieldName)."; }");
         fwrite($classFile, "\n");
         $addToConstruct = "";
         $addToSerialize = "";
         $primaryKeyFound = false;
+        
+        // First pass: declare all regular properties and foreign key object properties
         foreach ($db->_Tablefields as $field) {
           $phpType = mapSqlTypeToPhpType($field->GetDataType());
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t/** @var ".$field->GetDataType()."|null ".$field->GetName()."*/");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\tprotected ?$phpType $".$field->GetName()." = null;");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t/**");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t * Get ".$field->GetName());
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t * @return ".$phpType."|null");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t */");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\tpublic function Get".ucfirst($field->GetName())."() : ?$phpType {");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t\treturn \$this->".$field->GetName().";");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t}");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t/**");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t * Set ".$field->GetName());
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t * @param ".$phpType."|null $".$field->GetName());
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t * @return void");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t */");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\tpublic function Set".ucfirst($field->GetName())."(?$phpType $".$field->GetName().") : void {");
-          fwrite($classFile, "\n");
-          if ($field->HasForeignKey() && $field->GetForeignField())
-          {
+          
+          // Declare regular property
+          if (!in_array($field->GetName(), $generatedMembers)) {
+            $generatedMembers[] = $field->GetName();
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t/** @var ".$field->GetDataType()."|null ".$field->GetName()."*/");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\tprotected ?$phpType $".$field->GetName()." = null;");
+            fwrite($classFile, "\n");
+          }
+          
+          // Declare foreign key object property if needed
+          if ($field->HasForeignKey() && $field->GetForeignField()) {
+            $fkObjName = $field->GetName()."_OBJ";
+            if (!in_array($fkObjName, $generatedMembers)) {
+              $generatedMembers[] = $fkObjName;
               fwrite($classFile, "\n");
-              fwrite($classFile, "\t\tif (\$this->".$field->GetName()." !== \$".$field->GetName().") {");
+              fwrite($classFile, "\t/** @var ".$field->GetForeignTable()."|null ".$fkObjName." */");
               fwrite($classFile, "\n");
-              fwrite($classFile, "\t\t\t\$this->".$field->GetName()."_OBJ = null;");
+              fwrite($classFile, "\tprotected ?".$field->GetForeignTable()." $".$fkObjName." = null;");
+              fwrite($classFile, "\n");
+            }
+          }
+        }
+        
+        // Second pass: generate getters and setters
+        foreach ($db->_Tablefields as $field) {
+          $phpType = mapSqlTypeToPhpType($field->GetDataType());
+          
+          // Generate getter
+          $getterName = "Get".ucfirst($field->GetName());
+          if (!in_array($getterName, $generatedMethods)) {
+            $generatedMethods[] = $getterName;
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t/**");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t * Get ".$field->GetName());
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t * @return ".$phpType."|null");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t */");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\tpublic function $getterName() : ?$phpType {");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t\treturn \$this->".$field->GetName().";");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t}");
+            fwrite($classFile, "\n");
+          }
+          
+          // Generate setter
+          $setterName = "Set".ucfirst($field->GetName());
+          if (!in_array($setterName, $generatedMethods)) {
+            $generatedMethods[] = $setterName;
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t/**");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t * Set ".$field->GetName());
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t * @param ".$phpType."|null $".$field->GetName());
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t * @return void");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t */");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\tpublic function $setterName(?$phpType $".$field->GetName().") : void {");
+            fwrite($classFile, "\n");
+            if ($field->HasForeignKey() && $field->GetForeignField())
+            {
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t\tif (\$this->".$field->GetName()." !== \$".$field->GetName().") {");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t\t\t\$this->".$field->GetName()."_OBJ = null;");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t\t}");
+            }
+            fwrite($classFile, "\n");
+            switch ($field->GetDataType())
+            {
+                case "bool":
+                case "float":
+                case "int":
+                    if ($field->AllowNull())
+                        fwrite($classFile, "\t\tif (!empty(\$this->".$field->GetName().") && LazyMePHP::ACTIVITY_LOG() && \$this->".$field->GetName()."!=\$".$field->GetName().")\n\t\t\t\$this->__log['".$field->GetName()."']=array(\$this->".$field->GetName().", \$".$field->GetName().");");
+                    else
+                        fwrite($classFile, "\t\tif (LazyMePHP::ACTIVITY_LOG() && \$this->".$field->GetName()."!=\$".$field->GetName().")\n\t\t\t\$this->__log['".$field->GetName()."']=array(\$this->".$field->GetName().", \$".$field->GetName().");");
+                    break;
+                case "string":
+                    if ($field->AllowNull())
+                        fwrite($classFile, "\t\tif (!empty(\$this->".$field->GetName().") && LazyMePHP::ACTIVITY_LOG() && \$this->".$field->GetName()."!=\$".$field->GetName().")\n\t\t\t\$this->__log['".$field->GetName()."']=array(substr(\$this->".$field->GetName()." ?? '',0,255), substr(\$".$field->GetName()." ?? '',0,255));");
+                    else
+                        fwrite($classFile, "\t\tif (LazyMePHP::ACTIVITY_LOG() && \$this->".$field->GetName()."!=\$".$field->GetName().")\n\t\t\t\$this->__log['".$field->GetName()."']=array(substr(\$this->".$field->GetName()." ?? '',0,255), substr(\$".$field->GetName()." ?? '',0,255));");
+                    break;
+            }
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\n");
+            if ($field->AllowNull())
+                fwrite($classFile, "\t\t\$this->".$field->GetName()."=(!empty(\$".$field->GetName().")?".($field->GetDataLength()>0?"substr(\$".$field->GetName().",0,".$field->GetDataLength().")":"\$".$field->GetName()).":".($field->GetDefaultValue??($field->Allownull()?"null":"''")).");");
+            else
+                fwrite($classFile, "\t\t\$this->".$field->GetName()."=\$".$field->GetName().";");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t}");
+            fwrite($classFile, "\n");
+          }
+          
+          // Generate foreign key object getter if needed
+          if ($field->HasForeignKey() && $field->GetForeignField()) {
+            $fkGetterName = "get".ucfirst($field->GetName())."_OBJ";
+            if (!in_array($fkGetterName, $generatedMethods)) {
+              $generatedMethods[] = $fkGetterName;
+              fwrite($classFile, "\n");
+              fwrite($classFile, "\tpublic function $fkGetterName(): ?".$field->GetForeignTable()." {");
+              fwrite($classFile, "\n");
+              fwrite($classFile, "\t\tif (\$this->".$field->GetName()."_OBJ === null && \$this->".$field->GetName()." !== null) {");
+              fwrite($classFile, "\n");
+              fwrite($classFile, "\t\t\t\$this->".$field->GetName()."_OBJ = new ".$field->GetForeignTable()."(\$this->".$field->GetName().", false);");
               fwrite($classFile, "\n");
               fwrite($classFile, "\t\t}");
-          }
-          fwrite($classFile, "\n");
-          switch ($field->GetDataType())
-          {
-              case "bool":
-              case "float":
-              case "int":
-                  if ($field->AllowNull())
-                      fwrite($classFile, "\t\tif (!empty(\$this->".$field->GetName().") && LazyMePHP::ACTIVITY_LOG() && \$this->".$field->GetName()."!=\$".$field->GetName().")\n\t\t\t\$this->__log['".$field->GetName()."']=array(\$this->".$field->GetName().", \$".$field->GetName().");");
-                  else
-                      fwrite($classFile, "\t\tif (LazyMePHP::ACTIVITY_LOG() && \$this->".$field->GetName()."!=\$".$field->GetName().")\n\t\t\t\$this->__log['".$field->GetName()."']=array(\$this->".$field->GetName().", \$".$field->GetName().");");
-                  break;
-              case "string":
-                  if ($field->AllowNull())
-                      fwrite($classFile, "\t\tif (!empty(\$this->".$field->GetName().") && LazyMePHP::ACTIVITY_LOG() && \$this->".$field->GetName()."!=\$".$field->GetName().")\n\t\t\t\$this->__log['".$field->GetName()."']=array(substr(\$this->".$field->GetName()." ?? '',0,255), substr(\$".$field->GetName()." ?? '',0,255));");
-                  else
-                      fwrite($classFile, "\t\tif (LazyMePHP::ACTIVITY_LOG() && \$this->".$field->GetName()."!=\$".$field->GetName().")\n\t\t\t\$this->__log['".$field->GetName()."']=array(substr(\$this->".$field->GetName()." ?? '',0,255), substr(\$".$field->GetName()." ?? '',0,255));");
-                  break;
-          }
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\n");
-          if ($field->AllowNull())
-              fwrite($classFile, "\t\t\$this->".$field->GetName()."=(!empty(\$".$field->GetName().")?".($field->GetDataLength()>0?"substr(\$".$field->GetName().",0,".$field->GetDataLength().")":"\$".$field->GetName()).":".($field->GetDefaultValue??($field->Allownull()?"null":"''")).");");
-          else
-              fwrite($classFile, "\t\t\$this->".$field->GetName()."=\$".$field->GetName().";");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t}");
-          fwrite($classFile, "\n");
-
-          if ($field->HasForeignKey())
-          {
-            // Remove the old property declarations with get/set syntax
-            // These are now replaced with proper property declarations above
+              fwrite($classFile, "\n");
+              fwrite($classFile, "\t\treturn \$this->".$field->GetName()."_OBJ;");
+              fwrite($classFile, "\n");
+              fwrite($classFile, "\t}\n");
+            }
           }
 
           if ($field->IsPrimaryKey())
@@ -266,31 +321,6 @@ class BuildTableClasses extends _DB_TABLE
             fwrite($classFile, "\n");
             fwrite($classFile, "\tprivate bool \$buildForeignMembers = true;");
             fwrite($classFile, "\n");
-            
-            // Add foreign key object property declarations
-            foreach ($db->_Tablefields as $field2)
-            {
-              if ($field2->HasForeignKey() && $field2->GetForeignField())
-              {
-                fwrite($classFile, "\n");
-                fwrite($classFile, "\t/** @var ".$field2->GetForeignTable()."|null ".$field2->GetName()."_OBJ */");
-                fwrite($classFile, "\n");
-                fwrite($classFile, "\tprotected ?".$field2->GetForeignTable()." \$".$field2->GetName()."_OBJ = null;");
-                fwrite($classFile, "\n");
-                // Add lazy loading getter
-                fwrite($classFile, "\tpublic function get".ucfirst($field2->GetName())."_OBJ(): ?".$field2->GetForeignTable()." {");
-                fwrite($classFile, "\n");
-                fwrite($classFile, "\t\tif (\$this->".$field2->GetName()."_OBJ === null && \$this->".$field2->GetName()." !== null) {");
-                fwrite($classFile, "\n");
-                fwrite($classFile, "\t\t\t\$this->".$field2->GetName()."_OBJ = new ".$field2->GetForeignTable()."(\$this->".$field2->GetName().", false);");
-                fwrite($classFile, "\n");
-                fwrite($classFile, "\t\t}");
-                fwrite($classFile, "\n");
-                fwrite($classFile, "\t\treturn \$this->".$field2->GetName()."_OBJ;");
-                fwrite($classFile, "\n");
-                fwrite($classFile, "\t}\n");
-              }
-            }
             
             fwrite($classFile, "\n");
             fwrite($classFile, "\t/**");
@@ -387,13 +417,12 @@ class BuildTableClasses extends _DB_TABLE
             fwrite($classFile, "\n");
             fwrite($classFile, "\t * Save");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t *");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t * Insert Or Update Record Based on Primary Key Existence");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t *");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t * @return bool");
+            fwrite($classFile, "\t * @return mixed");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t */");
             fwrite($classFile, "\n");
@@ -564,13 +593,54 @@ class BuildTableClasses extends _DB_TABLE
             fwrite($classFile, "\n");
           }
         }
-        if (!$primaryKeyFound)
+        if (!$primaryKeyFound || $db->IsView())
         {
           fwrite($classFile, "\n");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\tpublic function Save() {}");
+          fwrite($classFile, "\t/**");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\tpublic function Delete() {}");
+          fwrite($classFile, "\t * Save");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\t *");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\t * Save operation for views or tables without primary key");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\t *");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\t * @return mixed");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\t */");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\tpublic function Save() : mixed {");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\t\t// Save is not supported for views or tables without a primary key");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\t\treturn null;");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\t}");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\t/**");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\t * Delete");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\t *");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\t * Delete operation for views or tables without primary key");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\t *");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\t * @return bool");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\t */");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\tpublic function Delete() : bool {");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\t\t// Delete is not supported for views or tables without a primary key");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\t\treturn false;");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\t}");
           fwrite($classFile, "\n");
           fwrite($classFile,"\tprotected function constructForeignKeysObjs() {}");
           fwrite($classFile, "\n");
@@ -614,637 +684,6 @@ class BuildTableClasses extends _DB_TABLE
         fwrite($classFile, "\t}");
         fwrite($classFile, "\n");
         fwrite($classFile, "}");
-      }
-			else echo "ERROR: Check your permissions to write ".$classesPath."/".$db->_Tablename.".php\n";
-		}
-		else echo "ERROR: Check your permissions to remove ".$classesPath."/".$db->_Tablename.".php\n";
-
-    if (UNLINK($classesPath."/".$db->GetTableName()."_List.php"))
-    {
-      if (TOUCH($classesPath."/".$db->GetTableName()."_List.php"))
-      {
-        $classFile = fopen($classesPath."/".$db->GetTableName()."_List.php","w+");
-        fwrite($classFile,"<?php");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\n");
-        fwrite($classFile,"/**");
-        fwrite($classFile, "\n");
-        fwrite($classFile," * @copyright This file is part of the LazyMePHP Framework developed by Duarte Peixinho");
-        fwrite($classFile, "\n");
-        fwrite($classFile," * @author Duarte Peixinho");
-        fwrite($classFile, "\n");
-        fwrite($classFile," *");
-        fwrite($classFile, "\n");
-        fwrite($classFile," * Source File Generated Automatically");
-        fwrite($classFile, "\n");
-        fwrite($classFile," */");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "declare(strict_types=1);");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "namespace Classes;\n");
-        fwrite($classFile, "use Core\LazyMePHP;\n");
-        fwrite($classFile, "use Core\Helpers\ErrorUtil;\n");
-
-        fwrite($classFile, "\n");
-
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "class ".$db->_Tablename."_List implements \\Core\\DB\\IDB_LIST {");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\tprotected array \$_args = array();");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\tprotected array \$_list = array();");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\tprotected bool \$_listHasCondition = false;");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\tprotected string \$_sql = \"\";");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\tprotected string \$_sqlToAdd = \"\";");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\tprotected string \$_order = \"\";");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\tprotected string \$_group = \"\";");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\tprotected int \$_limitStart = 0;");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\tprotected int \$_limitEnd = 0;");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\tprotected bool \$_searchNeedsForeignMembers = false;");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t/**");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t * Constructor");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t *");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t * Class Constructor");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t *");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t * @return null");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t */");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\tpublic function __construct() {}");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t/**");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t *");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t * Add Left Parentesis");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t * @return (void)");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t */");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\tpublic function AddLeftParentesis() : void {");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t\t\$this->_sqlToAdd=\" ( \";");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t}");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t/**");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t * Add Right Parentesis");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t * @return (void)");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t */");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\tpublic function AddRightParentesis() : void {");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t\t\$this->_sql.=\" ) \";");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t}");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\tpublic function GetCount(bool \$buildForeignMembers = false) : int {");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\n");
-        fwrite($classFile,"\t\t\$_sql = \"SELECT ");
-        $countFields = 0;
-        foreach ($db->_Tablefields as $field2)
-        {
-          fwrite($classFile,($countFields++>0?",":"").$db->_Tablename.".".$field2->GetName());
-        }
-        fwrite($classFile," FROM ".$db->_Tablename."\".(!empty(\$this->_sql)?\" WHERE \".\$this->_sql:\"\");");
-
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t\t\$rtn = LazyMePHP::DB_CONNECTION()->Query(\$_sql.\" \".(!empty(\$this->_group)?\"GROUP BY \".\$this->_group:\"\").\" \".(!empty(\$this->_order)?\"ORDER BY \".\$this->_order:\"\").\" \".(\$this->_limitEnd?(empty(\$this->_order)?\"ORDER BY ".$db->_Tablename.".".$db->_PrimaryFieldName." \":\"\").LazyMePHP::DB_CONNECTION()->Limit(\$this->_limitEnd, \$this->_limitStart):\"\"), \$this->_args);");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t\treturn \$rtn->getRowCount();");
-        fwrite($classFile, "\n");
-        fwrite($classFile,"\t}");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t/**");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t * GetList");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t *");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t * Gets List of Pre Selected Objects");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t *");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t * @param bool \$serialize if the output should be Serialized");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t * @param array \$mask array to show/hide fields");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t * @return array");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t */");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\tpublic function GetList(bool \$serialize=false, array \$mask=array()) : array {");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t\t\$this->_list = array();");
-        fwrite($classFile, "\n");
-        fwrite($classFile,"\t\t\$this->_sql = \"SELECT ");
-        $countFields = 0;
-        foreach ($db->_Tablefields as $field2)
-        {
-          fwrite($classFile,($countFields++>0?",":"").$db->_Tablename.".".$field2->GetName());
-        }
-        fwrite($classFile," FROM ".$db->_Tablename."\".(!empty(\$this->_sql)?\" WHERE \".\$this->_sql:\"\");");
-
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t\t\$rtn = LazyMePHP::DB_CONNECTION()->Query(\$this->_sql.\" \".(!empty(\$this->_group)?\"GROUP BY \".\$this->_group:\"\").\" \".(!empty(\$this->_order)?\"ORDER BY \".\$this->_order:\"\").\" \".(\$this->_limitEnd?(empty(\$this->_order)?\"ORDER BY ".$db->_Tablename.".".$db->_PrimaryFieldName." \":\"\").LazyMePHP::DB_CONNECTION()->Limit(\$this->_limitEnd, \$this->_limitStart):\"\"),\$this->_args);");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t\twhile(\$row = \$rtn->FetchArray())");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t\t{");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t\t\t\$obj = new ".$db->_Tablename."(null);");
-        fwrite($classFile, "\n");
-        foreach ($db->_Tablefields as $field2)
-        {
-          switch (mapSqlTypeToPhpType($field2->GetDataType()))
-          {
-            case "bool":
-              fwrite($classFile,"\t\t\t\t\$obj->Set".ucfirst($field2->GetName())."((bool)\$row['".$field2->GetName()."']);");
-            break;
-            case "float":
-              fwrite($classFile,"\t\t\t\t\$obj->Set".ucfirst($field2->GetName())."((float)\$row['".$field2->GetName()."']);");
-            break;
-            case "int":
-              fwrite($classFile,"\t\t\t\t\$obj->Set".ucfirst($field2->GetName())."((int)\$row['".$field2->GetName()."']);");
-            break;
-            case "string":
-            default:
-              fwrite($classFile,"\t\t\t\t\$obj->Set".ucfirst($field2->GetName())."((string)\$row['".$field2->GetName()."']);");
-            break;
-          }
-          fwrite($classFile, "\n");
-        }
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t\t\tif (\$serialize) \$this->_list[]=\$obj->Serialize(false, \$mask);");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t\t\telse \$this->_list[]=\$obj;");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t\t}");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t\t\$this->_sql=\"\";");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t\treturn \$this->_list;");
-        fwrite($classFile, "\n");
-        fwrite($classFile,"\t}");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t/**");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t * Serialize");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t *");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t * Serialize List");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t *");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t * @param array|null \$mask array to show/hide fields");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t * @return array");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t */");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\tpublic function Serialize(?array \$mask = null)");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t{");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t\treturn \$this->GetList(true, \$mask);");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t}");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t/**");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t * ClearFind");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t *");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t * Clears Find Filters and Orders");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t *");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t * @return void");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t */");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\tpublic function ClearFind() : void {");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t\t\$this->_args = array();");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t\t\$this->_list = array();");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t\t\$this->_sql = '';");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t\t\$this->_order = '';");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t\t\$this->_group = '';");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t\t\$this->_searchNeedsForeignMembers = false;");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t}");
-        fwrite($classFile, "\n");
-
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t/**");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t * FindAll");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t *");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t * Fetch all results");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t *");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t * @return void");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t */");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\tpublic function FindAll() : void {");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t\t\$this->_sql = \"\";");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t}");
-        fwrite($classFile, "\n");
-
-        foreach ($db->_Tablefields as $field)
-        {
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t/**");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t * FindBy".$field->GetName());
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t *");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t * Finds result where ".$field->GetName()." == \$var");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t *");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t * @param ".$field->GetDataType()." \$var");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t * @return void");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t */");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\tpublic function FindBy".$field->GetName()."(".mapSqlTypeToPhpType($field->GetDataType())." \$var, string \$operator = '=', string \$operator2 = 'AND') : void {");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t\t\$this->_args[]=\$var;");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t\t\$this->_sql .= \" \".(!empty(\$this->_listHasCondition)?\"\$operator2\":\"\").\" \".\$this->_sqlToAdd.\" ".$db->GetTableName().".".$field->GetName()." \$operator \$var\";");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t\t\$this->_listHasCondition = true;");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t\t\$this->_sqlToAdd = \"\";");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t}");
-          fwrite($classFile, "\n");
-
-          if ($field->AllowNull()) {
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t/**");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t * ".$field->GetName()."IsNULL");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t *");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t * Finds result where ".$db->GetTableName().".".$field->GetName()." IS NULL");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t *");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t * @return void");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t */");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\tpublic function ".$field->GetName()."IsNULL(string \$operator = 'AND') : void {");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\$this->_sql .= \" \".(!empty(\$this->_listHasCondition)?\"\$operator\":\"\").\" \".\$this->_sqlToAdd.\" ".$db->GetTableName().".".$field->GetName()." IS NULL\";");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\$this->_listHasCondition = true;");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t}");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\n");
-
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t/**");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t * ".$field->GetName()."IsNotNULL");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t *");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t * Finds result where ".$db->GetTableName().".".$field->GetName()." IS NOT NULL");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t *");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t * @return void");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t */");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\tpublic function ".$field->GetName()."IsNotNULL(string \$operator = 'AND') : void {");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\$this->_sql .= \" \".(!empty(\$this->_listHasCondition)?\"\$operator\":\"\").\" \".\$this->_sqlToAdd.\" ".$db->GetTableName().".".$field->GetName()." IS NOT NULL\";");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\$this->_listHasCondition = true;");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t}");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\n");
-          }
-
-          fwrite($classFile, "\t/**");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t * FindBy".$field->GetName()."Like");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t *");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t * Finds result where ".$db->GetTableName().".".$field->GetName()." LIKE %\$var%");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t *");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t * @param string \$var");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t * @return void");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t */");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\tpublic function FindBy".$field->GetName()."Like(string \$var, string \$operator = 'AND') : void {");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t\t\$this->_args[] = \"%\$var%\";");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t\t\$this->_sql .= \" \".(!empty(\$this->_listHasCondition)?\"\$operator\":\"\").\" \".\$this->_sqlToAdd.\" ".$db->GetTableName().".".$field->GetName()." LIKE ?\";");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t\t\$this->_listHasCondition = true;");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t}");
-          fwrite($classFile, "\n");
-          /* Add sorting */
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t/**");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t * OrderBy".$field->GetName());
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t *");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t * Orders last find by ".$field->GetName()." \$var (ASC | DESC)");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t *");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t * @param string \$var");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t * @return void");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t */");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\tpublic function OrderBy".$field->GetName()."(string \$var) : void {");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t\t\$this->_order=\$this->_order.(!empty(\$this->_order)?\",\":\"\").\" ".$field->GetName()." \$var\";");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t}");
-          fwrite($classFile, "\n");
-          /* Add grouping */
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t/**");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t * GroupBy".$field->GetName());
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t *");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t * Groups last find by ".$field->GetName());
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t *");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t * @return void");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t */");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\tpublic function GroupBy".$field->GetName()."() : void {");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t\t\$this->_group=\$this->_group.(!empty(\$this->_group)?\",\":\"\").\" ".$field->GetName()."\";");
-          fwrite($classFile, "\n");
-          fwrite($classFile, "\t}");
-          fwrite($classFile, "\n");
-        }
-
-        // Find by foreign tables values
-        foreach($db->_Tablefields as $field)
-        {
-          if ($field->GetForeignTable())
-          {
-            $fTable = new \Tools\Database\_DB_TABLE($field->GetForeignTable());
-            $fTable->GetFieldsFromDB();
-            foreach ($fTable->_Tablefields as $field2)
-            {
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t/**");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t * FindBy".$field->GetName()."_".$fTable->GetTableName()."_".$field2->GetName());
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t *");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t * Finds result where ".$fTable->GetTableName()."_".$field2->GetName()." == \$var");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t *");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t * @param string \$var");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t * @return void");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t */");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\tpublic function FindBy".$field->GetName()."_".$fTable->GetTableName()."_".$field2->GetName()."(string \$var, string \$operator = '=', string \$operator2 = 'AND') : void {");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t\t\$this->_searchNeedsForeignMembers=true;");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t\t\$this->_args[]=\$var;");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t\t\$this->_sql .= \" \".(!empty(\$this->_sql)?\"\$operator2\":\"\").\" \".\$this->_sqlToAdd.\" ".$field->GetName()."_".$fTable->GetTableName().".".$field2->GetName()." \$operator ?\";");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t\t\$this->_listHasCondition = true;");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t\t\$this->_sqlToAdd = \"\";");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t}");
-              fwrite($classFile, "\n");
-
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t/**");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t * FindBy".$field->GetName()."_".$fTable->GetTableName()."_".$field2->GetName()."Like");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t *");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t * Finds result where ".$fTable->GetTableName()."_".$field2->GetName()." LIKE %\$var%");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t *");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t * @param string \$var");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t * @return void");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t */");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\tpublic function FindBy".$field->GetName()."_".$fTable->GetTableName()."_".$field2->GetName()."Like(string \$var, string \$operator = 'AND') : void {");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t\t\$this->_searchNeedsForeignMembers=true;");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t\t\$this->_args[] = \"%\$var%\";");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t\t\$this->_sql .= \" \".(!empty(\$this->_sql)?\"\$operator\":\"\").\" \".\$this->_sqlToAdd.\" ".$field->GetName()."_".$fTable->GetTableName().".".$field2->GetName()." LIKE ?\";");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t\t\$this->_listHasCondition = true;");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t\t\$this->_sqlToAdd = \"\";");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t}");
-              fwrite($classFile, "\n");
-              /* Add sorting */
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t/**");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t * OrderBy".$field->GetName()."_".$fTable->GetTableName()."_".$field2->GetName());
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t *");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t * Orders last find by ".$fTable->GetTableName().$field2->GetName()." \$var (ASC | DESC)");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t *");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t * @param string \$var");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t * @return void");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t */");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\tpublic function OrderBy".$field->GetName()."_".$fTable->GetTableName()."_".$field2->GetName()."(string \$var) : void {");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t\t\$this->_searchNeedsForeignMembers=true;");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t\t\$this->_order=\$this->_order.(!empty(\$this->_order)?\",\":\"\").\" ".$field->GetName()."_".$fTable->GetTableName().".".$field2->GetName()." \$var\";");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t}");
-              fwrite($classFile, "\n");
-              /* Add Grouping */
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t/**");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t * GroupBy".$field->GetName()."_".$fTable->GetTableName()."_".$field2->GetName());
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t *");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t * Groups last find by ".$fTable->GetTableName().$field2->GetName());
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t *");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t * @return void");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t */");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\tpublic function GroupBy".$field->GetName()."_".$fTable->GetTableName()."_".$field2->GetName()."() : void {");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t\t\$this->_searchNeedsForeignMembers=true;");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t\t\$this->_group=\$this->_group.(!empty(\$this->_group)?\",\":\"\").\" ".$field->GetName()."_".$fTable->GetTableName().".".$field2->GetName()."\";");
-              fwrite($classFile, "\n");
-              fwrite($classFile, "\t}");
-              fwrite($classFile, "\n");
-            }
-          }
-        }
-
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t/**");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t * CustomFind");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t *");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t * Customize Find with SQL - haystack LIKE '%needle%'");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t *");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t * @param string \$args");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t * @return void");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t */");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\tpublic function CustomFind(string \$args) : void {");
-        fwrite($classFile, "\n");
-
-        fwrite($classFile, "\t\t\$this->_order = \"\";");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t\t\$this->_group = \"\";");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t\t\$this->_sql = \$args;");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t}");
-        fwrite($classFile, "\n");
-
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t/**");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t * Limit");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t *");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t * Limit results to user defined number");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t *");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t * @param int \$end");
-        fwrite($classFile, "\t * @param int \$start");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t * @return void");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t */");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\tpublic function Limit(int \$end, int \$start = 0) : void {");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t\t\$this->_limitEnd = \$end;");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t\t\$this->_limitStart = \$start;");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t}");
-        fwrite($classFile, "\n");
-        fwrite($classFile,"}");
       }
 			else echo "ERROR: Check your permissions to write ".$classesPath."/".$db->_Tablename.".php\n";
 		}
