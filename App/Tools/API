@@ -90,6 +90,7 @@ class BuildTableAPI
               fwrite($routerFile, "\t\t\"".$o->Table."\" => [");
               $db = new \Tools\Database\_DB_TABLE($o->Table);
               $db->GetFieldsFromDB();
+              if ($db->IsView()) continue;
               foreach($db->GetTableFields() as $_k => $field)
               {
                 if ($_k>0) fwrite($routerFile, ",");
@@ -129,6 +130,7 @@ class BuildTableAPI
       {
         $db = new \Tools\Database\_DB_TABLE($o->Table);
         $db->GetFieldsFromDB();
+        if ($db->IsView()) continue;
         $targetFile = $apiPath."/".$o->Table.".php";
         // echo "[GENERATOR] Attempting to create API file for table: {$o->Table} at {$targetFile}\n";
         if (\Tools\Helper\UNLINK($targetFile))

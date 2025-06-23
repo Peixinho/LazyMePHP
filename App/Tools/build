@@ -199,7 +199,25 @@ class TableManager
      */
     public function getTables(): array
     {
-        return $this->tables;
+        $sortedTables = $this->tables;
+        sort($sortedTables);
+        return $sortedTables;
+    }
+    
+    /**
+     * Get only non-view tables
+     */
+    public function getNonViewTables(): array
+    {
+        $nonViews = [];
+        foreach ($this->tables as $tableName) {
+            $db = new \Tools\Database\_DB_TABLE($tableName);
+            if (!$db->IsView()) {
+                $nonViews[] = $tableName;
+            }
+        }
+        sort($nonViews);
+        return $nonViews;
     }
     
     /**
@@ -311,7 +329,7 @@ class BuildActions
     {
         require_once(__DIR__.'/Forms');
         
-        $tables = $this->tableManager->getTables();
+        $tables = $this->tableManager->getNonViewTables();
         $descriptors = $this->tableManager->getTableDescriptors();
         
         Helper\clear();
@@ -365,7 +383,7 @@ class BuildActions
     {
         require_once(__DIR__.'/API');
         
-        $tables = $this->tableManager->getTables();
+        $tables = $this->tableManager->getNonViewTables();
         $descriptors = $this->tableManager->getTableDescriptors();
         
         $selectedAPI = Helper\select("🎯 Select Tables to Build API", $tables, null, true, $descriptors);

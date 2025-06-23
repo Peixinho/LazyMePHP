@@ -104,6 +104,7 @@ class BuildTableForms
       if (is_array($tablesList) && array_search($o->Table, $tablesList)!==false) {
         $db = new \Tools\Database\_DB_TABLE($o->Table);
         $db->GetFieldsFromDB();
+        if ($db->IsView()) continue;
         if ($buildViews) {
           $this->ConstructForm($viewsPath, $db);
         }
