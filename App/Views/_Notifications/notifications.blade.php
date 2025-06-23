@@ -207,159 +207,222 @@ use Core\Helpers\NotificationHelper;
     text-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
-.notification-title {
-    font-weight: 600;
-    margin-bottom: 4px;
-    font-size: 15px;
-    letter-spacing: -0.01em;
-    padding-right: 80px; /* Make room for badge */
-}
-
-.notification-message {
-    font-size: 14px;
-    line-height: 1.5;
-    opacity: 0.95;
-    padding-right: 80px; /* Make room for badge */
-}
-
+/* Close button styling */
 .notification-close {
     position: absolute;
-    top: 12px;
-    right: 12px;
+    top: 16px;
+    right: 16px;
     background: rgba(255,255,255,0.2);
     border: none;
-    font-size: 16px;
-    cursor: pointer;
-    opacity: 0.7;
-    transition: all 0.2s ease;
-    color: inherit;
+    border-radius: 50%;
     width: 24px;
     height: 24px;
-    border-radius: 50%;
+    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    backdrop-filter: blur(5px);
+    font-size: 14px;
+    color: inherit;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(8px);
+    z-index: 3;
 }
 
 .notification-close:hover {
-    opacity: 1;
     background: rgba(255,255,255,0.3);
     transform: scale(1.1);
 }
 
+.notification-close:active {
+    transform: scale(0.95);
+}
+
+/* Progress bar for auto-dismiss */
 .notification-progress {
     position: absolute;
     bottom: 0;
     left: 0;
     height: 3px;
-    background: rgba(255,255,255,0.4);
-    width: 100%;
-    transform: scaleX(1);
-    transform-origin: left;
-    transition: transform linear;
-    border-radius: 0 0 12px 12px;
+    background: rgba(255,255,255,0.3);
+    transition: width linear;
 }
 
 /* Responsive design */
 @media (max-width: 768px) {
     .notification-container {
         max-width: calc(100vw - 40px);
-        top: 10px;
         right: 20px;
         left: 20px;
     }
     
     .notification {
-        margin: 6px 0;
-        padding: 14px 16px;
         font-size: 13px;
+        padding: 14px 18px;
+        padding-right: 45px;
     }
     
     .notification-category {
         font-size: 8px;
         padding: 2px 6px;
-        top: 10px;
-        right: 40px;
-        letter-spacing: 0.6px;
-    }
-    
-    .notification-title {
-        font-size: 14px;
-        padding-right: 60px; /* Less padding on mobile */
-    }
-    
-    .notification-message {
-        font-size: 13px;
-        padding-right: 60px; /* Less padding on mobile */
     }
 }
 
 /* Dark mode support */
 @media (prefers-color-scheme: dark) {
     .notification {
-        background: rgba(30, 30, 30, 0.9);
+        background: rgba(30, 30, 30, 0.95);
+        border-color: rgba(255,255,255,0.1);
         color: #ffffff;
-        border: 1px solid rgba(255,255,255,0.1);
     }
     
-    .notification-success {
-        background: linear-gradient(135deg, rgba(40, 167, 69, 0.2) 0%, rgba(40, 167, 69, 0.1) 100%);
-        border-left-color: #28a745;
+    .notification-close {
+        background: rgba(255,255,255,0.1);
+        color: #ffffff;
     }
     
-    .notification-error {
-        background: linear-gradient(135deg, rgba(220, 53, 69, 0.2) 0%, rgba(220, 53, 69, 0.1) 100%);
-        border-left-color: #dc3545;
-    }
-    
-    .notification-warning {
-        background: linear-gradient(135deg, rgba(255, 193, 7, 0.2) 0%, rgba(255, 193, 7, 0.1) 100%);
-        border-left-color: #ffc107;
-    }
-    
-    .notification-info {
-        background: linear-gradient(135deg, rgba(23, 162, 184, 0.2) 0%, rgba(23, 162, 184, 0.1) 100%);
-        border-left-color: #17a2b8;
-    }
-    
-    .notification-debug {
-        background: linear-gradient(135deg, rgba(108, 117, 125, 0.2) 0%, rgba(108, 117, 125, 0.1) 100%);
-        border-left-color: #6c757d;
-    }
-    
-    .notification-critical {
-        background: linear-gradient(135deg, rgba(220, 53, 69, 0.3) 0%, rgba(220, 53, 69, 0.2) 100%);
-        border-left-color: #dc3545;
+    .notification-close:hover {
+        background: rgba(255,255,255,0.2);
     }
 }
 </style>
 
 <!-- Notification Container -->
-<div id="notification-container" class="notification-container"></div>
+<div id="notification-container" class="notification-container">
+    <!-- Notifications will be dynamically inserted here -->
+</div>
 
-<!-- Notification JavaScript -->
+<!-- Notification Template (hidden) -->
+<template id="notification-template">
+    <div class="notification" data-id="" data-category="" data-priority="">
+        <div class="notification-category"></div>
+        <div class="notification-content"></div>
+        <button class="notification-close" onclick="LazyMePHP.closeNotification(this.parentElement.dataset.id)">×</button>
+        <div class="notification-progress"></div>
+    </div>
+</template>
+
 <script>
-// Initialize notifications from session when DOM is ready
-document.addEventListener('DOMContentLoaded', function() {
-    // Prevent duplicate processing
-    if (window.notificationsProcessed) {
-        return;
-    }
-    window.notificationsProcessed = true;
+// Notification System JavaScript
+(function() {
+    'use strict';
     
-    if (typeof LazyMePHP !== 'undefined' && typeof LazyMePHP.ShowNotification === 'function') {
-        <?php 
-        $notifications = NotificationHelper::getAndClear();
-        foreach ($notifications as $notification) {
-            $type = $notification['type'];
-            $message = addslashes($notification['message']);
-            $options = json_encode($notification['options'] ?? []);
-            echo "LazyMePHP.ShowNotification('$type', '$message', $options);\n";
+    // Initialize notification system when DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+        // Check for existing notifications in session storage
+        const storedNotifications = sessionStorage.getItem('lazymephp_notifications');
+        if (storedNotifications) {
+            try {
+                const notifications = JSON.parse(storedNotifications);
+                notifications.forEach(notification => {
+                    showNotification(notification.message, notification.type, notification.category, notification.priority, notification.duration);
+                });
+                sessionStorage.removeItem('lazymephp_notifications');
+            } catch (e) {
+                console.error('Failed to restore notifications:', e);
+            }
         }
-        ?>
-    } else {
-        console.error('LazyMePHP not available for notification initialization');
+        
+        // Check for PHP session notifications
+        @if(session()->has('success'))
+            showNotification('{{ session('success') }}', 'success', 'system', 2, 5000);
+        @endif
+        
+        @if(session()->has('error'))
+            showNotification('{{ session('error') }}', 'error', 'system', 3, 8000);
+        @endif
+        
+        @if(session()->has('warning'))
+            showNotification('{{ session('warning') }}', 'warning', 'system', 2, 6000);
+        @endif
+        
+        @if(session()->has('info'))
+            showNotification('{{ session('info') }}', 'info', 'system', 1, 4000);
+        @endif
+    });
+    
+    // Global notification function
+    window.showNotification = function(message, type = 'info', category = 'system', priority = 1, duration = 5000) {
+        const container = document.getElementById('notification-container');
+        const template = document.getElementById('notification-template');
+        
+        if (!container || !template) {
+            console.error('Notification system not initialized');
+            return;
+        }
+        
+        // Clone the template
+        const notification = template.content.cloneNode(true);
+        const notificationElement = notification.querySelector('.notification');
+        
+        // Generate unique ID
+        const id = 'notification_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        
+        // Set attributes
+        notificationElement.dataset.id = id;
+        notificationElement.dataset.category = category;
+        notificationElement.dataset.priority = priority;
+        
+        // Add classes
+        notificationElement.classList.add('notification-' + type);
+        notificationElement.classList.add('notification-priority-' + priority);
+        notificationElement.classList.add('notification-slide');
+        
+        // Set content
+        notificationElement.querySelector('.notification-category').textContent = category;
+        notificationElement.querySelector('.notification-content').textContent = message;
+        
+        // Add to container
+        container.appendChild(notificationElement);
+        
+        // Trigger animation
+        setTimeout(() => {
+            notificationElement.classList.add('show');
+        }, 10);
+        
+        // Auto-dismiss
+        if (duration > 0) {
+            const progressBar = notificationElement.querySelector('.notification-progress');
+            if (progressBar) {
+                progressBar.style.transition = `width ${duration}ms linear`;
+                setTimeout(() => {
+                    progressBar.style.width = '0%';
+                }, 10);
+            }
+            
+            setTimeout(() => {
+                closeNotification(id);
+            }, duration);
+        }
+        
+        return id;
+    };
+    
+    // Close notification function
+    window.closeNotification = function(id) {
+        const notification = document.querySelector(`[data-id="${id}"]`);
+        if (notification) {
+            notification.classList.remove('show');
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }
+    };
+    
+    // Close all notifications
+    window.closeAllNotifications = function() {
+        const notifications = document.querySelectorAll('.notification');
+        notifications.forEach(notification => {
+            closeNotification(notification.dataset.id);
+        });
+    };
+    
+    // Add to LazyMePHP global object if it exists
+    if (typeof LazyMePHP !== 'undefined') {
+        LazyMePHP.showNotification = window.showNotification;
+        LazyMePHP.closeNotification = window.closeNotification;
+        LazyMePHP.closeAllNotifications = window.closeAllNotifications;
     }
-});
+})();
 </script> 

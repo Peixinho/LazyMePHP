@@ -17,45 +17,22 @@ $app = new LazyMePHP();
 
 <?php if (filter_input(INPUT_GET, "render")!="no") : ?>
 
-<!DOCTYPE html>
-<html class="" lang="pt">
-  <head>
-      <link rel="icon" type="image/png" href="/img/logo.png">
-      <!-- CSS -->
-      <link rel="stylesheet" href="/css/css.css">
-      <title><?php echo LazyMePHP::TITLE(); ?></title>
-      <!-- JavaScript - Load early to ensure availability -->
-      <script src="/js/LazyMePHP.js"></script>
-    </head>
-    <body>
-      <nav aria-label="Main navigation">
-        <ul class="nav-menu">
-          <?php foreach (glob(__DIR__."/../App/Routes/" . '/*.php') as $r) { if (substr($r, strrpos($r, "/")+1, strlen($r)) != "Routes.php") { echo "<li><a href=\"/".substr($r,strrpos($r,"/")+1, -4)."\">".substr($r,strrpos($r,"/")+1, -4)."</a>"; } } ?>
-        </ul>
-    </nav>
+<?php
+// Set up Blade for rendering
+$views = __DIR__ . '/../App/Views/';
+$cache = __DIR__ . '/../App/Views/_compiled';
+$blade = new \eftec\bladeone\BladeOne($views, $cache);
 
-      <div>
-        <div>
-        <!-- Main Content -->
-        <?=$content??''?>
-        <!-- End  -->
-      </div>
-    </div>
-    
-    <script>
-      // Initialize LazyMePHP and handle notifications when DOM is ready
-      document.addEventListener('DOMContentLoaded', function() {
-        if (typeof LazyMePHP !== 'undefined' && typeof LazyMePHP.Init === 'function') {
-          LazyMePHP.Init();
-          
-          // Process any session notifications that might be available
-          // This will be handled by the notifications component, but we ensure LazyMePHP is ready
-          console.log('LazyMePHP initialized successfully');
-        } else {
-          console.error('LazyMePHP not available for initialization');
-        }
-      });
-    </script>
-  </body>
-</html>
+// Get the content from the router
+$pageContent = '';
+if (isset($content) && !empty($content)) {
+    $pageContent = $content;
+}
+
+// Always render the layout with the content
+echo $blade->run("_Layouts.app", [
+    'pageContent' => $pageContent
+]);
+?>
+
 <?php endif; ?>

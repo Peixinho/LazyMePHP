@@ -284,11 +284,6 @@ class BuildTableForms
         fwrite($viewFile, "<h3>{{\$controller}}</h3>");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "\n");
-        fwrite($viewFile, "{{-- Include notification system --}}");
-        fwrite($viewFile, "\n");
-        fwrite($viewFile, "@include('_Notifications.notifications')");
-        fwrite($viewFile, "\n");
-        fwrite($viewFile, "\n");
         fwrite($viewFile, "<script>");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "\tfunction Init() {}");
@@ -452,6 +447,10 @@ class BuildTableForms
           fwrite($viewFile, "\t@component('_Components.Button',array('type' => 'submit', 'name' => 'Filter'))");
           fwrite($viewFile, "\n");
           fwrite($viewFile, "\t@endcomponent</td>");
+          fwrite($viewFile, "\n");
+          fwrite($viewFile, "\n");
+          fwrite($viewFile, "\t@component('_Components.CSRF') @endcomponent");
+          fwrite($viewFile, "\n");
           fwrite($viewFile, "\n");
           fwrite($viewFile, "</form>");
           fwrite($viewFile, "\n");

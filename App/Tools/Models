@@ -942,7 +942,7 @@ class BuildTableModels extends _DB_TABLE
           fwrite($classFile, "\n");
           fwrite($classFile, "\t\t\$this->_args[]=\$var;");
           fwrite($classFile, "\n");
-          fwrite($classFile, "\t\t\$this->_sql .= \" \".(!empty(\$this->_listHasCondition)?\"\$operator2\":\"\").\" \".\$this->_sqlToAdd.\" ".$db->GetTableName().".".$field->GetName()." \$operator \$var\";");
+          fwrite($classFile, "\t\t\$this->_sql .= \" \".(!empty(\$this->_listHasCondition)?\"\$operator2\":\"\").\" \".\$this->_sqlToAdd.\" ".$db->GetTableName().".".$field->GetName()." \$operator ?\";");
           fwrite($classFile, "\n");
           fwrite($classFile, "\t\t\$this->_listHasCondition = true;");
           fwrite($classFile, "\n");

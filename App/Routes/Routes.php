@@ -18,7 +18,8 @@ $cache = __DIR__ . '/../Views/_compiled';
 $blade = new BladeOne($views,$cache);
 
 SimpleRouter::get('/', function() use ($blade) : void {
-    echo $blade->run("_Default.view");
+    // Return the content for the index page
+    echo $blade->run("index");
 }); 
 
 SimpleRouter::get('/not-found', function() use ($blade) : void {
