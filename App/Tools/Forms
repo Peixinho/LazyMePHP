@@ -202,7 +202,6 @@ class BuildTableForms
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\t\$controller->save((int)\$id);");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\t// Notification handled by controller");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\t\\Core\\Helpers\\Helper::redirect('/".$db->GetTableName()."');");
           fwrite($routerFile, "\n");
@@ -216,7 +215,6 @@ class BuildTableForms
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\t\$controller->save();");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\t// Notification handled by controller");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\t\\Core\\Helpers\\Helper::redirect('/".$db->GetTableName()."');");
           fwrite($routerFile, "\n");
@@ -230,7 +228,6 @@ class BuildTableForms
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\t\$controller->delete((int)\$id);");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\t// Notification handled by controller");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\t\\Core\\Helpers\\Helper::redirect('/".$db->GetTableName()."');");
           fwrite($routerFile, "\n");
@@ -289,7 +286,7 @@ class BuildTableForms
         fwrite($viewFile, "\n");
         fwrite($viewFile, "{{-- Include notification system --}}");
         fwrite($viewFile, "\n");
-        fwrite($viewFile, "@include('notifications')");
+        fwrite($viewFile, "@include('_Notifications.notifications')");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "<script>");
