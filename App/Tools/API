@@ -50,11 +50,11 @@ class BuildTableAPI
 
     // Create API MASK
     if ($replaceRouteApi) {
-      if (\Tools\Helper\UNLINK($apiPath."/ApiFieldMask.php"))
+      if (\Tools\Helper\UNLINK($apiPath."/../ApiFieldMask.php"))
       {
-        if (\Tools\Helper\TOUCH($apiPath."/ApiFieldMask.php"))
+        if (\Tools\Helper\TOUCH($apiPath."/../ApiFieldMask.php"))
         {
-          $routerFile = fopen($apiPath."/ApiFieldMask.php", "w+");
+          $routerFile = fopen($apiPath."/../ApiFieldMask.php", "w+");
           fwrite($routerFile,"<?php");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\n");
@@ -74,7 +74,7 @@ class BuildTableAPI
           fwrite($routerFile, "declare(strict_types=1);");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "namespace App\Api;");
+          fwrite($routerFile, "namespace App;");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "class ApiFieldMask {");
@@ -162,6 +162,8 @@ class BuildTableAPI
             fwrite($routerFile, "\n");
             fwrite($routerFile, "\n");
             fwrite($routerFile, "use Controllers\\".$o->Table.";");
+            fwrite($routerFile, "\n");
+            fwrite($routerFile, "use App\ApiFieldMask;");
             fwrite($routerFile, "\n");
             fwrite($routerFile, "use Pecee\SimpleRouter\SimpleRouter;");
             fwrite($routerFile, "\n");
