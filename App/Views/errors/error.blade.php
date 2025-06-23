@@ -31,7 +31,7 @@
             justify-content: center;
             height: 100vh;
             width: 100vw;
-            z-index: 999999;
+            z-index: 999999; /* Error modal - below debug toolbar (9999999) */
         }
         
         .error-container {

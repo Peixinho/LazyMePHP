@@ -152,7 +152,18 @@ class DebugToolbar
         $memoryUsage = $data['memory']['current'];
         $queryCount = count($data['queries']);
         
+        // Add fallback error indicator if there are errors
+        $errorIndicator = '';
+        if ($errorCount > 0) {
+            $errorIndicator = "
+            <div class='lazymephp-debug-error-indicator' onclick='document.getElementById(\"lazymephp-debug-toolbar\").style.display=\"block\";'>
+                ⚠️ {$errorCount} Error(s) - Click to view debug info
+            </div>
+            ";
+        }
+        
         return "
+        {$errorIndicator}
         <div id='lazymephp-debug-toolbar' class='lazymephp-debug-toolbar'>
             <div class='lazymephp-debug-header'>
                 <span class='lazymephp-debug-title'>🚀 LazyMePHP Debug</span>
@@ -162,7 +173,8 @@ class DebugToolbar
                     <span class='lazymephp-debug-stat' title='SQL Queries'>{$queryCount}</span>
                     <span class='lazymephp-debug-stat' title='Errors'>{$errorCount}</span>
                 </div>
-                <button class='lazymephp-debug-toggle' onclick='toggleDebugToolbar()'>📊</button>
+                <span style='font-size: 10px; color: #888; margin-right: 10px;' title='Keyboard shortcut'>Ctrl+Shift+D</span>
+                <button class='lazymephp-debug-toggle' type='button'>📊</button>
             </div>
             <div id='lazymephp-debug-content' class='lazymephp-debug-content' style='display: none;'>
                 " . $this->generateTabs($data, $errorCount) . "
@@ -191,7 +203,7 @@ class DebugToolbar
         
         foreach ($tabs as $tabId => $tab) {
             $active = $tabId === 'queries' ? 'active' : '';
-            $tabButtons .= "<button class='lazymephp-debug-tab {$active}' onclick='showDebugTab(\"{$tabId}\")'>{$tab['icon']} {$tab['label']}</button>";
+            $tabButtons .= "<button class='lazymephp-debug-tab {$active}' type='button' data-tab-id='{$tabId}'>{$tab['icon']} {$tab['label']}</button>";
             
             $content = $this->generateTabContent($tabId, $data);
             $display = $tabId === 'queries' ? 'block' : 'none';
@@ -359,8 +371,11 @@ class DebugToolbar
             color: #fff;
             font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
             font-size: 12px;
-            z-index: 9999;
+            z-index: 9999999;
             border-top: 2px solid #007acc;
+            /* Ensure toolbar is always on top and clickable */
+            pointer-events: auto;
+            user-select: none;
         }
         
         .lazymephp-debug-header {
@@ -369,6 +384,8 @@ class DebugToolbar
             padding: 8px 12px;
             background: #2d2d2d;
             border-bottom: 1px solid #444;
+            /* Ensure header is always clickable */
+            cursor: pointer;
         }
         
         .lazymephp-debug-title {
@@ -397,11 +414,20 @@ class DebugToolbar
             border-radius: 3px;
             cursor: pointer;
             font-size: 12px;
+            /* Ensure button is always clickable */
+            pointer-events: auto;
+            z-index: 10000000;
+        }
+        
+        .lazymephp-debug-toggle:hover {
+            background: #005a9e;
         }
         
         .lazymephp-debug-content {
             max-height: 400px;
             overflow-y: auto;
+            /* Ensure content is always accessible */
+            pointer-events: auto;
         }
         
         .lazymephp-debug-tabs {
@@ -418,6 +444,12 @@ class DebugToolbar
             font-size: 11px;
             border-right: 1px solid #555;
             padding: 8px 12px;
+            /* Ensure tabs are always clickable */
+            pointer-events: auto;
+        }
+        
+        .lazymephp-debug-tab:hover {
+            background: #555;
         }
         
         .lazymephp-debug-tab.active {
@@ -522,6 +554,26 @@ class DebugToolbar
             padding: 20px;
         }
         
+        /* Fallback error indicator */
+        .lazymephp-debug-error-indicator {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: #ff4444;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 10000001;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        
+        /* Ensure no other elements interfere with debug toolbar */
+        body {
+            margin-bottom: 50px; /* Make room for debug toolbar */
+        }
+        
         h4 {
             margin: 15px 0 8px 0;
             color: #007acc;
@@ -539,34 +591,133 @@ class DebugToolbar
     {
         return "
         <script>
+        // Ensure functions are available globally and handle errors gracefully
+        window.LazyMePHPDebug = window.LazyMePHPDebug || {};
+        
+        // Initialize debug toolbar functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDebugToolbar();
+        });
+        
+        // Also try to initialize immediately in case DOMContentLoaded already fired
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeDebugToolbar);
+        } else {
+            // DOM is already loaded, initialize immediately
+            initializeDebugToolbar();
+        }
+        
+        function initializeDebugToolbar() {
+            try {
+                // Add event listeners instead of inline onclick
+                const toggleButton = document.querySelector('.lazymephp-debug-toggle');
+                if (toggleButton) {
+                    toggleButton.addEventListener('click', toggleDebugToolbar);
+                }
+                
+                // Add event listeners to all tab buttons
+                const tabButtons = document.querySelectorAll('.lazymephp-debug-tab');
+                tabButtons.forEach(function(button) {
+                    button.addEventListener('click', function() {
+                        const tabId = this.getAttribute('data-tab-id');
+                        if (tabId) {
+                            showDebugTab(tabId);
+                        }
+                    });
+                });
+                
+                // Make functions globally available for backward compatibility
+                window.toggleDebugToolbar = toggleDebugToolbar;
+                window.showDebugTab = showDebugTab;
+                
+            } catch (error) {
+                console.error('Failed to initialize debug toolbar:', error);
+            }
+        }
+        
         function toggleDebugToolbar() {
-            const content = document.getElementById('lazymephp-debug-content');
-            const toggle = document.querySelector('.lazymephp-debug-toggle');
-            
-            if (content.style.display === 'none') {
-                content.style.display = 'block';
-                toggle.textContent = '📊';
-            } else {
-                content.style.display = 'none';
-                toggle.textContent = '📊';
+            try {
+                const content = document.getElementById('lazymephp-debug-content');
+                const toggle = document.querySelector('.lazymephp-debug-toggle');
+                
+                if (content && toggle) {
+                    if (content.style.display === 'none') {
+                        content.style.display = 'block';
+                        toggle.textContent = '📊';
+                    } else {
+                        content.style.display = 'none';
+                        toggle.textContent = '📊';
+                    }
+                }
+            } catch (error) {
+                console.error('Error toggling debug toolbar:', error);
             }
         }
         
         function showDebugTab(tabId) {
-            // Hide all tab contents
-            const tabContents = document.querySelectorAll('.lazymephp-debug-tab-content');
-            tabContents.forEach(content => content.style.display = 'none');
-            
-            // Remove active class from all tabs
-            const tabs = document.querySelectorAll('.lazymephp-debug-tab');
-            tabs.forEach(tab => tab.classList.remove('active'));
-            
-            // Show selected tab content
-            document.getElementById('lazymephp-debug-tab-' + tabId).style.display = 'block';
-            
-            // Add active class to selected tab
-            event.target.classList.add('active');
+            try {
+                // Hide all tab contents
+                const tabContents = document.querySelectorAll('.lazymephp-debug-tab-content');
+                tabContents.forEach(function(content) {
+                    content.style.display = 'none';
+                });
+                
+                // Remove active class from all tabs
+                const tabs = document.querySelectorAll('.lazymephp-debug-tab');
+                tabs.forEach(function(tab) {
+                    tab.classList.remove('active');
+                });
+                
+                // Show selected tab content
+                const selectedContent = document.getElementById('lazymephp-debug-tab-' + tabId);
+                if (selectedContent) {
+                    selectedContent.style.display = 'block';
+                }
+                
+                // Add active class to selected tab
+                const selectedTab = document.querySelector('[data-tab-id=\"' + tabId + '\"]');
+                if (selectedTab) {
+                    selectedTab.classList.add('active');
+                }
+            } catch (error) {
+                console.error('Error showing debug tab:', error);
+            }
         }
+        
+        // Fallback: if event listeners fail, try to make functions work with onclick
+        if (typeof window.toggleDebugToolbar === 'undefined') {
+            window.toggleDebugToolbar = toggleDebugToolbar;
+        }
+        if (typeof window.showDebugTab === 'undefined') {
+            window.showDebugTab = showDebugTab;
+        }
+        
+        // Emergency fallback: ensure debug toolbar is always accessible
+        window.addEventListener('error', function() {
+            // If there's a JavaScript error, make sure debug toolbar is visible
+            setTimeout(function() {
+                const toolbar = document.getElementById('lazymephp-debug-toolbar');
+                if (toolbar && toolbar.style.display === 'none') {
+                    toolbar.style.display = 'block';
+                }
+            }, 100);
+        });
+        
+        // Keyboard shortcut to toggle debug toolbar (Ctrl+Shift+D)
+        document.addEventListener('keydown', function(event) {
+            if (event.ctrlKey && event.shiftKey && event.key === 'D') {
+                event.preventDefault();
+                toggleDebugToolbar();
+            }
+        });
+        
+        // Fallback for when DOMContentLoaded doesn't fire
+        setTimeout(function() {
+            if (typeof window.LazyMePHPDebug.initialized === 'undefined') {
+                initializeDebugToolbar();
+                window.LazyMePHPDebug.initialized = true;
+            }
+        }, 1000);
         </script>
         ";
     }
