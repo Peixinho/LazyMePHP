@@ -70,26 +70,12 @@ class BuildTableModels extends _DB_TABLE
     // Create Folder if doesn't exist
     if (!is_dir($classesPath)) MKDIR($classesPath);
 
-    // SELECT Tables
-    $queryString = "";
-    switch (LazyMePHP::DB_TYPE())
-    {
-      case 'mssql': // MSSQL
-            $queryString = "SELECT [Table] FROM (SELECT TABLE_NAME as [Table] FROM INFORMATION_SCHEMA.TABLES) SCH WHERE [Table] NOT LIKE '\_\_%'";
-      break;
-      case 'mysql': // MYSQL
-          $queryString = "SELECT `Table` FROM (SELECT DISTINCT TABLE_NAME as `Table` FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='".LazyMePHP::DB_NAME()."') SCH WHERE `Table` NOT LIKE '\_\_%'";
-      break;
-      case 'sqlite': // SQLITE
-          $queryString = "SELECT name as `Table` FROM sqlite_master WHERE type='table' and name not like '#__%' ESCAPE '#' ORDER BY name";
-      break;
-    }
-
-    $sqlObj = LazyMePHP::DB_CONNECTION()->Query($queryString);
-    while ($o=$sqlObj->FetchObject())
-    {
-      if (is_array($tablesList) && array_search($o->Table, $tablesList)!==false) {
-        $db = new \Tools\Database\_DB_TABLE($o->Table);
+    // Get all tables and views
+    $allTables = \Tools\Database\_DB_TABLE::GetAllTablesAndViews();
+    
+    foreach ($allTables as $tableName) {
+      if (is_array($tablesList) && array_search($tableName, $tablesList)!==false) {
+        $db = new \Tools\Database\_DB_TABLE($tableName);
         $this->ConstructModel($classesPath,$db,$tableDescriptors);
       }
     }
@@ -155,7 +141,7 @@ class BuildTableModels extends _DB_TABLE
         fwrite($classFile, "\t */");
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\tpublic function GetDescriptor() : mixed { return \$this->".(key_exists($db->_Tablename, $tableDescriptors)?$tableDescriptors[$db->_Tablename]:$db->_PrimaryFieldName)."; }");
+        fwrite($classFile, "\tpublic function GetDescriptor() : mixed { return \$this->".(key_exists($db->_Tablename, $tableDescriptors)?$tableDescriptors[$db->_Tablename]:($db->IsView() ? $db->_Tablefields[0]->GetName() : $db->_PrimaryFieldName))."; }");
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t/**");
@@ -172,7 +158,7 @@ class BuildTableModels extends _DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\t */");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\tpublic function GetPrimaryKey() : ?int { return \$this->".$db->_PrimaryFieldName."; }");
+        fwrite($classFile, "\tpublic function GetPrimaryKey() : ?int { return \$this->".($db->IsView() ? $db->_Tablefields[0]->GetName() : $db->_PrimaryFieldName)."; }");
         fwrite($classFile, "\n");
         $addToConstruct = "";
         $addToSerialize = "";
@@ -347,6 +333,79 @@ class BuildTableModels extends _DB_TABLE
             fwrite($classFile, "\t\t}");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t}");
+
+            // For views, add a constructor that uses the first field as primary key
+            if ($db->IsView()) {
+                $firstField = $db->_Tablefields[0];
+                $firstFieldType = mapSqlTypeToPhpType($firstField->GetDataType());
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t/**");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t * Constructor for View");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t *");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t * Class Constructor for View using first field as primary key");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t *");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t * @param ".$firstFieldType."|null \$".$firstField->GetName());
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t * @return null");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t */");
+                fwrite($classFile, "\n");
+                fwrite($classFile,"\tpublic function __construct(?$firstFieldType \$".$firstField->GetName()."=null) {");
+                fwrite($classFile, "\n");
+                fwrite($classFile,"\t\t// For views, we can optionally load by the first field");
+                fwrite($classFile, "\n");
+                fwrite($classFile,"\t\tif (isset(\$".$firstField->GetName().")) {");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\n");
+                fwrite($classFile,"\t\t\t\$this->initialize();");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\n");
+                fwrite($classFile,"\t\t\t\$sql = \"SELECT ");
+                $countFields = 0;
+                foreach ($db->_Tablefields as $field2)
+                {
+                  fwrite($classFile,($countFields++>0?",":"").$db->_Tablename.".".$field2->GetName());
+                }
+                fwrite($classFile," FROM ".$db->_Tablename." WHERE ".$db->GetTableName().".".$firstField->GetName()."=?\";");
+                fwrite($classFile, "\n");
+                fwrite($classFile,"\t\t\t\$rtn = LazyMePHP::DB_CONNECTION()->Query(\$sql, array(\$".$firstField->GetName()."));");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t\t\twhile(\$row = \$rtn->FetchArray())");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t\t\t{");
+                fwrite($classFile, "\n");
+                foreach ($db->_Tablefields as $field2)
+                {
+                  switch (mapSqlTypeToPhpType($field2->GetDataType()))
+                  {
+                    case "bool":
+                      fwrite($classFile,"\t\t\t\t\$this->".$field2->GetName()."=(bool)\$row['".$field2->GetName()."'];");
+                    break;
+                    case "float":
+                      fwrite($classFile,"\t\t\t\t\$this->".$field2->GetName()."=(float)\$row['".$field2->GetName()."'];");
+                    break;
+                    case "int":
+                      fwrite($classFile,"\t\t\t\t\$this->".$field2->GetName()."=(int)\$row['".$field2->GetName()."'];");
+                    break;
+                    case "string":
+                    default:
+                      fwrite($classFile,"\t\t\t\t\$this->".$field2->GetName()."=(string)\$row['".$field2->GetName()."'];");
+                    break;
+                  }
+                  fwrite($classFile, "\n");
+                }
+                fwrite($classFile, "\t\t\t}");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t\t}");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t}");
+            }
 
             // Save
             fwrite($classFile, "\n");
@@ -533,6 +592,16 @@ class BuildTableModels extends _DB_TABLE
           }
         }
         if (!$primaryKeyFound)
+        {
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\tpublic function Save() : mixed { return false; }");
+          fwrite($classFile, "\n");
+          fwrite($classFile, "\tpublic function Delete() : bool { return false; }");
+        }
+        
+        // For views, override Save and Delete methods to return false since views are read-only
+        if ($db->IsView())
         {
           fwrite($classFile, "\n");
           fwrite($classFile, "\n");
@@ -761,7 +830,7 @@ class BuildTableModels extends _DB_TABLE
           fwrite($classFile, "\n");
         }
         fwrite($classFile, "\n");
-        fwrite($classFile, "\t\t\tif (\$serialize) \$this->_list[]=\$obj->Serialize(false, \$mask);");
+        fwrite($classFile, "\t\t\tif (\$serialize) \$this->_list[]=\$obj->Serialize(\$mask);");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t\t\telse \$this->_list[]=\$obj;");
         fwrite($classFile, "\n");

@@ -672,6 +672,37 @@ class _DB_TABLE {
 			echo "<br>";
 		}
 	}
+
+    /**
+     * GetAllTablesAndViews
+     *
+     * Returns all tables and views from the database
+     *
+     * @return array
+     */
+    public static function GetAllTablesAndViews()
+    {
+        $tables = array();
+        switch (LazyMePHP::DB_TYPE())
+        {
+            case 'mssql': // MSSQL
+                $queryString = "SELECT TABLE_NAME as [Table] FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE IN ('BASE TABLE', 'VIEW') AND TABLE_NAME NOT LIKE '\_\_%'";
+                break;
+            case 'mysql': // MYSQL
+                $queryString = "SELECT DISTINCT TABLE_NAME as `Table` FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='".LazyMePHP::DB_NAME()."' AND TABLE_NAME NOT LIKE '\_\_%'";
+                break;
+            case 'sqlite': // SQLITE
+                $queryString = "SELECT name as `Table` FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE '#__%' ESCAPE '#' ORDER BY name";
+                break;
+        }
+
+        $sqlObj = LazyMePHP::DB_CONNECTION()->Query($queryString);
+        while ($o = $sqlObj->FetchObject())
+        {
+            $tables[] = $o->Table;
+        }
+        return $tables;
+    }
 }
 
 ?>
