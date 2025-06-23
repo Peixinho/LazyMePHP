@@ -315,12 +315,6 @@ class BuildTableClasses extends _DB_TABLE
           if ($field->IsPrimaryKey())
           {
             $primaryKeyFound = true;
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t/** @var bool buildForeignMembers **/");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\tprivate bool \$buildForeignMembers = true;");
-            fwrite($classFile, "\n");
             
             fwrite($classFile, "\n");
             fwrite($classFile, "\t/**");
@@ -386,27 +380,6 @@ class BuildTableClasses extends _DB_TABLE
             fwrite($classFile, "\t\t\t}");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t\t}");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t}");
-
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t/**");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t * constructForeignKeysObjs");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t *");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t * Instantiates foreignkeys members");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t *");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t * @return void");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t */");
-            fwrite($classFile, "\n");
-            fwrite($classFile,"\tpublic function constructForeignKeysObjs() :void {");
-            fwrite($classFile, $addToConstruct);
             fwrite($classFile, "\n");
             fwrite($classFile, "\t}");
 
@@ -642,8 +615,6 @@ class BuildTableClasses extends _DB_TABLE
           fwrite($classFile, "\n");
           fwrite($classFile, "\t}");
           fwrite($classFile, "\n");
-          fwrite($classFile,"\tprotected function constructForeignKeysObjs() {}");
-          fwrite($classFile, "\n");
           fwrite($classFile, "\n");
         }
         fwrite($classFile, "\n");
@@ -658,26 +629,19 @@ class BuildTableClasses extends _DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\t *");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\t * @param bool \$foreign");
-        fwrite($classFile, "\n");
         fwrite($classFile, "\t * @param array|null \$mask array to show/hide fields");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t * @return array");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t */");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\tpublic function Serialize(\$foreign = false, \$mask = null) {");
+        fwrite($classFile, "\tpublic function Serialize(\$mask = null) {");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t\t\$vars = get_object_vars(\$this);");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t\tif (\$mask && array_key_exists('".$db->_Tablename."', \$mask))");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t\t\t\$vars = array_intersect_key(\$vars, array_flip(\$mask['".$db->_Tablename."']));");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t\tif (\$foreign) {");
-        fwrite($classFile, $addToSerialize);
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t\t}");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t\treturn \$vars;");
         fwrite($classFile, "\n");

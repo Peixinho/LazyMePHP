@@ -71,7 +71,7 @@ class ErrorPage
         ];
         
         // Use Blade to render the error page
-        return self::renderBladeView('errors.error', $viewData);
+        return self::renderBladeView('_Components.Error', $viewData);
     }
     
     /**
@@ -109,7 +109,7 @@ class ErrorPage
     {
         // Use the same Blade template as fallback
         $viewsPath = __DIR__ . '/../../Views';
-        $templateFile = $viewsPath . '/errors/error.blade.php';
+        $templateFile = $viewsPath . '/_Components/Error.blade.php';
         
         if (file_exists($templateFile)) {
             // Simple template replacement for fallback

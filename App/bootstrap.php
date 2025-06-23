@@ -61,28 +61,35 @@ if (Core\LazyMePHP::DEBUG_MODE()) {
     
     // Register shutdown function to inject debug toolbar
     register_shutdown_function(function() {
-        if (\Core\LazyMePHP::DEBUG_MODE()) {
-            $debugToolbar = \Core\Debug\DebugToolbar::getInstance();
-            $toolbarHtml = $debugToolbar->render();
-            
-            if (!empty($toolbarHtml)) {
-                // Try to inject into HTML response
-                $output = ob_get_contents();
-                if ($output !== false) {
-                    // Look for closing </body> tag
-                    $pos = strripos($output, '</body>');
-                    if ($pos !== false) {
-                        $newOutput = substr($output, 0, $pos) . $toolbarHtml . substr($output, $pos);
-                        ob_clean();
-                        echo $newOutput;
+        try {
+            if (\Core\LazyMePHP::DEBUG_MODE()) {
+                $debugToolbar = \Core\Debug\DebugToolbar::getInstance();
+                $toolbarHtml = $debugToolbar->render();
+                
+                if (!empty($toolbarHtml)) {
+                    // Try to inject into HTML response
+                    $output = ob_get_contents();
+                    if ($output !== false) {
+                        // Look for closing </body> tag
+                        $pos = strripos($output, '</body>');
+                        if ($pos !== false) {
+                            $newOutput = substr($output, 0, $pos) . $toolbarHtml . substr($output, $pos);
+                            ob_clean();
+                            echo $newOutput;
+                        } else {
+                            // No </body> tag found, append at the end
+                            echo $toolbarHtml;
+                        }
                     } else {
-                        // No </body> tag found, append at the end
+                        // No output buffer, just echo the toolbar
                         echo $toolbarHtml;
                     }
-                } else {
-                    // No output buffer, just echo the toolbar
-                    echo $toolbarHtml;
                 }
+            }
+        } catch (\Throwable $e) {
+            // If debug toolbar fails, at least try to show a simple error indicator
+            if (Core\LazyMePHP::DEBUG_MODE()) {
+                echo "<!-- Debug toolbar failed to render: " . htmlspecialchars($e->getMessage()) . " -->";
             }
         }
     });
