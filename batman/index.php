@@ -31,7 +31,7 @@ $hasUserSession = isset($_SESSION['is_logged_in']) && $_SESSION['is_logged_in'];
 
 // Require login in all cases
 if (!$hasUserSession) {
-    header('Location: /batman/login.php');
+    header('Location: /login.php');
     exit;
 }
 

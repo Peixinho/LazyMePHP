@@ -10,14 +10,10 @@ if (file_exists(__DIR__.'/vendor/autoload.php')) {
 }
 
 if (file_exists(__DIR__.'/.env')) {
-    // For CLI, Dotenv might need to be loaded slightly differently if APP_ENV is used,
-    // but for now, standard loading is fine.
     $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
     $dotenv->load();
 } else {
     echo ".env file not found. Please ensure it exists in the project root.\n";
-    // Decide if to exit or continue with defaults. For tools, config is likely essential.
-    // exit(1); // Or allow APP to use its defaults.
 }
 
 // Require the APP class definition itself as it's not yet autoloaded by its own definition
@@ -25,6 +21,29 @@ if (file_exists(__DIR__.'/App/Core/LazyMePHP.php')) {
     require_once __DIR__.'/App/Core/LazyMePHP.php';
 } else {
     echo "LazyMe.php not found.\n";
+    exit(1);
+}
+
+// Require the Database and Models files for CLI commands
+if (file_exists(__DIR__.'/App/Tools/Database')) {
+    require_once __DIR__.'/App/Tools/Database';
+} else {
+    echo "Database file not found.\n";
+    exit(1);
+}
+
+// Require the Helper functions for file operations
+if (file_exists(__DIR__.'/App/Tools/Helper')) {
+    require_once __DIR__.'/App/Tools/Helper';
+} else {
+    echo "Helper file not found.\n";
+    exit(1);
+}
+
+if (file_exists(__DIR__.'/App/Tools/Models')) {
+    require_once __DIR__.'/App/Tools/Models';
+} else {
+    echo "Models file not found.\n";
     exit(1);
 }
 
@@ -36,76 +55,565 @@ try {
     exit(1);
 }
 
-// Autoload LazyMePHP Helpers (ErrorUtil) if needed for CLI error handling
-// (APP constructor already sets error handlers using ErrorUtil)
-
-// The rest of the CLI script logic follows...
-
 /**
- * LazyMePHP
+ * LazyMePHP CLI Tool
  * @copyright This file is part of the LazyMePHP developed by Duarte Peixinho
  * @author Duarte Peixinho
  */
 
-if (!isset($argv[1])) {
-    echo "LazyMePHP CLI Tool\n";
-    echo "Usage: php LazyMePHP [command]\n";
-    echo "Available commands:\n";
-    echo "  serve    Start the PHP development server for the public directory.\n";
-    echo "  build    Run the build tools for classes, forms, and APIs.\n";
-    echo "  batman   Start the Batman dashboard server.\n";
-    // echo "  config   (Deprecated) Configure the application.\n"; // Config case removed
-    exit(0);
+class LazyMeCLI {
+    private array $commands = [
+        'serve' => 'Start the PHP development server',
+        'build' => 'Run the build tools for classes, forms, and APIs',
+        'batman' => 'Start the Batman dashboard server',
+        'make:model' => 'Generate a model for a table/view',
+        'make:api' => 'Generate an API for a table/view',
+        'make:form' => 'Generate a form for a table/view',
+        'make:all' => 'Generate model, API, and form for a table/view',
+        'list' => 'List all available tables and views'
+    ];
+
+    public function run(array $argv): void {
+        if (!isset($argv[1])) {
+            $this->showHelp();
+            exit(0);
+        }
+
+        $command = $argv[1];
+        $tableName = $argv[2] ?? null;
+
+        switch($command) {
+            case 'serve':
+                $this->serve();
+                break;
+            case 'build':
+                $this->build();
+                break;
+            case 'batman':
+                $this->batman();
+                break;
+            case 'make:model':
+                $this->makeModel($tableName);
+                break;
+            case 'make:api':
+                $this->makeApi($tableName);
+                break;
+            case 'make:form':
+                $this->makeForm($tableName);
+                break;
+            case 'make:all':
+                $this->makeAll($tableName);
+                break;
+            case 'list':
+                $this->listTables();
+                break;
+            default:
+                echo "Unknown command: $command\n";
+                $this->showHelp();
+                exit(1);
+        }
+    }
+
+    private function showHelp(): void {
+        echo "LazyMePHP CLI Tool\n";
+        echo "Usage: php LazyMePHP [command] [table_name]\n\n";
+        echo "Available commands:\n";
+        foreach ($this->commands as $command => $description) {
+            echo "  " . str_pad($command, 15) . " $description\n";
+        }
+        echo "\nExamples:\n";
+        echo "  php LazyMePHP make:model users\n";
+        echo "  php LazyMePHP make:api products\n";
+        echo "  php LazyMePHP make:all customers\n";
+        echo "  php LazyMePHP list\n";
+    }
+
+    private function serve(): void {
+        echo "What port do you want to use for web server?";
+        $port = $this->getPort(8080);
+        echo "Starting development server on port $port...\n";
+        echo "Server will be available at: http://localhost:$port\n";
+        echo "Press Ctrl+C to stop the server.\n";
+        @exec("php -S 0.0.0.0:$port -t ./public App/Tools/Webserver");
+    }
+
+    private function build(): void {
+        echo "Running build tools...\n";
+        if (file_exists(__DIR__.'/App/Tools/build')) {
+            require_once __DIR__.'/App/Tools/build';
+        } else {
+            echo "Build script (App/Tools/build) not found.\n";
+            exit(1);
+        }
+    }
+
+    private function batman(): void {
+        echo "Starting Batman dashboard server...\n";
+        $port = $this->getPort(8081);
+        echo "Batman dashboard will be available at: http://localhost:$port\n";
+        echo "Press Ctrl+C to stop the server.\n";
+        @exec("php -S 0.0.0.0:$port -t ./batman App/Tools/BatmanServer");
+    }
+
+    private function makeModel(?string $tableName): void {
+        if (!$tableName) {
+            echo "Error: Table name is required for make:model command.\n";
+            echo "Usage: php LazyMePHP make:model [table_name]\n";
+            exit(1);
+        }
+
+        echo "Generating model for table: $tableName\n";
+        
+        // Get all available tables
+        $allTables = \Tools\Database\_DB_TABLE::GetAllTablesAndViews();
+        
+        if (!in_array($tableName, $allTables)) {
+            echo "Error: Table '$tableName' not found in database.\n";
+            echo "Available tables:\n";
+            foreach ($allTables as $table) {
+                echo "  - $table\n";
+            }
+            exit(1);
+        }
+
+        // Generate model
+        $generator = new \Tools\Models\BuildTableModels(__DIR__ . '/App/Models', [$tableName], []);
+        echo "Model generated successfully!\n";
+    }
+
+    private function makeApi(?string $tableName): void {
+        if (!$tableName) {
+            echo "Error: Table name is required for make:api command.\n";
+            echo "Usage: php LazyMePHP make:api [table_name]\n";
+            exit(1);
+        }
+
+        echo "Generating API for table: $tableName\n";
+        
+        // Check if model exists
+        $modelFile = __DIR__ . "/App/Models/$tableName.php";
+        if (!file_exists($modelFile)) {
+            echo "Error: Model for table '$tableName' not found. Please generate the model first.\n";
+            echo "Run: php LazyMePHP make:model $tableName\n";
+            exit(1);
+        }
+
+        // Generate API
+        $this->generateApi($tableName);
+        echo "API generated successfully!\n";
+    }
+
+    private function makeForm(?string $tableName): void {
+        if (!$tableName) {
+            echo "Error: Table name is required for make:form command.\n";
+            echo "Usage: php LazyMePHP make:form [table_name]\n";
+            exit(1);
+        }
+
+        echo "Generating form for table: $tableName\n";
+        
+        // Check if model exists
+        $modelFile = __DIR__ . "/App/Models/$tableName.php";
+        if (!file_exists($modelFile)) {
+            echo "Error: Model for table '$tableName' not found. Please generate the model first.\n";
+            echo "Run: php LazyMePHP make:model $tableName\n";
+            exit(1);
+        }
+
+        // Generate form
+        $this->generateForm($tableName);
+        echo "Form generated successfully!\n";
+    }
+
+    private function makeAll(?string $tableName): void {
+        if (!$tableName) {
+            echo "Error: Table name is required for make:all command.\n";
+            echo "Usage: php LazyMePHP make:all [table_name]\n";
+            exit(1);
+        }
+
+        echo "Generating all components for table: $tableName\n";
+        
+        // Generate model
+        $this->makeModel($tableName);
+        
+        // Generate API
+        $this->makeApi($tableName);
+        
+        // Generate form
+        $this->makeForm($tableName);
+        
+        echo "All components generated successfully!\n";
+    }
+
+    private function listTables(): void {
+        echo "Available tables and views:\n";
+        $allTables = \Tools\Database\_DB_TABLE::GetAllTablesAndViews();
+        
+        if (empty($allTables)) {
+            echo "No tables or views found in database.\n";
+            return;
+        }
+
+        foreach ($allTables as $table) {
+            $db = new \Tools\Database\_DB_TABLE($table);
+            $type = $db->IsView() ? 'VIEW' : 'TABLE';
+            echo "  " . str_pad($table, 30) . " ($type)\n";
+        }
+    }
+
+    private function getPort(int $default): int {
+        echo "\n$default:?";
+        $port = trim(fgets(STDIN));
+        
+        if (strlen($port) > 0 && !intval($port)) {
+            echo "Invalid port, please try again\n";
+            return $this->getPort($default);
+        }
+        
+        if (strlen($port) == 0) {
+            return $default;
+        }
+        
+        return intval($port);
+    }
+
+    private function generateApi(string $tableName): void {
+        $apiDir = __DIR__ . '/App/Api';
+        if (!is_dir($apiDir)) {
+            mkdir($apiDir, 0755, true);
+        }
+
+        $apiFile = "$apiDir/$tableName.php";
+        
+        // Check if API already exists
+        if (file_exists($apiFile)) {
+            echo "API file already exists: $apiFile\n";
+            return;
+        }
+
+        $className = ucfirst($tableName);
+        $apiContent = "<?php
+
+/**
+ * $className API
+ * @copyright This file is part of the LazyMePHP Framework developed by Duarte Peixinho
+ * @author Duarte Peixinho
+ */
+
+declare(strict_types=1);
+
+namespace Api;
+
+use Core\LazyMePHP;
+use Core\Helpers\ErrorUtil;
+use Models\\$className;
+use Models\\{$className}_List;
+use Core\Validations\Validations;
+use Core\Validations\ValidationPatterns;
+
+/**
+ * $className API Class
+ */
+class $className extends \\Core\\Http\\Request
+{
+    /**
+     * Constructor
+     */
+    public function __construct()
+    {
+        parent::__construct();
+    }
+
+    /**
+     * Get all $tableName records
+     */
+    public function GetAll()
+    {
+        try {
+            \$list = new {$className}_List();
+            \$items = \$list->GetList(true);
+            
+            \$this->JsonResponse([
+                'success' => true,
+                'data' => \$items,
+                'count' => count(\$items)
+            ]);
+        } catch (\\Exception \$e) {
+            \$this->JsonResponse([
+                'success' => false,
+                'error' => \$e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get $tableName by ID
+     */
+    public function GetById()
+    {
+        try {
+            \$id = \$this->GetParam('id');
+            if (!\$id) {
+                \$this->JsonResponse([
+                    'success' => false,
+                    'error' => 'ID parameter is required'
+                ], 400);
+                return;
+            }
+
+            \$item = new $className();
+            \$item->FindById(\$id);
+            
+            if (!\$item->GetPrimaryKey()) {
+                \$this->JsonResponse([
+                    'success' => false,
+                    'error' => '$className not found'
+                ], 404);
+                return;
+            }
+
+            \$this->JsonResponse([
+                'success' => true,
+                'data' => \$item->Serialize()
+            ]);
+        } catch (\\Exception \$e) {
+            \$this->JsonResponse([
+                'success' => false,
+                'error' => \$e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Create new $tableName
+     */
+    public function Create()
+    {
+        try {
+            \$data = \$this->GetJsonData();
+            if (!\$data) {
+                \$this->JsonResponse([
+                    'success' => false,
+                    'error' => 'Invalid JSON data'
+                ], 400);
+                return;
+            }
+
+            \$item = new $className();
+            
+            // Set properties from data
+            foreach (\$data as \$key => \$value) {
+                \$setter = 'Set' . ucfirst(\$key);
+                if (method_exists(\$item, \$setter)) {
+                    \$item->\$setter(\$value);
+                }
+            }
+
+            \$result = \$item->Save();
+            if (\$result) {
+                \$this->JsonResponse([
+                    'success' => true,
+                    'data' => \$item->Serialize(),
+                    'message' => '$className created successfully'
+                ], 201);
+            } else {
+                \$this->JsonResponse([
+                    'success' => false,
+                    'error' => 'Failed to create $className'
+                ], 500);
+            }
+        } catch (\\Exception \$e) {
+            \$this->JsonResponse([
+                'success' => false,
+                'error' => \$e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update $tableName
+     */
+    public function Update()
+    {
+        try {
+            \$id = \$this->GetParam('id');
+            if (!\$id) {
+                \$this->JsonResponse([
+                    'success' => false,
+                    'error' => 'ID parameter is required'
+                ], 400);
+                return;
+            }
+
+            \$data = \$this->GetJsonData();
+            if (!\$data) {
+                \$this->JsonResponse([
+                    'success' => false,
+                    'error' => 'Invalid JSON data'
+                ], 400);
+                return;
+            }
+
+            \$item = new $className();
+            \$item->FindById(\$id);
+            
+            if (!\$item->GetPrimaryKey()) {
+                \$this->JsonResponse([
+                    'success' => false,
+                    'error' => '$className not found'
+                ], 404);
+                return;
+            }
+
+            // Set properties from data
+            foreach (\$data as \$key => \$value) {
+                \$setter = 'Set' . ucfirst(\$key);
+                if (method_exists(\$item, \$setter)) {
+                    \$item->\$setter(\$value);
+                }
+            }
+
+            \$result = \$item->Save();
+            if (\$result) {
+                \$this->JsonResponse([
+                    'success' => true,
+                    'data' => \$item->Serialize(),
+                    'message' => '$className updated successfully'
+                ]);
+            } else {
+                \$this->JsonResponse([
+                    'success' => false,
+                    'error' => 'Failed to update $className'
+                ], 500);
+            }
+        } catch (\\Exception \$e) {
+            \$this->JsonResponse([
+                'success' => false,
+                'error' => \$e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete $tableName
+     */
+    public function Delete()
+    {
+        try {
+            \$id = \$this->GetParam('id');
+            if (!\$id) {
+                \$this->JsonResponse([
+                    'success' => false,
+                    'error' => 'ID parameter is required'
+                ], 400);
+                return;
+            }
+
+            \$item = new $className();
+            \$item->FindById(\$id);
+            
+            if (!\$item->GetPrimaryKey()) {
+                \$this->JsonResponse([
+                    'success' => false,
+                    'error' => '$className not found'
+                ], 404);
+                return;
+            }
+
+            \$result = \$item->Delete();
+            if (\$result) {
+                \$this->JsonResponse([
+                    'success' => true,
+                    'message' => '$className deleted successfully'
+                ]);
+            } else {
+                \$this->JsonResponse([
+                    'success' => false,
+                    'error' => 'Failed to delete $className'
+                ], 500);
+            }
+        } catch (\\Exception \$e) {
+            \$this->JsonResponse([
+                'success' => false,
+                'error' => \$e->getMessage()
+            ], 500);
+        }
+    }
+}
+";
+
+        file_put_contents($apiFile, $apiContent);
+        echo "API file created: $apiFile\n";
+    }
+
+    private function generateForm(string $tableName): void {
+        // Use the real Form generator, not inline code
+        $controllersPath = __DIR__ . '/App/Controllers';
+        $viewsPath = __DIR__ . '/App/Views';
+        $modelsPath = __DIR__ . '/App/Models';
+        $routesPath = __DIR__ . '/App/Routes';
+        $tablesList = [$tableName];
+        $replaceRouteForms = true;
+        $buildViews = true;
+
+        // Ensure the generator is loaded
+        if (!class_exists('\Tools\Forms\BuildTableForms')) {
+            if (file_exists(__DIR__.'/App/Tools/Forms')) {
+                require_once __DIR__.'/App/Tools/Forms';
+            } else {
+                echo "Form generator not found.\n";
+                exit(1);
+            }
+        }
+
+        new \Tools\Forms\BuildTableForms($controllersPath, $viewsPath, $modelsPath, $routesPath, $tablesList, $replaceRouteForms, $buildViews);
+        echo "Form generated using BuildTableForms!\n";
+    }
+
+    /**
+     * Get HTML input type based on database field type
+     */
+    private function getInputType(string $dbType): string {
+        $type = strtolower($dbType);
+        
+        if (strpos($type, 'text') !== false || strpos($type, 'varchar') !== false) {
+            return 'text';
+        }
+        
+        if (strpos($type, 'int') !== false) {
+            return 'number';
+        }
+        
+        if (strpos($type, 'float') !== false || strpos($type, 'decimal') !== false) {
+            return 'number';
+        }
+        
+        if (strpos($type, 'date') !== false) {
+            return 'date';
+        }
+        
+        if (strpos($type, 'time') !== false) {
+            return 'time';
+        }
+        
+        if (strpos($type, 'datetime') !== false) {
+            return 'datetime-local';
+        }
+        
+        if (strpos($type, 'bool') !== false) {
+            return 'checkbox';
+        }
+        
+        if (strpos($type, 'text') !== false && strpos($type, 'long') !== false) {
+            return 'textarea';
+        }
+        
+        return 'text';
+    }
 }
 
-switch($argv[1]) {
-  case "serve":
-    echo "What port do you want to use for web server?";
-    $port = false;
-    while(!$port) {
-      echo "\n8080:?";
-      $port = trim(fgets(STDIN));
-      if (strlen($port)>0 && !intval($port)) {
-        echo "invalid port, please try again";
-        $port = false;
-      }
-      else if (strlen($port)==0) $port = 8080;
-      else $port = intval($port);
-    }
-    if (!$port || !is_int($port)) $port = 8080;
-    // The webserver command in App/Tools/webserver might need its own bootstrapping or use this one.
-    // For now, we ensure this main script is bootstrapped.
-    @exec("php -S 0.0.0.0:".$port." -t ./public App/Tools/Webserver"); // Assuming tools/webserver is a php script
-  break;
-  case "build":
-    // The tools/build script will need to be updated to use the autoloader
-    // and not re-bootstrap if already done.
-    if (file_exists(__DIR__.'/App/Tools/build')) {
-        require_once __DIR__.'/App/Tools/build';
-    } else {
-        Echo "Build script (App/Tools/build) not found.\n";
-        exit(1);
-    }
-  break;
-  case "batman":
-    echo "Starting Batman dashboard server...\n";
-    echo "What port do you want to use for Batman server?";
-    $port = false;
-    while(!$port) {
-      echo "\n8081:?";
-      $port = trim(fgets(STDIN));
-      if (strlen($port)>0 && !intval($port)) {
-        echo "invalid port, please try again";
-        $port = false;
-      }
-      else if (strlen($port)==0) $port = 8081;
-      else $port = intval($port);
-    }
-    if (!$port || !is_int($port)) $port = 8081;
-    echo "Batman dashboard will be available at: http://localhost:$port\n";
-    echo "Press Ctrl+C to stop the server.\n";
-    @exec("php -S 0.0.0.0:".$port." -t ./batman App/Tools/BatmanServer");
-  break;
-  // The "config" case has been removed as per instructions.
-}
-?>
+// Run the CLI
+$cli = new LazyMeCLI();
+$cli->run($argv);
+?> 
