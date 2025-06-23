@@ -127,7 +127,7 @@ class BuildTableForms
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\t\$controller = new ".$db->GetTableName()."(\$request);");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "\t\$data = \$controller->index(true, (int)(\$request->get('page')??1), LazyMePHP::NRESULTS());");
+          fwrite($routerFile, "\t\$data = \$controller->index((int)(\$request->get('page')??1), LazyMePHP::NRESULTS());");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\techo \$blade->run(\"".$db->GetTableName().".index\", [");
           fwrite($routerFile, "\n");
@@ -136,7 +136,8 @@ class BuildTableForms
           fwrite($routerFile, "\t\t'".$db->GetTableName()."' => \$data['".$db->GetTableName()."'], 'filters' => \$data['filters'], 'length' => \$data['length'], 'current' => \$request->get('page')??1, 'limit' => LazyMePHP::NRESULTS()");
           // Add foreign table data
           foreach ($db->GetTableFields() as $field) {
-            if ($field->HasForeignKey() && !is_null($field->GetForeignField())) {
+            if ($field->HasForeignKey() && $field->GetForeignField())
+            {
               fwrite($routerFile, ", '".$field->GetForeignTable()."' => \$data['".$field->GetForeignTable()."']");
             }
           }
@@ -344,7 +345,7 @@ class BuildTableForms
             if ($field->HasForeignKey() && !is_null($field->GetForeignField()))
             {
               fwrite($viewFile, "\n");
-              fwrite($viewFile, "\t@component('_Components.Select',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'defaultValueEmpty' => true, 'options' => \$".$field->GetForeignTable()."->GetList(false), 'selected' => \$".$db->GetTableName()."->Get".ucfirst($field->GetName())."() ".(!$field->AllowNull()?", 'validation' => 'notnull', 'validationfail' => '".$field->GetName()." cannot be empty'":"")." ))");
+              fwrite($viewFile, "\t@component('_Components.Select',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'defaultValueEmpty' => true, 'options' => \$".$field->GetForeignTable()."->GetList(), 'selected' => \$".$db->GetTableName()."->Get".ucfirst($field->GetName())."() ".(!$field->AllowNull()?", 'validation' => 'notnull', 'validationfail' => '".$field->GetName()." cannot be empty'":"")." ))");
             } else {
               fwrite($viewFile, "\n");
               switch ($field->GetDataType())
@@ -437,7 +438,7 @@ class BuildTableForms
             }
             fwrite($viewFile, "\t<br/>");
             fwrite($viewFile, "\n");
-            fwrite($viewFile, "\t@component('_Components.Select',array('name'=> 'FindBy".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'defaultValueEmpty' => true, 'options' => \$".$field->GetForeignTable()."->GetList(false), 'selected' => (isset(\$filters['FindBy".$field->GetName()."'])?\$filters['FindBy".$field->GetName()."']:'')))");
+            fwrite($viewFile, "\t@component('_Components.Select',array('name'=> 'FindBy".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'defaultValueEmpty' => true, 'options' => \$".$field->GetForeignTable()."->GetList(), 'selected' => (isset(\$filters['FindBy".$field->GetName()."'])?\$filters['FindBy".$field->GetName()."']:'')))");
             fwrite($viewFile, "\n");
             fwrite($viewFile, "\t@endcomponent");
             fwrite($viewFile, "\n");
@@ -476,7 +477,7 @@ class BuildTableForms
         }
         fwrite($viewFile, "\t</tr>");
         fwrite($viewFile, "\n");
-        fwrite($viewFile, "\t@foreach(\$".$db->GetTableName()."->GetList(false) as \$member)");
+        fwrite($viewFile, "\t@foreach(\$".$db->GetTableName()."->GetList() as \$member)");
         fwrite($viewFile, "\n");
         fwrite($viewFile, "\t<tr>");
         fwrite($viewFile, "\n");
@@ -606,7 +607,7 @@ class BuildTableForms
             fwrite($controllerFile, "\n");
             fwrite($controllerFile, "\t\t\$".$field->GetForeignTable()."->FindAll();");
             fwrite($controllerFile, "\n");
-            $foreignTables .= (!empty($foreignTables)?",":"")."'".$field->GetForeignTable()."' => \$".$field->GetForeignTable()."->GetList(false)";
+            $foreignTables .= (!empty($foreignTables)?",":"")."'".$field->GetForeignTable()."' => \$".$field->GetForeignTable()."->GetList()";
             fwrite($controllerFile, "\n");
           }
         }
@@ -767,7 +768,7 @@ class BuildTableForms
           fwrite($controllerFile, "\t}");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\tfunction index(bool \$foreignTables = true, ?int \$page = null, ?int \$limit = null) : array {");
+          fwrite($controllerFile, "\tfunction index(?int \$page = null, ?int \$limit = null) : array {");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\$".$db->GetTableName()." = new \Classes\\".$db->GetTableName()."_List();");
@@ -814,21 +815,22 @@ class BuildTableForms
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\tif (\$page && \$limit>0) \$".$db->GetTableName()."->Limit(\$limit,(\$page-1)*\$limit);");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\tif (\$foreignTables) {");
+          
+          // Load foreign key objects for dropdowns
           $foreignTables = "";
           foreach ($db->GetTableFields() as $field)
           {
             if ($field->GetForeignField()) {
               fwrite($controllerFile, "\n");
-              fwrite($controllerFile, "\t\t\t\$".$field->GetForeignTable()." = new \Classes\\".$field->GetForeignTable()."_List();");
+              fwrite($controllerFile, "\t\t\$".$field->GetForeignTable()." = new \Classes\\".$field->GetForeignTable()."_List();");
               fwrite($controllerFile, "\n");
-              fwrite($controllerFile, "\t\t\t\$".$field->GetForeignTable()."->FindAll();");
+              fwrite($controllerFile, "\t\t\$".$field->GetForeignTable()."->FindAll();");
               fwrite($controllerFile, "\n");
-              $foreignTables .= (!empty($foreignTables)?",":"")."'".$field->GetForeignTable()."' => \$".$field->GetForeignTable()."->GetList(false)";
+              $foreignTables .= (!empty($foreignTables)?",":"")."'".$field->GetForeignTable()."' => \$".$field->GetForeignTable();
             }
           }
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\treturn ['".$db->GetTableName()."' => \$".$db->GetTableName().", 'length' => \$length");
+          fwrite($controllerFile, "\t\treturn ['".$db->GetTableName()."' => \$".$db->GetTableName().", 'length' => \$length");
           foreach ($db->GetTableFields() as $field)
           {
             if ($field->GetForeignField()) {
@@ -836,14 +838,6 @@ class BuildTableForms
             }
           }
           fwrite($controllerFile, ", 'filters' => \$filters];");
-
-          fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t} else {");
-          fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\treturn ['".$db->GetTableName()."' => \$".$db->GetTableName().", 'length' => \$length, 'filters' => \$filters];");
-
-          fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t}");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t}");
           fwrite($controllerFile, "\n");

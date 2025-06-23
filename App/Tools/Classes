@@ -8,8 +8,10 @@
 
 namespace Tools\Classes;
 use Core\LazyMePHP;
-
-require_once __DIR__ . '/Database'; // Made path more robust
+use Tools\Database\_DB_TABLE;
+use function Tools\Helper\MKDIR;
+use function Tools\Helper\UNLINK;
+use function Tools\Helper\TOUCH;
 
 /**
  * Interface for Automatic DB Classes
@@ -21,12 +23,12 @@ interface IDB
 }
 
 /**
- * Interface for Automatic DB Classes Lists
+ * Interface for Automatic DB Lists
  */
 interface IDB_LIST
 {
     public function FindAll();
-    public function GetList(bool $buildForeignMembers = true, bool $serialize = false, array $mask = array());
+    public function GetList(bool $serialize = false, array $mask = array());
 }
 
 // Add this function at the top of the file (after namespace and use statements)
@@ -53,7 +55,7 @@ if (!function_exists('mapSqlTypeToPhpType')) {
 /**
  * Build class tables
  */
-class BuildTableClasses extends \Tools\Database\_DB_TABLE
+class BuildTableClasses extends _DB_TABLE
 {
     /**
      * Constructor
@@ -66,7 +68,7 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
 	function __construct($classesPath, $tablesList, $tableDescriptors)
 	{
     // Create Folder if doesn't exist
-    if (!is_dir($classesPath)) \Tools\Helper\MKDIR($classesPath);
+    if (!is_dir($classesPath)) MKDIR($classesPath);
 
     // SELECT Tables
     $queryString = "";
@@ -97,9 +99,9 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
 	{
 		$db->GetFieldsFromDB();
 
-    if (\Tools\Helper\UNLINK($classesPath."/".$db->GetTableName().".php"))
+    if (UNLINK($classesPath."/".$db->GetTableName().".php"))
     {
-      if (\Tools\Helper\TOUCH($classesPath."/".$db->GetTableName().".php"))
+      if (TOUCH($classesPath."/".$db->GetTableName().".php"))
       {
         $classFile = fopen($classesPath."/".$db->GetTableName().".php","w+");
         fwrite($classFile,"<?php");
@@ -215,9 +217,9 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
           if ($field->HasForeignKey() && $field->GetForeignField())
           {
               fwrite($classFile, "\n");
-              fwrite($classFile, "\t\tif (\$this->buildForeignMembers && \$this->".$field->GetName()."!=\$".$field->GetName().") {");
+              fwrite($classFile, "\t\tif (\$this->".$field->GetName()." !== \$".$field->GetName().") {");
               fwrite($classFile, "\n");
-              fwrite($classFile, "\t\t\t\$this->".$field->GetName()."_OBJ = new ".$field->GetForeignTable()."(\$".$field->GetName().");");
+              fwrite($classFile, "\t\t\t\$this->".$field->GetName()."_OBJ = null;");
               fwrite($classFile, "\n");
               fwrite($classFile, "\t\t}");
           }
@@ -275,8 +277,18 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
                 fwrite($classFile, "\n");
                 fwrite($classFile, "\tprotected ?".$field2->GetForeignTable()." \$".$field2->GetName()."_OBJ = null;");
                 fwrite($classFile, "\n");
-                // Add public getter
-                fwrite($classFile, "\tpublic function get".ucfirst($field2->GetName())."_OBJ(): ?".$field2->GetForeignTable()." { return \$this->".$field2->GetName()."_OBJ; }\n");
+                // Add lazy loading getter
+                fwrite($classFile, "\tpublic function get".ucfirst($field2->GetName())."_OBJ(): ?".$field2->GetForeignTable()." {");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t\tif (\$this->".$field2->GetName()."_OBJ === null && \$this->".$field2->GetName()." !== null) {");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t\t\t\$this->".$field2->GetName()."_OBJ = new ".$field2->GetForeignTable()."(\$this->".$field2->GetName().", false);");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t\t}");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t\treturn \$this->".$field2->GetName()."_OBJ;");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t}\n");
               }
             }
             
@@ -297,9 +309,7 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
             fwrite($classFile, "\n");
             fwrite($classFile, "\t */");
             fwrite($classFile, "\n");
-            fwrite($classFile,"\tpublic function __construct(?int \$".$field->GetName()."=null, ?bool \$buildForeignMembers=true) {");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\$this->buildForeignMembers = \$buildForeignMembers;");
+            fwrite($classFile,"\tpublic function __construct(?int \$".$field->GetName()."=null) {");
             fwrite($classFile, "\n");
             fwrite($classFile,"\t\t// Get Elements from DB using Primary Key");
             fwrite($classFile, "\n");
@@ -311,32 +321,11 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
             fwrite($classFile, "\n");
             fwrite($classFile,"\t\t\t\$sql = \"SELECT ");
             $countFields = 0;
-            $foreignTablesJoin = "";
             foreach ($db->_Tablefields as $field2)
             {
               fwrite($classFile,($countFields++>0?",":"").$db->_Tablename.".".$field2->GetName());
-              if ($field2->HasForeignKey() && $field2->GetForeignField())
-              {
-                fwrite($classFile, "\".(\$this->buildForeignMembers?\"");
-                $addToConstruct.="\n\t\t\$this->".$field2->GetName()."_OBJ = new ".$field2->GetForeignTable()."(\$this->".$field2->GetName().");";
-                $addToSerialize.="\n\t\t\t\$vars[\"".$field2->GetName()."_OBJ\"]=\$this->".$field2->GetName()."_OBJ->Serialize(\$foreign, \$mask);";
-
-                $fTable = new \Tools\Database\_DB_TABLE($field2->GetForeignTable());
-                $foreignTablesJoin.=(!empty($foreignTablesJoin)?" ":"")."LEFT JOIN ".$fTable->GetTableName()." ".$field2->GetName()."_".$fTable->GetTableName();
-                $fTable->GetFieldsFromDB();
-                foreach($fTable->GetTableFields() as $field3)
-                {
-                  if ($field3->IsPrimaryKey())
-                  {
-                    $foreignTablesJoin.= " ON ".$db->GetTableName().".".$field2->GetName()."=".$field2->GetName()."_".$fTable->GetTableName().".".$field3->GetName();
-                  }
-
-                  fwrite($classFile,($countFields++>0?",":"").$field2->GetName()."_".$fTable->GetTableName().".".$field3->GetName()." AS ".$field2->GetName()."_".$field3->GetName());
-                }
-                fwrite($classFile,"\":\"\").\"");
-              }
             }
-            fwrite($classFile," FROM ".$db->_Tablename.(!empty($foreignTablesJoin)?" ":"")."\".(\$this->buildForeignMembers?\"$foreignTablesJoin\":\"\").\""." WHERE ".$db->GetTableName().".".$field->GetName()."=?\";");
+            fwrite($classFile," FROM ".$db->_Tablename." WHERE ".$db->GetTableName().".".$field->GetName()."=?\";");
             fwrite($classFile, "\n");
             fwrite($classFile,"\t\t\t\$rtn = LazyMePHP::DB_CONNECTION()->Query(\$sql, array(\$".$field->GetName()."));");
             fwrite($classFile, "\n");
@@ -344,91 +333,29 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
             fwrite($classFile, "\n");
             fwrite($classFile, "\t\t\t{");
             fwrite($classFile, "\n");
-            switch ($field->GetDataType())
-            {
-              case "bool":
-                fwrite($classFile, "\t\t\t\t\$this->".$field->GetName()."=(bool)\$".$field->GetName().";");
-              break;
-              case "float":
-                fwrite($classFile, "\t\t\t\t\$this->".$field->GetName()."=(float)\$".$field->GetName().";");
-              break;
-              case "int":
-                fwrite($classFile, "\t\t\t\t\$this->".$field->GetName()."=(int)\$".$field->GetName().";");
-              break;
-              case "string":
-              default:
-                fwrite($classFile, "\t\t\t\t\$this->".$field->GetName()."=(string)\$".$field->GetName().";");
-              break;
-            }
-            fwrite($classFile, "\n");
             foreach ($db->_Tablefields as $field2)
             {
-              if ($field!=$field2)
+              switch (mapSqlTypeToPhpType($field2->GetDataType()))
               {
-                if ($field2->HasForeignKey() && $field2->GetForeignField())
-                {
-
-                  $fTable = new \Tools\Database\_DB_TABLE($field2->GetForeignTable());
-                  $fTable->GetFieldsFromDB();
-                  fwrite($classFile, "\n");
-                  fwrite($classFile, "\t\t\t\tif (\$this->buildForeignMembers)");
-                  fwrite($classFile, "\n");
-                  fwrite($classFile, "\t\t\t\t{");
-                  fwrite($classFile, "\n");
-                  fwrite($classFile, "\t\t\t\t\t\$this->".$field2->GetName()."_OBJ = new ".$fTable->GetTableName()."();");
-                  fwrite($classFile, "\n");
-                  foreach($fTable->GetTableFields() as $field3)
-                  {
-                    switch (mapSqlTypeToPhpType($field3->GetDataType()))
-                    {
-                      case "bool":
-                        fwrite($classFile,"\t\t\t\t\t\$this->".$field2->GetName()."_OBJ->Set".ucfirst($field3->GetName())."((bool)\$row['".$field2->GetName()."_".$field3->GetName()."']);");
-                      break;
-                      case "float":
-                        fwrite($classFile,"\t\t\t\t\t\$this->".$field2->GetName()."_OBJ->Set".ucfirst($field3->GetName())."((float)\$row['".$field2->GetName()."_".$field3->GetName()."']);");
-                      break;
-                      case "int":
-                        fwrite($classFile,"\t\t\t\t\t\$this->".$field2->GetName()."_OBJ->Set".ucfirst($field3->GetName())."((int)\$row['".$field2->GetName()."_".$field3->GetName()."']);");
-                      break;
-                      case "string":
-                      default:
-                        fwrite($classFile,"\t\t\t\t\t\$this->".$field2->GetName()."_OBJ->Set".ucfirst($field3->GetName())."((string)\$row['".$field2->GetName()."_".$field3->GetName()."']);");
-                      break;
-                    }
-                    fwrite($classFile, "\n");
-                  }
-                  fwrite($classFile, "\t\t\t\t\t\$this->".$field2->GetName()."_OBJ->constructForeignKeysObjs();");
-
-                  fwrite($classFile, "\n");
-                  fwrite($classFile, "\t\t\t\t}");
-                  fwrite($classFile, "\n");
-                  fwrite($classFile, "\n");
-                }
-                switch (mapSqlTypeToPhpType($field2->GetDataType()))
-                {
-                  case "bool":
-                    fwrite($classFile,"\t\t\t\t\$this->".$field2->GetName()."=(bool)\$row['".$field2->GetName()."'];");
-                  break;
-                  case "float":
-                    fwrite($classFile,"\t\t\t\t\$this->".$field2->GetName()."=(float)\$row['".$field2->GetName()."'];");
-                  break;
-                  case "int":
-                    fwrite($classFile,"\t\t\t\t\$this->".$field2->GetName()."=(int)\$row['".$field2->GetName()."'];");
-                  break;
-                  case "string":
-                  default:
-                    fwrite($classFile,"\t\t\t\t\$this->".$field2->GetName()."=(string)\$row['".$field2->GetName()."'];");
-                  break;
-                }
-                fwrite($classFile, "\n");
+                case "bool":
+                  fwrite($classFile,"\t\t\t\t\$this->".$field2->GetName()."=(bool)\$row['".$field2->GetName()."'];");
+                break;
+                case "float":
+                  fwrite($classFile,"\t\t\t\t\$this->".$field2->GetName()."=(float)\$row['".$field2->GetName()."'];");
+                break;
+                case "int":
+                  fwrite($classFile,"\t\t\t\t\$this->".$field2->GetName()."=(int)\$row['".$field2->GetName()."'];");
+                break;
+                case "string":
+                default:
+                  fwrite($classFile,"\t\t\t\t\$this->".$field2->GetName()."=(string)\$row['".$field2->GetName()."'];");
+                break;
               }
+              fwrite($classFile, "\n");
             }
-            fwrite($classFile, "\n");
             fwrite($classFile, "\t\t\t}");
             fwrite($classFile, "\n");
-
             fwrite($classFile, "\t\t}");
-            // Close Construct
             fwrite($classFile, "\n");
             fwrite($classFile, "\t}");
 
@@ -523,7 +450,6 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
                 fwrite($classFile, "\n");
             }
             fwrite($classFile, "\t\t\t\t];");
-            fwrite($classFile, "\n");
             fwrite($classFile, "\n");
             fwrite($classFile,"\t\t\t\t\$method = \"U\";");
             fwrite($classFile, "\n");
@@ -693,9 +619,9 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
 		}
 		else echo "ERROR: Check your permissions to remove ".$classesPath."/".$db->_Tablename.".php\n";
 
-    if (\Tools\Helper\UNLINK($classesPath."/".$db->GetTableName()."_List.php"))
+    if (UNLINK($classesPath."/".$db->GetTableName()."_List.php"))
     {
-      if (\Tools\Helper\TOUCH($classesPath."/".$db->GetTableName()."_List.php"))
+      if (TOUCH($classesPath."/".$db->GetTableName()."_List.php"))
       {
         $classFile = fopen($classesPath."/".$db->GetTableName()."_List.php","w+");
         fwrite($classFile,"<?php");
@@ -803,32 +729,11 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile,"\t\t\$_sql = \"SELECT ");
         $countFields = 0;
-        $foreignTablesJoin = "";
         foreach ($db->_Tablefields as $field2)
         {
           fwrite($classFile,($countFields++>0?",":"").$db->_Tablename.".".$field2->GetName());
-          if ($field2->HasForeignKey() && $field2->GetForeignField())
-          {
-            fwrite($classFile, "\".(\$buildForeignMembers?\"");
-            $addToConstruct.="\n\t\t\$this->".$field2->GetName()."_OBJ = new ".$field2->GetForeignTable()."(\$this->".$field2->GetName().");";
-            $addToSerialize.="\n\t\t\$vars[\"".$field2->GetName()."_OBJ\"]=\$this->".$field2->GetName()."_OBJ->Serialize(\$foreign)";
-
-            $fTable = new \Tools\Database\_DB_TABLE($field2->GetForeignTable());
-            $foreignTablesJoin.=(!empty($foreignTablesJoin)?" ":"")."LEFT JOIN ".$fTable->GetTableName()." ".$field2->GetName()."_".$fTable->GetTableName();
-            $fTable->GetFieldsFromDB();
-            foreach($fTable->GetTableFields() as $field3)
-            {
-              if ($field3->IsPrimaryKey())
-              {
-                $foreignTablesJoin.= " ON ".$db->GetTableName().".".$field2->GetName()."=".$field2->GetName()."_".$fTable->GetTableName().".".$field3->GetName();
-              }
-
-              fwrite($classFile,($countFields++>0?",":"").$field2->GetName()."_".$fTable->GetTableName().".".$field3->GetName()." AS ".$field2->GetName()."_".$field3->GetName());
-            }
-            fwrite($classFile,"\":\"\").\"");
-          }
         }
-        fwrite($classFile," FROM ".$db->_Tablename.(empty($foreignTablesJoin)?" ":"")."\".(\$this->_searchNeedsForeignMembers || \$buildForeignMembers?\"$foreignTablesJoin\":\"\").\""." \".(!empty(\$this->_sql)?\"WHERE \".\$this->_sql:\"\");");
+        fwrite($classFile," FROM ".$db->_Tablename."\".(!empty(\$this->_sql)?\" WHERE \".\$this->_sql:\"\");");
 
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
@@ -849,8 +754,6 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\t *");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\t * @param bool \$buildForeignMembers");
-        fwrite($classFile, "\n");
         fwrite($classFile, "\t * @param bool \$serialize if the output should be Serialized");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t * @param array \$mask array to show/hide fields");
@@ -859,39 +762,18 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\t */");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\tpublic function GetList(bool \$buildForeignMembers=true, bool \$serialize=false, array \$mask=array()) : array {");
+        fwrite($classFile, "\tpublic function GetList(bool \$serialize=false, array \$mask=array()) : array {");
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t\t\$this->_list = array();");
         fwrite($classFile, "\n");
         fwrite($classFile,"\t\t\$this->_sql = \"SELECT ");
         $countFields = 0;
-        $foreignTablesJoin = "";
         foreach ($db->_Tablefields as $field2)
         {
           fwrite($classFile,($countFields++>0?",":"").$db->_Tablename.".".$field2->GetName());
-          if ($field2->HasForeignKey() && $field2->GetForeignField())
-          {
-            fwrite($classFile, "\".(\$buildForeignMembers?\"");
-            $addToConstruct.="\n\t\t\$this->".$field2->GetName()."_OBJ = new ".$field2->GetForeignTable()."(\$this->".$field2->GetName().");";
-            $addToSerialize.="\n\t\t\$vars[\"".$field2->GetName()."_OBJ\"]=\$this->".$field2->GetName()."_OBJ->Serialize(\$foreign)";
-
-            $fTable = new \Tools\Database\_DB_TABLE($field2->GetForeignTable());
-            $foreignTablesJoin.=(!empty($foreignTablesJoin)?" ":"")."LEFT JOIN ".$fTable->GetTableName()." ".$field2->GetName()."_".$fTable->GetTableName();
-            $fTable->GetFieldsFromDB();
-            foreach($fTable->GetTableFields() as $field3)
-            {
-              if ($field3->IsPrimaryKey())
-              {
-                $foreignTablesJoin.= " ON ".$db->GetTableName().".".$field2->GetName()."=".$field2->GetName()."_".$fTable->GetTableName().".".$field3->GetName();
-              }
-
-              fwrite($classFile,($countFields++>0?",":"").$field2->GetName()."_".$fTable->GetTableName().".".$field3->GetName()." AS ".$field2->GetName()."_".$field3->GetName());
-            }
-            fwrite($classFile,"\":\"\").\"");
-          }
         }
-        fwrite($classFile," FROM ".$db->_Tablename.(!empty($foreignTablesJoin)?" ":"")."\".(\$this->_searchNeedsForeignMembers || \$buildForeignMembers?\"$foreignTablesJoin\":\"\").\""." \".(!empty(\$this->_sql)?\"WHERE \".\$this->_sql:\"\");");
+        fwrite($classFile," FROM ".$db->_Tablename."\".(!empty(\$this->_sql)?\" WHERE \".\$this->_sql:\"\");");
 
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
@@ -901,51 +783,10 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\t\t{");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\t\t\t\t\$obj = new ".$db->_Tablename."();");
+        fwrite($classFile, "\t\t\t\$obj = new ".$db->_Tablename."(null);");
         fwrite($classFile, "\n");
         foreach ($db->_Tablefields as $field2)
         {
-          if ($field2->HasForeignKey() && $field2->GetForeignField())
-          {
-            $fTable = new \Tools\Database\_DB_TABLE($field2->GetForeignTable());
-            $fTable->GetFieldsFromDB();
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\t\tif (\$buildForeignMembers)");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\t\t{");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\t\t\t\$_OBJ = new ".$fTable->GetTableName()."();");
-            fwrite($classFile, "\n");
-
-            foreach($fTable->GetTableFields() as $field3)
-            {
-              switch (mapSqlTypeToPhpType($field3->GetDataType()))
-              {
-                case "bool":
-                  fwrite($classFile,"\t\t\t\t\t\$_OBJ->Set".ucfirst($field3->GetName())."((bool)\$row['".$field2->GetName()."_".$field3->GetName()."']);");
-                break;
-                case "float":
-                  fwrite($classFile,"\t\t\t\t\t\$_OBJ->Set".ucfirst($field3->GetName())."((float)\$row['".$field2->GetName()."_".$field3->GetName()."']);");
-                break;
-                case "int":
-                  fwrite($classFile,"\t\t\t\t\t\$_OBJ->Set".ucfirst($field3->GetName())."((int)\$row['".$field2->GetName()."_".$field3->GetName()."']);");
-                break;
-                case "string":
-                default:
-                  fwrite($classFile,"\t\t\t\t\t\$_OBJ->Set".ucfirst($field3->GetName())."((string)\$row['".$field2->GetName()."_".$field3->GetName()."']);");
-                break;
-              }
-              fwrite($classFile, "\n");
-            }
-            fwrite($classFile, "\t\t\t\t\t\$_OBJ->constructForeignKeysObjs();");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\t\t\t\$obj->".$field2->GetName()."_OBJ = \$_OBJ;");
-            fwrite($classFile, "\n");
-
-            fwrite($classFile, "\t\t\t\t}");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\n");
-          }
           switch (mapSqlTypeToPhpType($field2->GetDataType()))
           {
             case "bool":
@@ -965,7 +806,7 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
           fwrite($classFile, "\n");
         }
         fwrite($classFile, "\n");
-        fwrite($classFile, "\t\t\tif (\$serialize) \$this->_list[]=\$obj->Serialize(\$buildForeignMembers, \$mask);");
+        fwrite($classFile, "\t\t\tif (\$serialize) \$this->_list[]=\$obj->Serialize(false, \$mask);");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t\t\telse \$this->_list[]=\$obj;");
         fwrite($classFile, "\n");
@@ -988,19 +829,17 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\t *");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\t * @param bool \$buildForeignMembers");
-        fwrite($classFile, "\n");
         fwrite($classFile, "\t * @param array|null \$mask array to show/hide fields");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t * @return array");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t */");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\tpublic function Serialize(bool \$buildForeignMembers=true, ?array \$mask = null)");
+        fwrite($classFile, "\tpublic function Serialize(?array \$mask = null)");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t{");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\t\treturn \$this->GetList(\$buildForeignMembers, true, \$mask);");
+        fwrite($classFile, "\t\treturn \$this->GetList(true, \$mask);");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t}");
         fwrite($classFile, "\n");
@@ -1035,6 +874,7 @@ class BuildTableClasses extends \Tools\Database\_DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\t}");
         fwrite($classFile, "\n");
+
         fwrite($classFile, "\n");
         fwrite($classFile, "\t/**");
         fwrite($classFile, "\n");

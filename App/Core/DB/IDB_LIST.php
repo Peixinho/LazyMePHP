@@ -16,5 +16,5 @@ namespace Core\DB;
 interface IDB_LIST
 {
     public function FindAll() : void;
-    public function GetList(bool $buildForeignMembers = true, bool $serialize = false, array $mask = array()) : array;
+    public function GetList(bool $serialize = false, array $mask = array()) : array;
 }

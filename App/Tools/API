@@ -185,11 +185,11 @@ class BuildTableAPI
               fwrite($routerFile, "\n");
               fwrite($routerFile, "\ttry {");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "\t\t\$data = \$controller->index(false, (int)(\$request->get('page') ?? 1), (int)(\$request->get('itemsPerPage') ?? \Core\LazyMePHP::NRESULTS()));");
+              fwrite($routerFile, "\t\t\$data = \$controller->index((int)(\$request->get('page') ?? 1), (int)(\$request->get('itemsPerPage') ?? \Core\LazyMePHP::NRESULTS()));");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "\t\t// Apply mask to each item in the list");
               fwrite($routerFile, "\n");
-              fwrite($routerFile, "\t\t\$list = \$data['".$o->Table."']->GetList(false, true);");
+              fwrite($routerFile, "\t\t\$list = \$data['".$o->Table."']->GetList(true);");
               fwrite($routerFile, "\n");
               fwrite($routerFile, "\t\t\$maskedList = array_map(function(\$item) {");
               fwrite($routerFile, "\n");
