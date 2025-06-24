@@ -5,6 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'LazyMePHP')</title>
     <link rel="stylesheet" href="/css/css.css">
+    <style>
+        /* Layout styles for sticky footer */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        
+        main.container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+    </style>
     @yield('head')
 </head>
 <body>

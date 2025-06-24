@@ -129,8 +129,12 @@ class LazyMeCLI {
     }
 
     private function serve(): void {
-        echo "What port do you want to use for web server?";
+        require_once __DIR__ . '/App/Tools/ServerOutput';
         $port = $this->getPort(8080);
+        ServerOutput::printBanner('Web', '1.0.0');
+        $host = 'localhost';
+        $docRoot = __DIR__ . '/public';
+        ServerOutput::printServerInfo($host, $port, $docRoot);
         echo "Starting development server on port $port...\n";
         echo "Server will be available at: http://localhost:$port\n";
         echo "Press Ctrl+C to stop the server.\n";
@@ -148,8 +152,12 @@ class LazyMeCLI {
     }
 
     private function batman(): void {
-        echo "Starting Batman dashboard server...\n";
+        require_once __DIR__ . '/App/Tools/ServerOutput';
         $port = $this->getPort(8081);
+        ServerOutput::printBanner('Batman', '1.0.0');
+        $host = 'localhost';
+        ServerOutput::printBatmanInfo($host, $port);
+        echo "Starting Batman dashboard server...\n";
         echo "Batman dashboard will be available at: http://localhost:$port\n";
         echo "Press Ctrl+C to stop the server.\n";
         @exec("php -S 0.0.0.0:$port -t ./batman App/Tools/BatmanServer");

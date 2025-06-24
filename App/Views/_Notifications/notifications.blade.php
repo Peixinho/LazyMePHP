@@ -96,7 +96,7 @@ use Core\Helpers\NotificationHelper;
     transform: scale(1) translateX(0);
 }
 
-/* Notification types with enhanced styling */
+/* Notification types with enhanced styling - Light theme */
 .notification-success {
     background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
     color: #155724;
@@ -139,23 +139,27 @@ use Core\Helpers\NotificationHelper;
 
 /* Category badge - Enhanced styling */
 .notification-category {
-    position: absolute;
-    top: 16px;
-    right: 45px;
+    display: inline-block;
     background: rgba(255,255,255,0.15);
     color: inherit;
     padding: 3px 8px;
-    border-radius: 12px;
+    border-radius: 10px;
     font-size: 9px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.8px;
+    letter-spacing: 0.6px;
     backdrop-filter: blur(8px);
     border: 1px solid rgba(255,255,255,0.1);
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     transition: all 0.2s ease;
     opacity: 0.9;
-    z-index: 2;
+    margin-right: 8px;
+    vertical-align: middle;
+    line-height: 1;
+    max-width: 70px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .notification-category:hover {
@@ -209,23 +213,23 @@ use Core\Helpers\NotificationHelper;
 
 /* Close button styling */
 .notification-close {
-    position: absolute;
-    top: 16px;
-    right: 16px;
+    display: inline-block;
     background: rgba(255,255,255,0.2);
     border: none;
     border-radius: 50%;
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     cursor: pointer;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 14px;
+    font-size: 13px;
     color: inherit;
     transition: all 0.2s ease;
     backdrop-filter: blur(8px);
-    z-index: 3;
+    line-height: 1;
+    margin-left: 8px;
+    vertical-align: middle;
 }
 
 .notification-close:hover {
@@ -247,6 +251,32 @@ use Core\Helpers\NotificationHelper;
     transition: width linear;
 }
 
+/* Notification content styling */
+.notification-content {
+    display: inline;
+    word-wrap: break-word;
+    line-height: 1.4;
+}
+
+/* Notification header row */
+.notification-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.notification-header-left {
+    display: flex;
+    align-items: center;
+    flex: 1;
+}
+
+.notification-header-right {
+    display: flex;
+    align-items: center;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
     .notification-container {
@@ -261,27 +291,72 @@ use Core\Helpers\NotificationHelper;
         padding-right: 45px;
     }
     
+    .notification-content {
+        padding-right: 70px;
+    }
+    
     .notification-category {
-        font-size: 8px;
-        padding: 2px 6px;
+        font-size: 7px;
+        padding: 1px 4px;
+        max-width: 50px;
     }
 }
 
-/* Dark mode support */
+/* Dark mode support - Improved */
 @media (prefers-color-scheme: dark) {
     .notification {
-        background: rgba(30, 30, 30, 0.95);
         border-color: rgba(255,255,255,0.1);
-        color: #ffffff;
+    }
+    
+    /* Dark theme notification types */
+    .notification-success {
+        background: linear-gradient(135deg, #1e4d2b 0%, #2d5a3d 100%);
+        color: #d4edda;
+        border-left-color: #28a745;
+    }
+    
+    .notification-error {
+        background: linear-gradient(135deg, #4d1e1e 0%, #5a2d2d 100%);
+        color: #f8d7da;
+        border-left-color: #dc3545;
+    }
+    
+    .notification-warning {
+        background: linear-gradient(135deg, #4d3e1e 0%, #5a4d2d 100%);
+        color: #fff3cd;
+        border-left-color: #ffc107;
+    }
+    
+    .notification-info {
+        background: linear-gradient(135deg, #1e4d5a 0%, #2d5a6b 100%);
+        color: #d1ecf1;
+        border-left-color: #17a2b8;
+    }
+    
+    .notification-debug {
+        background: linear-gradient(135deg, #3d3d3d 0%, #4a4a4a 100%);
+        color: #e2e3e5;
+        border-left-color: #6c757d;
+    }
+    
+    .notification-critical {
+        background: linear-gradient(135deg, #4d1e1e 0%, #5a2d2d 100%);
+        color: #f8d7da;
+        border-left-color: #dc3545;
     }
     
     .notification-close {
         background: rgba(255,255,255,0.1);
-        color: #ffffff;
+        color: inherit;
     }
     
     .notification-close:hover {
         background: rgba(255,255,255,0.2);
+    }
+    
+    .notification-category {
+        background: rgba(255,255,255,0.1);
+        border-color: rgba(255,255,255,0.2);
     }
 }
 </style>
@@ -294,9 +369,15 @@ use Core\Helpers\NotificationHelper;
 <!-- Notification Template (hidden) -->
 <template id="notification-template">
     <div class="notification" data-id="" data-category="" data-priority="">
-        <div class="notification-category"></div>
-        <div class="notification-content"></div>
-        <button class="notification-close" onclick="LazyMePHP.closeNotification(this.parentElement.dataset.id)">×</button>
+        <div class="notification-header">
+            <div class="notification-header-left">
+                <div class="notification-category"></div>
+                <div class="notification-content"></div>
+            </div>
+            <div class="notification-header-right">
+                <button class="notification-close" onclick="LazyMePHP.closeNotification(this.parentElement.parentElement.dataset.id)">×</button>
+            </div>
+        </div>
         <div class="notification-progress"></div>
     </div>
 </template>

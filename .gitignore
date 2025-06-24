@@ -1,52 +1,131 @@
+# =============================================================================
+# ENVIRONMENT AND CONFIGURATION
+# =============================================================================
 .env
+.env.*
+!.env.example
+
+# =============================================================================
+# GENERATED APPLICATION FILES
+# =============================================================================
+
+# Core application directories (generated)
 App/Models
 App/Controllers
 App/Routes
-App/Views/*
-!App/Views/_Layouts
-!App/Views/_Notifications
-!App/Views/_Index
-!App/Views/notifications.blade.php
 App/Api
+vendor
+composer.lock
+
+# Views directory (generated, with specific exceptions)
+App/Views
+App/Views/_compiled
+
+# =============================================================================
+# EXCEPTIONS - FILES THAT SHOULD BE TRACKED
+# =============================================================================
+
+# Core controllers (required for framework)
 !App/Controllers/Default.Controller.php
 !App/Controllers/PageNotFound.Controller.php
+
+# Core routes (required for routing)
 !App/Routes/Routes.php
-!App/Views/_compiled
+
+# Core view layouts and components (required for UI)
+!App/Views/_Layouts
 !App/Views/_Default
 !App/Views/_Error
-!App/Api/CsrfToken.php
-App/Ext/vendor
-App/Ext/composer.lock
+!App/Views/_Index
+!App/Views/_Notifications
+
+# Tools and descriptors
 tools/.descriptors
 
-# Temporary and cache files
-*.tmp
+# =============================================================================
+# LOGS AND DEBUGGING
+# =============================================================================
+logs/
 *.log
+webserver_debug.log
+batman_server_errors.log
+batman_api_debug.log
+php_errors.log
+
+# =============================================================================
+# CACHE AND TEMPORARY FILES
+# =============================================================================
+*.tmp
 *.cache
 .phpunit.result.cache
-webserver_debug.log
+.phpunit.cache/
+.php-cs-fixer.cache
 
-# System files
-.DS_Store
-Thumbs.db
-
-# Test and debug files
+# =============================================================================
+# TESTING
+# =============================================================================
+.phpunit.cache/
+coverage/
+.nyc_output/
 test-*.php
 debug-*.php
 test-*.js
 setup_*.php
 regenerate_*.php
 
-# Cookies and session files
+# =============================================================================
+# DEPENDENCIES
+# =============================================================================
+vendor/
+composer.phar
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# =============================================================================
+# BUILD AND DEPLOYMENT
+# =============================================================================
+build/
+dist/
+*.tar.gz
+*.zip
+
+# =============================================================================
+# SESSIONS AND COOKIES
+# =============================================================================
 cookies.txt
 *.session
+sessions/
 
-# IDE files
+# =============================================================================
+# BACKUP FILES
+# =============================================================================
+*.bak
+*.backup
+*~
+
+# =============================================================================
+# IDE AND EDITOR FILES
+# =============================================================================
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
+.project
+.settings/
+.classpath
+*.sublime-project
+*.sublime-workspace
 
-# Composer
-composer.phar
+# =============================================================================
+# OPERATING SYSTEM FILES
+# =============================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini

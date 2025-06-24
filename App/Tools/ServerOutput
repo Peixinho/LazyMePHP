@@ -1,0 +1,278 @@
+<?php
+
+/**
+ * LazyMePHP Server Output Utility
+ * @copyright This file is part of the LazyMePHP developed by Duarte Peixinho
+ * @author Duarte Peixinho
+ */
+
+class ServerOutput {
+    
+    // ANSI Color codes
+    private static $colors = [
+        'reset' => "\033[0m",
+        'bold' => "\033[1m",
+        'dim' => "\033[2m",
+        'red' => "\033[31m",
+        'green' => "\033[32m",
+        'yellow' => "\033[33m",
+        'blue' => "\033[34m",
+        'magenta' => "\033[35m",
+        'cyan' => "\033[36m",
+        'white' => "\033[37m",
+        'bg_red' => "\033[41m",
+        'bg_green' => "\033[42m",
+        'bg_yellow' => "\033[43m",
+        'bg_blue' => "\033[44m",
+        'bg_magenta' => "\033[45m",
+        'bg_cyan' => "\033[46m"
+    ];
+    
+    /**
+     * Check if terminal supports colors
+     */
+    private static function supportsColors(): bool {
+        return function_exists('posix_isatty') && posix_isatty(STDOUT);
+    }
+    
+    /**
+     * Colorize text
+     */
+    private static function colorize(string $text, string $color): string {
+        if (!self::supportsColors()) {
+            return $text;
+        }
+        return self::$colors[$color] . $text . self::$colors['reset'];
+    }
+    
+    /**
+     * Print server banner
+     */
+    public static function printBanner(string $serverName, string $version = '1.0.0'): void {
+        $width = 62;
+        $borderTop    = '╔' . str_repeat('═', $width - 2) . '╗';
+        $borderBottom = '╚' . str_repeat('═', $width - 2) . '╝';
+        $emptyLine    = '║' . str_repeat(' ', $width - 2) . '║';
+        $lines = [
+            self::centerText(self::colorize('LAZY MEPHP', 'cyan') . ' FRAMEWORK', $width - 2),
+            '',
+            self::centerText(self::colorize($serverName, 'yellow') . ' Server v' . self::colorize($version, 'green'), $width - 2),
+            self::centerText(self::colorize('Developed by Duarte Peixinho', 'dim'), $width - 2),
+        ];
+        echo $borderTop . "\n";
+        foreach ($lines as $line) {
+            if ($line === '') {
+                echo $emptyLine . "\n";
+            } else {
+                echo '║' . $line . '║' . "\n";
+            }
+        }
+        echo $borderBottom . "\n";
+    }
+    
+    /**
+     * Center and pad text for banner
+     */
+    private static function centerText(string $text, int $width): string {
+        // Remove color codes for length calculation
+        $plain = preg_replace('/\033\[[0-9;]*m/', '', $text);
+        $pad = $width - mb_strlen($plain);
+        $left = (int) floor($pad / 2);
+        $right = $pad - $left;
+        return str_repeat(' ', $left) . $text . str_repeat(' ', $right);
+    }
+    
+    /**
+     * Print server status
+     */
+    public static function printStatus(string $status, string $message, string $type = 'info'): void {
+        $icons = [
+            'success' => '✓',
+            'error' => '✗',
+            'warning' => '⚠',
+            'info' => 'ℹ',
+            'debug' => '🔍'
+        ];
+        
+        $colors = [
+            'success' => 'green',
+            'error' => 'red',
+            'warning' => 'yellow',
+            'info' => 'blue',
+            'debug' => 'cyan'
+        ];
+        
+        $icon = $icons[$type] ?? 'ℹ';
+        $color = $colors[$type] ?? 'white';
+        
+        $timestamp = date('H:i:s');
+        $output = sprintf(
+            "[%s] %s %s: %s\n",
+            self::colorize($timestamp, 'dim'),
+            self::colorize($icon, $color),
+            self::colorize($status, 'bold'),
+            $message
+        );
+        
+        echo $output;
+    }
+    
+    /**
+     * Print request log
+     */
+    public static function printRequest(string $method, string $uri, int $statusCode = 200, float $duration = 0): void {
+        $statusColors = [
+            200 => 'green',
+            201 => 'green',
+            204 => 'green',
+            301 => 'yellow',
+            302 => 'yellow',
+            304 => 'cyan',
+            400 => 'yellow',
+            401 => 'red',
+            403 => 'red',
+            404 => 'red',
+            500 => 'red',
+            502 => 'red',
+            503 => 'red'
+        ];
+        
+        $color = $statusColors[$statusCode] ?? 'white';
+        $durationStr = $duration > 0 ? sprintf(' (%.2fms)', $duration * 1000) : '';
+        
+        $output = sprintf(
+            "[%s] %s %s %s%s\n",
+            self::colorize(date('H:i:s'), 'dim'),
+            self::colorize($method, 'bold'),
+            self::colorize($uri, 'cyan'),
+            self::colorize($statusCode, $color),
+            self::colorize($durationStr, 'dim')
+        );
+        
+        echo $output;
+    }
+    
+    /**
+     * Print server info
+     */
+    public static function printServerInfo(string $host, int $port, string $documentRoot): void {
+        $info = "
+" . self::colorize("🚀 Server Information:", 'bold') . "
+  • " . self::colorize("Host:", 'cyan') . " $host
+  • " . self::colorize("Port:", 'cyan') . " $port
+  • " . self::colorize("Document Root:", 'cyan') . " $documentRoot
+  • " . self::colorize("PHP Version:", 'cyan') . " " . PHP_VERSION . "
+  • " . self::colorize("Server Time:", 'cyan') . " " . date('Y-m-d H:i:s') . "
+
+" . self::colorize("📋 Available Endpoints:", 'bold') . "
+  • " . self::colorize("Main Application:", 'green') . " http://$host:$port/
+  • " . self::colorize("API Endpoints:", 'green') . " http://$host:$port/api/
+  • " . self::colorize("Documentation:", 'green') . " http://$host:$port/docs/ (if available)
+
+" . self::colorize("⚡ Press Ctrl+C to stop the server", 'yellow') . "
+
+";
+        echo $info;
+    }
+    
+    /**
+     * Print Batman server info
+     */
+    public static function printBatmanInfo(string $host, int $port): void {
+        $info = "
+" . self::colorize("🦇 Batman Dashboard Information:", 'bold') . "
+  • " . self::colorize("Host:", 'cyan') . " $host
+  • " . self::colorize("Port:", 'cyan') . " $port
+  • " . self::colorize("Dashboard URL:", 'cyan') . " http://$host:$port/
+  • " . self::colorize("Login URL:", 'cyan') . " http://$host:$port/login.php
+  • " . self::colorize("API Client:", 'cyan') . " http://$host:$port/api-client.php
+  • " . self::colorize("Test Suite:", 'cyan') . " http://$host:$port/test.php
+
+" . self::colorize("🔧 Available Tools:", 'bold') . "
+  • " . self::colorize("Error Monitoring:", 'green') . " Real-time error tracking
+  • " . self::colorize("Performance Analysis:", 'green') . " Request timing and optimization
+  • " . self::colorize("API Testing:", 'green') . " Built-in API client and testing
+  • " . self::colorize("System Diagnostics:", 'green') . " Database, security, and system tests
+
+" . self::colorize("⚡ Press Ctrl+C to stop the server", 'yellow') . "
+
+";
+        echo $info;
+    }
+    
+    /**
+     * Print error message
+     */
+    public static function printError(string $message, string $context = ''): void {
+        $output = self::colorize("ERROR", 'red') . ": $message";
+        if ($context) {
+            $output .= " (" . self::colorize($context, 'dim') . ")";
+        }
+        echo $output . "\n";
+    }
+    
+    /**
+     * Print success message
+     */
+    public static function printSuccess(string $message): void {
+        echo self::colorize("SUCCESS", 'green') . ": $message\n";
+    }
+    
+    /**
+     * Print warning message
+     */
+    public static function printWarning(string $message): void {
+        echo self::colorize("WARNING", 'yellow') . ": $message\n";
+    }
+    
+    /**
+     * Print info message
+     */
+    public static function printInfo(string $message): void {
+        echo self::colorize("INFO", 'blue') . ": $message\n";
+    }
+    
+    /**
+     * Print debug message
+     */
+    public static function printDebug(string $message): void {
+        echo self::colorize("DEBUG", 'cyan') . ": $message\n";
+    }
+    
+    /**
+     * Print separator line
+     */
+    public static function printSeparator(): void {
+        echo str_repeat("─", 80) . "\n";
+    }
+    
+    /**
+     * Print table header
+     */
+    public static function printTableHeader(array $headers): void {
+        $separator = str_repeat("─", 80) . "\n";
+        $header = "│ " . implode(" │ ", array_map(function($h) {
+            return str_pad($h, 20);
+        }, $headers)) . " │\n";
+        
+        echo $separator . $header . $separator;
+    }
+    
+    /**
+     * Print table row
+     */
+    public static function printTableRow(array $data): void {
+        $row = "│ " . implode(" │ ", array_map(function($d) {
+            return str_pad($d, 20);
+        }, $data)) . " │\n";
+        
+        echo $row;
+    }
+    
+    /**
+     * Print table footer
+     */
+    public static function printTableFooter(): void {
+        echo str_repeat("─", 80) . "\n";
+    }
+} 

@@ -1,46 +1,24 @@
-/* Navbar Styling */
-.navbar {
-    background-color: #212529;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    padding: 0;
-    position: sticky;
-    top: 0;
-    z-index: 1000;
+/* Reset and base styles */
+* {
+    box-sizing: border-box;
 }
 
-.nav-container {
+body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    min-height: 100vh;
+}
+
+/* Container for main content */
+.container {
     max-width: 1200px;
     margin: 0 auto;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0;
-}
-
-.nav-brand {
-    display: flex;
-    align-items: center;
-    margin-left: 0;
-    padding-left: 0;
-}
-
-.nav-brand a {
-    color: #ffffff;
-    text-decoration: none;
-    font-size: 1.2rem;
-    font-weight: bold;
-    padding: 0.75rem 0;
-    transition: color 0.2s ease-in-out;
-}
-
-.nav-brand a:hover {
-    color: #007bff;
-}
-
-.nav-logo {
-    height: 40px;
-    width: auto;
-    display: block;
+    padding: 2rem 1rem;
+    width: 100%;
 }
 
 .is-valid {
@@ -128,105 +106,6 @@ checkbox {
   border-radius: 0.25rem;
   transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
-.nav-menu {
-    --menu-bg: #212529;
-    --menu-text: #ffffff;
-    --menu-hover-text: #e9ecef;
-    --menu-active-text: #007bff;
-    --menu-disabled-text: #6c757d;
-    --menu-font-size: 16px;
-    --menu-padding: 12px 16px;
-    --menu-underline: #007bff;
-
-    display: flex;
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    background-color: var(--menu-bg);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    font-size: var(--menu-font-size);
-    flex-wrap: wrap;
-    justify-content: center;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* Menu item */
-.nav-menu li {
-    display: inline-flex;
-    align-items: center;
-    position: relative;
-}
-
-/* Links */
-.nav-menu li a {
-    text-decoration: none;
-    color: var(--menu-text);
-    padding: var(--menu-padding);
-    transition: color 0.2s ease-in-out;
-}
-
-/* Hover effect */
-.nav-menu li a:hover {
-    color: var(--menu-hover-text);
-}
-
-/* Focus state for accessibility */
-.nav-menu li a:focus {
-    outline: 2px solid var(--menu-active-text);
-    outline-offset: 2px;
-}
-
-/* Active/current page */
-.nav-menu li.active a {
-    color: var(--menu-active-text);
-    font-weight: 600;
-}
-
-.nav-menu li.active a::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 16px;
-    right: 16px;
-    height: 3px;
-    background-color: var(--menu-underline);
-}
-
-/* Disabled state */
-.nav-menu li.disabled span {
-    color: var(--menu-disabled-text);
-    padding: var(--menu-padding);
-    opacity: 0.5;
-    cursor: not-allowed;
-    pointer-events: none;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    user-select: none;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .nav-menu {
-        flex-direction: column;
-        align-items: center;
-        --menu-padding: 10px 12px;
-        --menu-font-size: 14px;
-    }
-    .nav-menu li {
-        width: 100%;
-        justify-content: center;
-    }
-    .nav-menu li a,
-    .nav-menu li.disabled span {
-        width: 100%;
-        text-align: center;
-    }
-    .nav-menu li.active a::after {
-        left: 12px;
-        right: 12px;
-    }
-}
-
 
 table {
   border-collapse: collapse;
@@ -250,133 +129,96 @@ th {
     --pagination-disabled-bg: #f1f3f5;
     --pagination-disabled-text: #6c757d;
     --pagination-border: #dee2e6;
-    --pagination-radius: 4px;
-    --pagination-padding: 6px 0px;
-    --pagination-font-size: 12px;
+    --pagination-border-radius: 0.375rem;
+    --pagination-padding: 0.5rem 0.75rem;
+    --pagination-font-size: 0.875rem;
+    --pagination-line-height: 1.25;
 
     display: flex;
-    justify-content: center;
-    align-items: center;
     list-style: none;
-    margin: 20px 0;
+    margin: 2rem 0;
     padding: 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    font-size: var(--pagination-font-size);
-    gap: 6px;
+    justify-content: center;
+    align-items: center;
+    gap: 0.25rem;
+    flex-wrap: wrap;
 }
 
-/* Base styling for spans (wrapping buttons or text) */
 .pagination span {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 28px; /* Uniform width for all buttons */
-    text-align: center;
-}
-
-/* Styling for navigable buttons (Previous, Next, Pages) */
-.pagination span a {
-    text-decoration: none;
+    min-width: 2.5rem;
+    height: 2.5rem;
+    padding: var(--pagination-padding);
+    font-size: var(--pagination-font-size);
+    line-height: var(--pagination-line-height);
     color: var(--pagination-text);
     background-color: var(--pagination-bg);
     border: 1px solid var(--pagination-border);
-    border-radius: var(--pagination-radius);
-    padding: var(--pagination-padding);
-    transition: background-color 0.2s, color 0.2s, border-color 0.2s;
-    cursor: pointer;
+    border-radius: var(--pagination-border-radius);
+    transition: all 0.15s ease-in-out;
+    text-decoration: none;
+}
+
+.pagination span a {
+    color: inherit;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 100%;
+    height: 100%;
+    transition: all 0.15s ease-in-out;
 }
 
-/* Hover effect for navigable buttons */
 .pagination span a:hover {
-    background-color: var(--pagination-hover-bg);
     color: var(--pagination-text);
+    background-color: var(--pagination-hover-bg);
+    border-color: var(--pagination-border);
+    text-decoration: none;
 }
 
-/* Focus state for accessibility */
 .pagination span a:focus {
-    outline: 2px solid var(--pagination-active-bg);
+    outline: 2px solid #007bff;
     outline-offset: 2px;
+    z-index: 1;
 }
 
-/* Active page (current page) */
 .pagination span.active {
-    background-color: var(--pagination-active-bg);
     color: var(--pagination-active-text);
-    border: 1px solid var(--pagination-active-bg);
-    border-radius: var(--pagination-radius);
-    padding: var(--pagination-padding);
+    background-color: var(--pagination-active-bg);
+    border-color: var(--pagination-active-bg);
     font-weight: 600;
 }
 
-/* Disabled state (Previous/Next when unavailable) */
 .pagination span.disabled {
     color: var(--pagination-disabled-text);
     background-color: var(--pagination-disabled-bg);
-    border: 1px solid var(--pagination-border);
-    border-radius: var(--pagination-radius);
-    padding: var(--pagination-padding);
-    opacity: 0.5;
+    border-color: var(--pagination-border);
     cursor: not-allowed;
     pointer-events: none;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    user-select: none;
+    opacity: 0.6;
 }
 
-/* Responsive adjustments */
+.pagination span.disabled a {
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
 @media (max-width: 768px) {
     .pagination {
-        flex-wrap: wrap;
-        gap: 4px;
-        --pagination-padding: 5px 7px;
-        --pagination-font-size: 11px;
+        gap: 0.2rem;
+        margin: 1.5rem 0;
     }
+    
     .pagination span {
-        min-width: 24px; /* Uniform width for all buttons */
+        min-width: 2.25rem;
+        height: 2.25rem;
+        font-size: 0.8rem;
     }
+    
     .pagination span {
-        padding: 6px 10px;
+        padding: 0.4rem 0.6rem;
     }
-}
-
-/* Unified Footer Styling */
-.footer {
-    background-color: #ffffff;
-    border-top: 1px solid #e2e8f0;
-    padding: 20px 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    font-size: 0.9rem;
-    color: #718096;
-    margin-top: 40px;
-}
-.footer-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 20px;
-}
-.footer-content {
-    text-align: left;
-}
-.footer-links ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    gap: 25px;
-    flex-wrap: wrap;
-}
-.footer-links a {
-    color: #718096;
-    text-decoration: none;
-    font-weight: 500;
-    transition: color 0.2s ease;
-}
-.footer-links a:hover {
-    color: #2b6cb0;
 }
