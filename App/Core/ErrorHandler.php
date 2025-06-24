@@ -570,4 +570,120 @@ class ErrorHandler
         header("Location: $redirectUrl");
         exit;
     }
+
+    /**
+     * Handle any HTTP status code with appropriate error handling
+     */
+    public static function handleWebHttpError(int $statusCode, string $message = '', ?\Throwable $exception = null, string $url = ''): void {
+        $errorId = self::generateErrorId();
+        $url = $url ?: $_SERVER['REQUEST_URI'] ?? 'unknown';
+        
+        // Map status codes to error types
+        $errorTypes = [
+            400 => ['code' => 'BAD_REQUEST', 'title' => 'Bad Request'],
+            401 => ['code' => 'UNAUTHORIZED', 'title' => 'Unauthorized'],
+            403 => ['code' => 'FORBIDDEN', 'title' => 'Forbidden'],
+            404 => ['code' => 'NOT_FOUND', 'title' => 'Not Found'],
+            405 => ['code' => 'BAD_REQUEST', 'title' => 'Method Not Allowed'],
+            408 => ['code' => 'TIMEOUT', 'title' => 'Request Timeout'],
+            409 => ['code' => 'CONFLICT', 'title' => 'Conflict'],
+            422 => ['code' => 'VALIDATION_ERROR', 'title' => 'Validation Error'],
+            429 => ['code' => 'RATE_LIMIT_EXCEEDED', 'title' => 'Too Many Requests'],
+            500 => ['code' => 'INTERNAL_ERROR', 'title' => 'Internal Server Error'],
+            502 => ['code' => 'SERVICE_UNAVAILABLE', 'title' => 'Bad Gateway'],
+            503 => ['code' => 'SERVICE_UNAVAILABLE', 'title' => 'Service Unavailable'],
+            504 => ['code' => 'TIMEOUT', 'title' => 'Gateway Timeout']
+        ];
+        
+        $errorType = $errorTypes[$statusCode] ?? ['code' => 'INTERNAL_ERROR', 'title' => 'Error'];
+        $errorCode = $errorType['code'];
+        $title = $errorType['title'];
+        
+        // Use provided message or default message
+        if (empty($message)) {
+            $message = self::ERROR_MESSAGES[$errorCode] ?? 'An error occurred';
+        }
+        
+        // Log the error to database
+        self::logErrorToDatabase($message, $errorCode, $statusCode, $exception, 'WEBPAGE', null, $errorId);
+        
+        // Skip exit in test environment
+        if ((php_sapi_name() === 'cli' || defined('STDIN')) && self::isTestEnvironment()) {
+            return;
+        }
+        
+        http_response_code($statusCode);
+        
+        // Use ErrorPage for consistent error display
+        $errorData = [
+            'error_id' => $errorId,
+            'type' => "$statusCode - $title",
+            'message' => $message,
+            'file' => $exception ? $exception->getFile() : $url,
+            'line' => $exception ? $exception->getLine() : '',
+            'trace' => $exception ? $exception->getTraceAsString() : ''
+        ];
+        
+        echo \Core\Helpers\ErrorPage::generate($errorData);
+        exit;
+    }
+
+    /**
+     * Intelligently handle any exception with appropriate error handling
+     */
+    public static function handleWebException(\Throwable $exception, string $url = ''): void {
+        $url = $url ?: $_SERVER['REQUEST_URI'] ?? 'unknown';
+        
+        // Handle different types of exceptions
+        if ($exception instanceof \Pecee\SimpleRouter\Exceptions\NotFoundHttpException) {
+            self::handleWebNotFoundError($url);
+        } elseif ($exception instanceof \Pecee\SimpleRouter\Exceptions\ClassNotFoundHttpException) {
+            self::handleWebServerError($exception);
+        } elseif ($exception instanceof \PDOException) {
+            self::handleDatabaseError($exception);
+        } elseif ($exception instanceof \InvalidArgumentException) {
+            self::handleWebHttpError(400, 'Invalid argument: ' . $exception->getMessage(), $exception, $url);
+        } elseif ($exception instanceof \RuntimeException) {
+            self::handleWebHttpError(500, 'Runtime error: ' . $exception->getMessage(), $exception, $url);
+        } elseif ($exception instanceof \LogicException) {
+            self::handleWebHttpError(500, 'Logic error: ' . $exception->getMessage(), $exception, $url);
+        } elseif ($exception instanceof \ErrorException) {
+            // Handle PHP errors converted to exceptions
+            $severity = $exception->getSeverity();
+            if ($severity === E_WARNING && strpos($exception->getMessage(), 'include') !== false) {
+                self::handleWebNotFoundError($exception->getFile());
+            } elseif ($severity === E_ERROR || $severity === E_PARSE || $severity === E_CORE_ERROR) {
+                self::handleWebServerError($exception);
+            } else {
+                self::handleWebHttpError(500, 'PHP Error: ' . $exception->getMessage(), $exception, $url);
+            }
+        } elseif ($exception instanceof \TypeError) {
+            self::handleWebHttpError(500, 'Type error: ' . $exception->getMessage(), $exception, $url);
+        } elseif ($exception instanceof \ParseError) {
+            self::handleWebServerError($exception);
+        } elseif ($exception instanceof \DivisionByZeroError) {
+            self::handleWebHttpError(500, 'Division by zero error', $exception, $url);
+        } else {
+            // Check exception message for common patterns
+            $message = $exception->getMessage();
+            if (stripos($message, 'validation') !== false) {
+                self::handleWebHttpError(422, 'Validation Error: ' . $message, $exception, $url);
+            } elseif (stripos($message, 'unauthorized') !== false || stripos($message, 'authentication') !== false) {
+                self::handleWebHttpError(401, 'Authentication Error: ' . $message, $exception, $url);
+            } elseif (stripos($message, 'forbidden') !== false || stripos($message, 'permission') !== false) {
+                self::handleWebHttpError(403, 'Permission Denied: ' . $message, $exception, $url);
+            } elseif (stripos($message, 'not found') !== false || stripos($message, 'missing') !== false) {
+                self::handleWebHttpError(404, 'Resource Not Found: ' . $message, $exception, $url);
+            } elseif (stripos($message, 'timeout') !== false) {
+                self::handleWebHttpError(408, 'Request Timeout: ' . $message, $exception, $url);
+            } elseif (stripos($message, 'memory') !== false) {
+                self::handleWebHttpError(500, 'Memory Error: ' . $message, $exception, $url);
+            } elseif (stripos($message, 'database') !== false || stripos($message, 'sql') !== false) {
+                self::handleDatabaseError($exception);
+            } else {
+                // Default to server error
+                self::handleWebServerError($exception);
+            }
+        }
+    }
 } 

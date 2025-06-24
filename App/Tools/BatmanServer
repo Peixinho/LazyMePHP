@@ -33,6 +33,10 @@ function logDebug($message) {
     if (isset($_ENV['BATMAN_DEBUG']) && $_ENV['BATMAN_DEBUG'] === 'true') {
         error_log("[BatmanServer] " . $message);
     }
+    // Also log if APP_DEBUG is enabled
+    if (isset($_ENV['APP_DEBUG']) && $_ENV['APP_DEBUG'] === 'true') {
+        error_log("[BatmanServer] " . $message);
+    }
 }
 
 // Performance monitoring function
@@ -80,12 +84,16 @@ function handleRoute($route, $filePath, $errorMessage = null) {
     
     // Check if the request URI matches the route (with or without query parameters)
     $requestUri = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
+    
+    // DEBUG: Add logging to see what's being compared
+    logDebug("handleRoute: Comparing '$requestUri' to '$route'");
+    
     if ($requestUri === $route) {
         $fullPath = $batmanDir . $filePath;
         logDebug("Handling route: $route -> $fullPath (exists: " . (file_exists($fullPath) ? 'YES' : 'NO') . ")");
         
         // Special debugging for get-error-details.php
-        if ($route === '/get-error-details.php') {
+        if ($route === '/get-error-details.php' || $route === '/batman/get-error-details.php') {
             logDebug("get-error-details.php request - URI: " . $_SERVER["REQUEST_URI"]);
             logDebug("get-error-details.php request - Method: " . $_SERVER["REQUEST_METHOD"]);
             logDebug("get-error-details.php request - GET params: " . json_encode($_GET));
@@ -117,6 +125,9 @@ function handleRoute($route, $filePath, $errorMessage = null) {
             }
             exit;
         }
+    } else {
+        // DEBUG: Log when route doesn't match
+        logDebug("handleRoute: '$requestUri' does NOT match '$route'");
     }
 }
 
@@ -669,6 +680,18 @@ if (substr($_SERVER["REQUEST_URI"], 0, 4) == "/api") {
 
 // Handle specific routes with enhanced mapping
 $routes = [
+    '/batman/get-changes.php' => '/get-changes.php',
+    '/batman/get-error-details.php' => '/get-error-details.php',
+    '/batman/errors.php' => '/errors.php',
+    '/batman/login.php' => '/login.php',
+    '/batman/logout.php' => '/logout.php',
+    '/batman/debug.php' => '/debug.php',
+    '/batman/test.php' => '/test.php',
+    '/batman/api-client.php' => '/api-client.php',
+    '/batman/css.css' => '/css.css',
+    '/batman/js/' => '/js/',
+    '/batman/img/' => '/img/',
+    // Also support routes without /batman/ prefix for direct access
     '/get-changes.php' => '/get-changes.php',
     '/get-error-details.php' => '/get-error-details.php',
     '/errors.php' => '/errors.php',
@@ -682,8 +705,13 @@ $routes = [
     '/img/' => '/img/'
 ];
 
+logDebug("Processing routes array with " . count($routes) . " routes");
+logDebug("Current REQUEST_URI: " . $_SERVER['REQUEST_URI']);
+logDebug("Parsed REQUEST_URI path: " . parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
+
 foreach ($routes as $route => $filePath) {
-    if ($route === '/get-error-details.php') {
+    logDebug("Checking route: '$route' -> '$filePath'");
+    if ($route === '/get-error-details.php' || $route === '/batman/get-error-details.php') {
         logDebug("Handling get-error-details.php route");
     }
     handleRoute($route, $filePath);
@@ -759,6 +787,8 @@ if (is_file($requestedPath)) {
 // Default to index.php for all other requests
 $defaultPhp = $batmanDir . '/index.php';
 $defaultHtml = $batmanDir . '/index.html';
+
+logDebug("Falling through to default handler - serving index.php");
 
 if (file_exists($defaultPhp)) {
     include $defaultPhp;
