@@ -295,26 +295,14 @@ class BuildTableModels extends _DB_TABLE
             fwrite($classFile, "\n");
             fwrite($classFile, "\t\tif (is_array(\$".$field->GetName().")) {");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\n");
             fwrite($classFile, "\t\t\t\$this->initialize();");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\tforeach(\$".$field->GetName()." as \$key => \$value) {");
-            fwrite($classFile, "\n");
-            $countFields = 0;
-            $checkFields = [];
-            foreach ($db->_Tablefields as $field2)
-            {
-              if (!in_array($field2->GetName(), $checkFields)) {
-                fwrite($classFile, "\t\t\t\t\$this->".$field2->GetName()." = \$value;");
-                fwrite($classFile, "\n");
-                $checkFields[] = $field2->GetName();
-              }
-            }
-            fwrite($classFile, "\t\t\t}");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t}");
-            fwrite($classFile, "\t\telse {");
+            fwrite($classFile, "\t\t\tforeach(\$".$field->GetName()." as \$key => \$value) {\n");
+            fwrite($classFile, "\t\t\t\tif (property_exists(\$this, \$key)) {\n");
+            fwrite($classFile, "\t\t\t\t\t\$this->\$key = \$value;\n");
+            fwrite($classFile, "\t\t\t\t}\n");
+            fwrite($classFile, "\t\t\t}\n");
+            fwrite($classFile, "\t\t} else {");
             fwrite($classFile, "\n");
             fwrite($classFile,"\t\t// Get Elements from DB using Primary Key");
             fwrite($classFile, "\n");
