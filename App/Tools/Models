@@ -261,7 +261,7 @@ class BuildTableModels extends _DB_TABLE
                 fwrite($classFile, "\n");
                 fwrite($classFile, "\t\tif (\$this->".$field2->GetName()."_OBJ === null && \$this->".$field2->GetName()." !== null) {");
                 fwrite($classFile, "\n");
-                fwrite($classFile, "\t\t\t\$this->".$field2->GetName()."_OBJ = new ".$field2->GetForeignTable()."(\$this->".$field2->GetName().", false);");
+                fwrite($classFile, "\t\t\t\$this->".$field2->GetName()."_OBJ = new ".$field2->GetForeignTable()."(\$this->".$field2->GetName().");");
                 fwrite($classFile, "\n");
                 fwrite($classFile, "\t\t}");
                 fwrite($classFile, "\n");

@@ -98,4 +98,3 @@ class LoggingHelper
         ], $pkValue, 'UPDATE');
     }
 }
-?> 

@@ -196,7 +196,7 @@ class BuildTableForms
           fwrite($routerFile, "\n");
           fwrite($routerFile, "});");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "SimpleRouter::post('/".$db->GetTableName()."/{id}', function (\$id) use (\$blade) : void {");
+          fwrite($routerFile, "SimpleRouter::post('/".$db->GetTableName()."/{id}', function (\$id) : void {");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\t\$request = new Request();");
           fwrite($routerFile, "\n");
@@ -209,7 +209,7 @@ class BuildTableForms
           fwrite($routerFile, "\n");
           fwrite($routerFile, "})->addMiddleware('\\Core\\Security\\CsrfMiddleware');");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "SimpleRouter::post('/".$db->GetTableName()."', function () use (\$blade) : void {");
+          fwrite($routerFile, "SimpleRouter::post('/".$db->GetTableName()."', function () : void {");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\t\$request = new Request();");
           fwrite($routerFile, "\n");
@@ -222,7 +222,7 @@ class BuildTableForms
           fwrite($routerFile, "\n");
           fwrite($routerFile, "})->addMiddleware('\\Core\\Security\\CsrfMiddleware');");
           fwrite($routerFile, "\n");
-          fwrite($routerFile, "SimpleRouter::post('/".$db->GetTableName()."/{id}/delete', function (\$id) use (\$blade) {");
+          fwrite($routerFile, "SimpleRouter::post('/".$db->GetTableName()."/{id}/delete', function (\$id) {");
           fwrite($routerFile, "\n");
           fwrite($routerFile, "\t\$request = new Request();");
           fwrite($routerFile, "\n");
@@ -737,7 +737,7 @@ class BuildTableForms
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\tif (!\$api) {");
           fwrite($controllerFile, "\n");
-          fwrite($controllerFile, "\t\t\t\\Messages\\Messages::fromValidationErrors(\$validatedData['errors'], 'Validation failed for ".$db->GetTableName()."');");
+          fwrite($controllerFile, "\t\t\t\\Messages\\Messages::ValidationErrors(\$validatedData['errors'], 'Validation failed for ".$db->GetTableName()."');");
           fwrite($controllerFile, "\n");
           fwrite($controllerFile, "\t\t\treturn false;");
           fwrite($controllerFile, "\n");
