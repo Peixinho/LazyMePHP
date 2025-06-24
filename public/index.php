@@ -12,14 +12,9 @@ set_error_handler(function($severity, $message, $file, $line) {
         return false; // Don't execute PHP internal error handler
     }
     
-    if (class_exists('Core\ErrorHandler')) {
-        $exception = new \ErrorException($message, 0, $severity, $file, $line);
-        \Core\ErrorHandler::handleWebException($exception);
-    } else {
-        // Fallback error handling
-        http_response_code(500);
-        echo "Fatal Error: $message in $file on line $line";
-    }
+    // Convert PHP error to exception and use ErrorHandler
+    $exception = new \ErrorException($message, 0, $severity, $file, $line);
+    \Core\ErrorHandler::handleWebException($exception);
     exit;
 });
 
@@ -27,14 +22,9 @@ set_error_handler(function($severity, $message, $file, $line) {
 register_shutdown_function(function() {
     $error = error_get_last();
     if ($error !== null && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
-        if (class_exists('Core\ErrorHandler')) {
-            $exception = new \ErrorException($error['message'], 0, $error['type'], $error['file'], $error['line']);
-            \Core\ErrorHandler::handleWebException($exception);
-        } else {
-            // Fallback error handling
-            http_response_code(500);
-            echo "Fatal Error: {$error['message']} in {$error['file']} on line {$error['line']}";
-        }
+        // Convert fatal error to exception and use ErrorHandler
+        $exception = new \ErrorException($error['message'], 0, $error['type'], $error['file'], $error['line']);
+        \Core\ErrorHandler::handleWebException($exception);
     }
 });
 
@@ -56,14 +46,8 @@ $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
 
 // 4. Set up comprehensive error handling for all router exceptions
 \Pecee\SimpleRouter\SimpleRouter::error(function(\Pecee\Http\Request $request, \Exception $exception) {
-    if (class_exists('Core\ErrorHandler')) {
-        // Use the comprehensive exception handler
-        \Core\ErrorHandler::handleWebException($exception, $request->getUrl()->getPath());
-    } else {
-        // Fallback if ErrorHandler is not available
-        http_response_code(500);
-        echo "Internal Server Error";
-    }
+    // Use the comprehensive ErrorHandler which logs to __LOG_ERRORS
+    \Core\ErrorHandler::handleWebException($exception, $request->getUrl()->getPath());
     exit;
 });
 
@@ -74,24 +58,9 @@ try {
     $pageContent = ob_get_clean();
 } catch (\Throwable $e) {
     ob_end_clean(); // Discard buffer on error
-
-    if (class_exists('Core\ErrorHandler')) {
-        // Use the comprehensive exception handler
-        \Core\ErrorHandler::handleWebException($e, $_SERVER['REQUEST_URI'] ?? '');
-    } else {
-        // Fallback error handling if ErrorHandler is not available
-        http_response_code(500);
-        
-        // Use the custom error page component
-        echo \Core\Helpers\ErrorPage::generate([
-            'error_id' => \Core\Helpers\ErrorUtil::generateErrorId(),
-            'type' => $e->getCode(),
-            'message' => $e->getMessage(),
-            'file' => $e->getFile(),
-            'line' => $e->getLine(),
-            'trace' => $e->getTraceAsString(),
-        ]);
-    }
+    
+    // Use the comprehensive ErrorHandler which logs to __LOG_ERRORS
+    \Core\ErrorHandler::handleWebException($e, $_SERVER['REQUEST_URI'] ?? '');
     exit;
 }
 
