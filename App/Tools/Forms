@@ -89,6 +89,8 @@ class BuildTableForms
             fwrite($routerFile, "use Core\\Http\\Request;");
             fwrite($routerFile, "\n");
             fwrite($routerFile, "\n");
+            fwrite($routerFile, "require_once __DIR__ . '/../Core/BladeFactory.php';\n");
+            fwrite($routerFile, "\$blade = \\Core\\BladeFactory::getBlade();\n\n");
           }
           else {
             echo "ERROR: Check your permissions to write the router file on $routesPath/".$o->Table.".php\n";

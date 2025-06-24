@@ -16,10 +16,16 @@
         "issues": "https://github.com/Peixinho/LazyMePHP/issues",
         "source": "https://github.com/Peixinho/LazyMePHP"
     },
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/Peixinho/simple-php-router"
+        }
+    ],
     "require": {
         "php": "^7.2.5 || ^8.0",
         "eftec/bladeone": "^4.13",
-        "pecee/simple-router": "^5.4",
+        "pecee/simple-router": "dev-master",
         "adhocore/jwt": "^1.1.3",
         "vlucas/phpdotenv": "^5.6"
     },

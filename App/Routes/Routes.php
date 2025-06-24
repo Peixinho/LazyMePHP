@@ -13,22 +13,12 @@ use Controllers;
 use Pecee\SimpleRouter\SimpleRouter;
 use \eftec\bladeone\BladeOne;
 
-$views = __DIR__ . '/../Views/';
-$cache = __DIR__ . '/../Views/_compiled';
-$blade = new BladeOne($views,$cache);
+$blade = \Core\BladeFactory::getBlade();
 
 SimpleRouter::get('/', function() use ($blade) : void {
     // Return the content for the index page
     echo $blade->run("_Index.index");
 }); 
-
-SimpleRouter::get('/not-found', function() use ($blade) : void {
-    echo $blade->run("_Error.view");
-});
-
-SimpleRouter::get('/forbidden', function() use ($blade) : void {
-    echo $blade->run("_Error.view");
-});
 
 // Load all routes by default
 foreach (glob(__DIR__."/" . '/*.php') as $file) {
@@ -37,11 +27,3 @@ foreach (glob(__DIR__."/" . '/*.php') as $file) {
   )
   require($file);
 }
-
-// Add catch-all route for 404 errors - this must be the last route
-SimpleRouter::all('*', function() : void {
-    // Log the 404 error to our system
-    \Core\ErrorHandler::handleWebNotFoundError();
-});
-
-?>
