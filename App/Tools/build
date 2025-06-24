@@ -212,6 +212,7 @@ class TableManager
         $nonViews = [];
         foreach ($this->tables as $tableName) {
             $db = new \Tools\Database\_DB_TABLE($tableName);
+            $db->GetFieldsFromDB();
             if (!$db->IsView()) {
                 $nonViews[] = $tableName;
             }
@@ -327,7 +328,10 @@ class BuildActions
      */
     public function buildForms(): void
     {
-        require_once(__DIR__.'/Forms');
+        require_once(__DIR__.'/Forms/BuildControllers.php');
+        require_once(__DIR__.'/Forms/BuildRoutes.php');
+        require_once(__DIR__.'/Forms/BuildViews.php');
+        require_once(__DIR__.'/Database');
         
         $tables = $this->tableManager->getNonViewTables();
         $descriptors = $this->tableManager->getTableDescriptors();
@@ -353,20 +357,35 @@ class BuildActions
         echo "\n🚀 Generating forms...\n";
         $progressBar = new ProgressBar("Building Forms", count($tableList));
         
-        // Build forms with progress tracking
-        $builder = new Tools\Forms\BuildTableForms(
-            BuildConfig::CONTROLLERS_OUTPUT_DIR,
-            BuildConfig::VIEWS_OUTPUT_DIR,
-            BuildConfig::MODELS_OUTPUT_DIR,
-            BuildConfig::ROUTES_OUTPUT_DIR,
-            $tableList,
-            $replaceRoutes == 'Y',
-            $buildViews == 'Y'
-        );
-        
-        // Simulate progress for each table
-        foreach ($tableList as $table) {
-            usleep(100000); // Small delay to show progress
+        // Build forms for each selected table
+        foreach ($tableList as $tableName) {
+            // Create database table object
+            $db = new Tools\Database\_DB_TABLE($tableName);
+            $db->GetFieldsFromDB();
+            
+            // Build controllers
+            new Tools\Forms\BuildControllers(
+                BuildConfig::CONTROLLERS_OUTPUT_DIR,
+                BuildConfig::MODELS_OUTPUT_DIR,
+                $db
+            );
+            
+            // Build routes if requested
+            if ($replaceRoutes == 'Y') {
+                new Tools\Forms\BuildRoutes(
+                    BuildConfig::ROUTES_OUTPUT_DIR,
+                    $db
+                );
+            }
+            
+            // Build views if requested
+            if ($buildViews == 'Y') {
+                new Tools\Forms\BuildViews(
+                    BuildConfig::VIEWS_OUTPUT_DIR,
+                    $db
+                );
+            }
+            
             $progressBar->update();
         }
         
@@ -537,7 +556,7 @@ class BuildInterface
         echo "📦 [c] Build Models     - Generate PHP model classes from database tables\n";
         echo "📝 [f] Build Forms       - Create HTML forms for data input/editing\n";
         echo "🔌 [a] Build API         - Generate REST API endpoints and routes\n";
-        echo "🏷️  [d] Change Descriptor - Modify table display fields for better UX\n";
+        echo "🏷️ [d] Change Descriptor - Modify table display fields for better UX\n";
         echo "❌ [q] Quit              - Exit the build tool\n";
         echo str_repeat('-', 60) . "\n";
         echo "💡 Tip: Select tables from the list above, then choose an option below\n";
