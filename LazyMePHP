@@ -66,6 +66,12 @@ class LazyMeCLI {
         'serve' => 'Start the PHP development server',
         'build' => 'Run the build tools for classes, forms, and APIs',
         'batman' => 'Start the Batman dashboard server',
+        'make:model' => 'Generate a model for a table/view',
+        'make:api' => 'Generate an API for a table',
+        'make:view' => 'Generate views for a table',
+        'make:controller' => 'Generate a controller for a table',
+        'make:route' => 'Generate routes for a table',
+        'make:all' => 'Generate model, views, controller, and routes for a table'
     ];
 
     public function run(array $argv): void {
@@ -89,6 +95,18 @@ class LazyMeCLI {
                 break;
             case 'make:model':
                 $this->makeModel($tableName);
+                break;
+            case 'make:view':
+                $this->makeView($tableName);
+                break;
+            case 'make:controller':
+                $this->makeController($tableName);
+                break;
+            case 'make:route':
+                $this->makeRoute($tableName);
+                break;
+            case 'make:all':
+                $this->makeAll($tableName);
                 break;
             default:
                 echo "Unknown command: $command\n";
@@ -165,6 +183,155 @@ class LazyMeCLI {
         // Generate model
         $generator = new \Tools\Models\BuildTableModels(__DIR__ . '/App/Models', [$tableName], []);
         echo "Model generated successfully!\n";
+    }
+
+    private function makeView(?string $tableName): void {
+        if (!$tableName) {
+            echo "Error: Table name is required for make:view command.\n";
+            echo "Usage: php LazyMePHP make:view [table_name]\n";
+            exit(1);
+        }
+
+        echo "Generating view for table: $tableName\n";
+        
+        // Get all available tables
+        $allTables = \Tools\Database\_DB_TABLE::GetAllTablesAndViews();
+        
+        if (!in_array($tableName, $allTables)) {
+            echo "Error: Table '$tableName' not found in database.\n";
+            echo "Available tables:\n";
+            foreach ($allTables as $table) {
+                echo "  - $table\n";
+            }
+            exit(1);
+        }
+
+        // Create database object for the table
+        $db = new \Tools\Database\_DB_TABLE($tableName);
+        $db->GetFieldsFromDB();
+        
+        if ($db->IsView()) {
+            echo "Error: Cannot generate views for database views.\n";
+            exit(1);
+        }
+
+        // Use the new BuildViews class
+        $viewsPath = __DIR__ . '/App/Views';
+        new \Tools\Forms\BuildViews($viewsPath, $db);
+        
+        echo "View generated successfully!\n";
+    }
+
+    private function makeController(?string $tableName): void {
+        if (!$tableName) {
+            echo "Error: Table name is required for make:controller command.\n";
+            echo "Usage: php LazyMePHP make:controller [table_name]\n";
+            exit(1);
+        }
+
+        echo "Generating controller for table: $tableName\n";
+        
+        // Get all available tables
+        $allTables = \Tools\Database\_DB_TABLE::GetAllTablesAndViews();
+        
+        if (!in_array($tableName, $allTables)) {
+            echo "Error: Table '$tableName' not found in database.\n";
+            echo "Available tables:\n";
+            foreach ($allTables as $table) {
+                echo "  - $table\n";
+            }
+            exit(1);
+        }
+
+        // Create database object for the table
+        $db = new \Tools\Database\_DB_TABLE($tableName);
+        $db->GetFieldsFromDB();
+        
+        if ($db->IsView()) {
+            echo "Error: Cannot generate controllers for database views.\n";
+            exit(1);
+        }
+
+        // Use the new BuildControllers class
+        $controllersPath = __DIR__ . '/App/Controllers';
+        $classesPath = __DIR__ . '/App/Models';
+        new \Tools\Forms\BuildControllers($controllersPath, $classesPath, $db);
+        
+        echo "Controller generated successfully!\n";
+    }
+
+    private function makeRoute(?string $tableName): void {
+        if (!$tableName) {
+            echo "Error: Table name is required for make:route command.\n";
+            echo "Usage: php LazyMePHP make:route [table_name]\n";
+            exit(1);
+        }
+
+        echo "Generating routes for table: $tableName\n";
+        
+        // Get all available tables
+        $allTables = \Tools\Database\_DB_TABLE::GetAllTablesAndViews();
+        
+        if (!in_array($tableName, $allTables)) {
+            echo "Error: Table '$tableName' not found in database.\n";
+            echo "Available tables:\n";
+            foreach ($allTables as $table) {
+                echo "  - $table\n";
+            }
+            exit(1);
+        }
+
+        // Create database object for the table
+        $db = new \Tools\Database\_DB_TABLE($tableName);
+        $db->GetFieldsFromDB();
+        
+        if ($db->IsView()) {
+            echo "Error: Cannot generate routes for database views.\n";
+            exit(1);
+        }
+
+        // Use the new BuildRoutes class
+        $routesPath = __DIR__ . '/App/Routes';
+        new \Tools\Forms\BuildRoutes($routesPath, $db);
+        
+        echo "Routes generated successfully!\n";
+    }
+
+    private function makeAll(?string $tableName): void {
+        if (!$tableName) {
+            echo "Error: Table name is required for make:all command.\n";
+            echo "Usage: php LazyMePHP make:all [table_name]\n";
+            exit(1);
+        }
+
+        echo "Generating model, views, controller, and routes for table: $tableName\n";
+        
+        // Get all available tables
+        $allTables = \Tools\Database\_DB_TABLE::GetAllTablesAndViews();
+        
+        if (!in_array($tableName, $allTables)) {
+            echo "Error: Table '$tableName' not found in database.\n";
+            echo "Available tables:\n";
+            foreach ($allTables as $table) {
+                echo "  - $table\n";
+            }
+            exit(1);
+        }
+
+        // Generate model
+        $generator = new \Tools\Models\BuildTableModels(__DIR__ . '/App/Models', [$tableName], []);
+        echo "Model generated successfully!\n";
+
+        // Generate view
+        $this->makeView($tableName);
+
+        // Generate controller
+        $this->makeController($tableName);
+
+        // Generate route
+        $this->makeRoute($tableName);
+
+        echo "All files generated successfully!\n";
     }
 
     private function getPort(int $default): int {
