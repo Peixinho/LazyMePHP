@@ -19,7 +19,7 @@ $blade = new BladeOne($views,$cache);
 
 SimpleRouter::get('/', function() use ($blade) : void {
     // Return the content for the index page
-    echo $blade->run("index");
+    echo $blade->run("_Index.index");
 }); 
 
 SimpleRouter::get('/not-found', function() use ($blade) : void {

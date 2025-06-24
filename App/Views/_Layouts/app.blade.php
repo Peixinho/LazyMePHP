@@ -11,7 +11,7 @@
     @include('_Partials.nav')
     
     <main class="container">
-        @include('notifications')
+        @include('_Notifications.notifications')
         {!! $pageContent ?? '' !!}
     </main>
     

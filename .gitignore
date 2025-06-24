@@ -2,7 +2,11 @@
 App/Models
 App/Controllers
 App/Routes
-App/Views
+App/Views/*
+!App/Views/_Layouts
+!App/Views/_Notifications
+!App/Views/_Index
+!App/Views/notifications.blade.php
 App/Api
 !App/Controllers/Default.Controller.php
 !App/Controllers/PageNotFound.Controller.php

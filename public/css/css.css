@@ -335,4 +335,48 @@ th {
     .pagination span {
         min-width: 24px; /* Uniform width for all buttons */
     }
+    .pagination span {
+        padding: 6px 10px;
+    }
+}
+
+/* Unified Footer Styling */
+.footer {
+    background-color: #ffffff;
+    border-top: 1px solid #e2e8f0;
+    padding: 20px 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 0.9rem;
+    color: #718096;
+    margin-top: 40px;
+}
+.footer-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+.footer-content {
+    text-align: left;
+}
+.footer-links ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    gap: 25px;
+    flex-wrap: wrap;
+}
+.footer-links a {
+    color: #718096;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+.footer-links a:hover {
+    color: #2b6cb0;
 }

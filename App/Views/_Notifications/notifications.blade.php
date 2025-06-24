@@ -322,22 +322,19 @@ use Core\Helpers\NotificationHelper;
             }
         }
         
-        // Check for PHP session notifications
-        @if(session()->has('success'))
-            showNotification('{{ session('success') }}', 'success', 'system', 2, 5000);
-        @endif
-        
-        @if(session()->has('error'))
-            showNotification('{{ session('error') }}', 'error', 'system', 3, 8000);
-        @endif
-        
-        @if(session()->has('warning'))
-            showNotification('{{ session('warning') }}', 'warning', 'system', 2, 6000);
-        @endif
-        
-        @if(session()->has('info'))
-            showNotification('{{ session('info') }}', 'info', 'system', 1, 4000);
-        @endif
+        @foreach(\Core\Helpers\NotificationHelper::getAndClear() as $notification)
+            @php
+                $type = $notification['type'] ?? 'info';
+                $duration = in_array($type, ['error', 'warning', 'critical']) ? 8000 : 5000;
+            @endphp
+            showNotification(
+                {!! json_encode($notification['message'] ?? 'Default Message') !!},
+                '{{ $type }}',
+                '{{ $notification['category'] ?? 'system' }}',
+                {{ $notification['priority'] ?? 1 }},
+                {{ $duration }}
+            );
+        @endforeach
     });
     
     // Global notification function

@@ -68,7 +68,7 @@ class BuildConfig
     public const CONTROLLERS_OUTPUT_DIR = 'App/Controllers';
     public const VIEWS_OUTPUT_DIR = 'App/Views';
     public const ROUTES_OUTPUT_DIR = 'App/Routes';
-    public const API_OUTPUT_DIR = 'App/api';
+    public const API_OUTPUT_DIR = 'App/Api';
 }
 
 /**

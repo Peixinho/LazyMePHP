@@ -1,11 +1,14 @@
 <footer class="footer">
     <div class="footer-container">
         <div class="footer-content">
-            <p>&copy; {{ date('Y') }} LazyMePHP. Todos os direitos reservados.</p>
+            <p>&copy; {{ date('Y') }} LazyMePHP. All rights reserved.</p>
         </div>
         <div class="footer-links">
-            <a href="/api" class="footer-link">API</a>
-            <a href="/debug" class="footer-link">Debug</a>
+            <ul>
+                <li>LazyMePHP v1.0</li>
+                <li><a href="/api" target="_blank">API Docs</a></li>
+                <li><a href="/batman" target="_blank">Batman Debugger</a></li>
+            </ul>
         </div>
     </div>
 </footer> 
