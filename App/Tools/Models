@@ -283,13 +283,38 @@ class BuildTableModels extends _DB_TABLE
             fwrite($classFile, "\n");
             fwrite($classFile, "\t *");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t * @param int|null \$".$field->GetName());
+            fwrite($classFile, "\t * @param mixed \$".$field->GetName());
             fwrite($classFile, "\n");
             fwrite($classFile, "\t * @return null");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t */");
             fwrite($classFile, "\n");
-            fwrite($classFile,"\tpublic function __construct(?int \$".$field->GetName()."=null) {");
+            fwrite($classFile,"\tpublic function __construct(mixed \$".$field->GetName()."=null) {");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t\t/* Array Constructor */");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t\tif (is_array(\$".$field->GetName().")) {");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t\t\t\$this->initialize();");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t\t\tforeach(\$".$field->GetName()." as \$key => \$value) {");
+            fwrite($classFile, "\n");
+            $countFields = 0;
+            $checkFields = [];
+            foreach ($db->_Tablefields as $field2)
+            {
+              if (!in_array($field2->GetName(), $checkFields)) {
+                fwrite($classFile, "\t\t\t\t\$this->".$field2->GetName()." = \$value;");
+                fwrite($classFile, "\n");
+                $checkFields[] = $field2->GetName();
+              }
+            }
+            fwrite($classFile, "\t\t\t}");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t\t}");
+            fwrite($classFile, "\t\telse {");
             fwrite($classFile, "\n");
             fwrite($classFile,"\t\t// Get Elements from DB using Primary Key");
             fwrite($classFile, "\n");
@@ -336,6 +361,8 @@ class BuildTableModels extends _DB_TABLE
             fwrite($classFile, "\t\t\t}");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t\t}");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t}");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t}");
 
