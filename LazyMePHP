@@ -40,13 +40,6 @@ if (file_exists(__DIR__.'/App/Tools/Helper')) {
     exit(1);
 }
 
-if (file_exists(__DIR__.'/App/Tools/Models')) {
-    require_once __DIR__.'/App/Tools/Models';
-} else {
-    echo "Models file not found.\n";
-    exit(1);
-}
-
 // Initialize the APP configuration
 try {
     new Core\LazyMePHP();
@@ -107,6 +100,9 @@ class LazyMeCLI {
                 break;
             case 'make:all':
                 $this->makeAll($tableName);
+                break;
+            case 'make:api':
+                $this->makeApi($tableName);
                 break;
             default:
                 echo "Unknown command: $command\n";
@@ -180,8 +176,10 @@ class LazyMeCLI {
             exit(1);
         }
 
-        // Generate model
-        $generator = new \Tools\Models\BuildTableModels(__DIR__ . '/App/Models', [$tableName], []);
+        // Use the existing Models tool
+        $classesPath = __DIR__ . '/App/Models';
+        new \Tools\Models\BuildTableModels($classesPath, [$tableName], []);
+        
         echo "Model generated successfully!\n";
     }
 
@@ -304,7 +302,7 @@ class LazyMeCLI {
             exit(1);
         }
 
-        echo "Generating model, views, controller, and routes for table: $tableName\n";
+        echo "Generating model, views, controller, routes, and API for table: $tableName\n";
         
         // Get all available tables
         $allTables = \Tools\Database\_DB_TABLE::GetAllTablesAndViews();
@@ -331,7 +329,34 @@ class LazyMeCLI {
         // Generate route
         $this->makeRoute($tableName);
 
+        // Generate API
+        $this->makeApi($tableName);
+
         echo "All files generated successfully!\n";
+    }
+
+    private function makeApi(?string $tableName): void {
+        if (!$tableName) {
+            echo "Error: Table name is required for make:api command.\n";
+            echo "Usage: php LazyMePHP make:api [table_name]\n";
+            exit(1);
+        }
+
+        echo "Generating API for table: $tableName\n";
+        
+        // Check if model exists
+        $modelFile = __DIR__ . "/App/Models/$tableName.php";
+        if (!file_exists($modelFile)) {
+            echo "Error: Model for table '$tableName' not found. Please generate the model first.\n";
+            echo "Run: php LazyMePHP make:model $tableName\n";
+            exit(1);
+        }
+
+        // Use the existing API tool
+        $apiPath = __DIR__ . '/App/Api';
+        new \Tools\API\BuildTableAPI($apiPath, true, [$tableName]);
+        
+        echo "API generated successfully!\n";
     }
 
     private function getPort(int $default): int {

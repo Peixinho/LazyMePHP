@@ -285,7 +285,7 @@ class BuildActions
      */
     public function buildModels(): void
     {
-        require_once(__DIR__.'/Models');
+        require_once(__DIR__.'/Models/BuildTableModels.php');
         
         $tables = $this->tableManager->getTables();
         $descriptors = $this->tableManager->getTableDescriptors();
@@ -381,7 +381,7 @@ class BuildActions
      */
     public function buildAPI(): void
     {
-        require_once(__DIR__.'/API');
+        require_once(__DIR__.'/API/BuildTableAPI.php');
         
         $tables = $this->tableManager->getNonViewTables();
         $descriptors = $this->tableManager->getTableDescriptors();

@@ -10,10 +10,10 @@ namespace Tools\API; // TODO: Should ideally be LazyMePHP\ApiBuilder
 use Core\LazyMePHP;
 
 // Include helper functions
-require_once(__DIR__.'/Helper');
+require_once(__DIR__.'/../Helper');
 
 // Include database classes
-require_once(__DIR__.'/Database');
+require_once(__DIR__.'/../Database');
 
 /**
  * Build class tables
