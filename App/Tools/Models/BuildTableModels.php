@@ -378,7 +378,10 @@ class BuildTableModels extends _DB_TABLE
             fwrite($classFile, "\t\t\$nullFields = [];");
             foreach ($db->_Tablefields as $field2)
             {
-              if (!$field2->Allownull()) $fieldsNotnull.= "\t\tif (!isset(\$this->".$field2->GetName().")) \$nullFields[] = '".$field2->GetName()."';\n";
+              // Skip auto-increment primary keys for null checks (they can be null for new records)
+              if (!$field2->Allownull() && !($field2->IsPrimaryKey() && $field2->IsAutoIncrement())) {
+                $fieldsNotnull.= "\t\tif (!isset(\$this->".$field2->GetName().")) \$nullFields[] = '".$field2->GetName()."';\n";
+              }
             }
             fwrite($classFile, "\n");
             if (isset($fieldsNotnull)) {

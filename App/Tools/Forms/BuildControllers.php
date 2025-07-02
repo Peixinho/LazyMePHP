@@ -368,57 +368,65 @@ class BuildControllers {
                 
                 foreach($db->GetTableFields() as $field)
                 {
-                  if (!$field->IsPrimaryKey())
-                  {
-                    fwrite($serviceFile, "\t\t\t'".$field->GetName()."' => [");
-                    fwrite($serviceFile, "\n");
-                    fwrite($serviceFile, "\t\t\t\t'validations' => [");
+                  fwrite($serviceFile, "\t\t\t'".$field->GetName()."' => [");
+                  fwrite($serviceFile, "\n");
+                  fwrite($serviceFile, "\t\t\t\t'validations' => [");
 
-                    // Define validations
-                    switch($field->GetDataType()) {
-                      case "bool":
-                      case "bit":
-                        fwrite($serviceFile, "ValidationsMethod::BOOLEAN");
-                        break;
-                      case "int":
-                        fwrite($serviceFile, "ValidationsMethod::INT");
-                        break;
-                      case "float":
-                        fwrite($serviceFile, "ValidationsMethod::FLOAT");
-                        break;
-                      case "date":
-                      case "string":
-                      default:
-                        fwrite($serviceFile, "ValidationsMethod::STRING");
-                        break;
-                    }
-                    if (!$field->AllowNull() && $field->GetDataType() != "bool" && $field->GetDataType() != "bit") fwrite($serviceFile, ",ValidationsMethod::NOTNULL");
-                    fwrite($serviceFile, "],");
-                    fwrite($serviceFile, "\n");
-                    fwrite($serviceFile, "\t\t\t\t'required' => ".(!$field->AllowNull() && $field->GetDataType() != "bool" && $field->GetDataType() != "bit" ? "true" : "false").",");
-                    fwrite($serviceFile, "\n");
-                    fwrite($serviceFile, "\t\t\t\t'type' => ");
-                    switch($field->GetDataType()) {
-                      case "bool":
-                      case "bit":
-                        fwrite($serviceFile, "'bool'");
-                        break;
-                      case "int":
-                        fwrite($serviceFile, "'int'");
-                        break;
-                      case "float":
-                        fwrite($serviceFile, "'float'");
-                        break;
-                      case "date":
-                      case "string":
-                      default:
-                        fwrite($serviceFile, "'string'");
-                        break;
-                    }
-                    fwrite($serviceFile, "\n");
-                    fwrite($serviceFile, "\t\t\t],");
-                    fwrite($serviceFile, "\n");
+                  // Define validations
+                  switch($field->GetDataType()) {
+                    case "bool":
+                    case "bit":
+                      fwrite($serviceFile, "ValidationsMethod::BOOLEAN");
+                      break;
+                    case "int":
+                      fwrite($serviceFile, "ValidationsMethod::INT");
+                      break;
+                    case "float":
+                      fwrite($serviceFile, "ValidationsMethod::FLOAT");
+                      break;
+                    case "date":
+                    case "string":
+                    default:
+                      fwrite($serviceFile, "ValidationsMethod::STRING");
+                      break;
                   }
+                  
+                  // Add NOTNULL validation for required fields (but not for auto-increment primary keys)
+                  if (!$field->AllowNull() && $field->GetDataType() != "bool" && $field->GetDataType() != "bit" && !($field->IsPrimaryKey() && $field->IsAutoIncrement())) {
+                    fwrite($serviceFile, ",ValidationsMethod::NOTNULL");
+                  }
+                  
+                  fwrite($serviceFile, "],");
+                  fwrite($serviceFile, "\n");
+                  
+                  // Determine if field is required
+                  // Primary keys with auto-increment are never required for inserts
+                  // Other fields are required if they don't allow null
+                  $isRequired = !$field->AllowNull() && $field->GetDataType() != "bool" && $field->GetDataType() != "bit" && !($field->IsPrimaryKey() && $field->IsAutoIncrement());
+                  fwrite($serviceFile, "\t\t\t\t'required' => ".($isRequired ? "true" : "false").",");
+                  fwrite($serviceFile, "\n");
+                  
+                  fwrite($serviceFile, "\t\t\t\t'type' => ");
+                  switch($field->GetDataType()) {
+                    case "bool":
+                    case "bit":
+                      fwrite($serviceFile, "'bool'");
+                      break;
+                    case "int":
+                      fwrite($serviceFile, "'int'");
+                      break;
+                    case "float":
+                      fwrite($serviceFile, "'float'");
+                      break;
+                    case "date":
+                    case "string":
+                    default:
+                      fwrite($serviceFile, "'string'");
+                      break;
+                  }
+                  fwrite($serviceFile, "\n");
+                  fwrite($serviceFile, "\t\t\t],");
+                  fwrite($serviceFile, "\n");
                 }
                 
                 fwrite($serviceFile, "\t\t];");
