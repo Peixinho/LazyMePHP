@@ -356,7 +356,6 @@ class BuildTableModels extends _DB_TABLE
 
             // Save
             fwrite($classFile, "\n");
-            fwrite($classFile, "\n");
             fwrite($classFile, "\t/**");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t * Save");
@@ -379,18 +378,13 @@ class BuildTableModels extends _DB_TABLE
             fwrite($classFile, "\t\t\$nullFields = [];");
             foreach ($db->_Tablefields as $field2)
             {
-              if ($field!=$field2)
-              {
-                if (!$field2->Allownull()) $fieldsNotnull.= "\t\tif (!isset(\$this->".$field2->GetName().")) \$nullFields[] = '".$field2->GetName()."';\n";
-              }
+              if (!$field2->Allownull()) $fieldsNotnull.= "\t\tif (!isset(\$this->".$field2->GetName().")) \$nullFields[] = '".$field2->GetName()."';\n";
             }
-            fwrite($classFile, "\n");
             fwrite($classFile, "\n");
             if (isset($fieldsNotnull)) {
               fwrite($classFile, $fieldsNotnull);
               fwrite($classFile, "\t\t\$fieldsnull = implode(',', \$nullFields);");
             }
-            fwrite($classFile, "\n");
             fwrite($classFile, "\n");
 
             fwrite($classFile, "\t\tif (\$fieldsnull) {");
@@ -417,12 +411,17 @@ class BuildTableModels extends _DB_TABLE
             fwrite($classFile, "\n");
             fwrite($classFile, "\t\t\t\t\$params = [");
             fwrite($classFile, "\n");
-            $countFields = 1;
+            $countFields = 0;
             foreach ($db->_Tablefields as $field2)
             {
-                fwrite($classFile,"\t\t\t\t\t':".$field2->GetName()."' => ".(LazyMePHP::DB_TYPE() == 2 && $field2->GetDataType()=="bit"?"\$this->".$field2->GetName()."||0":"\$this->".$field2->GetName()).",");
-                fwrite($classFile, "\n");
+                if ($field!=$field2)
+                {
+                    fwrite($classFile,"\t\t\t\t\t':".$field2->GetName()."' => ".(LazyMePHP::DB_TYPE() == 2 && $field2->GetDataType()=="bit"?"\$this->".$field2->GetName()."||0":"\$this->".$field2->GetName()).",");
+                    fwrite($classFile, "\n");
+                }
             }
+            fwrite($classFile,"\t\t\t\t\t':".$field->GetName()."' => \$this->".$field->GetName().",");
+            fwrite($classFile, "\n");
             fwrite($classFile, "\t\t\t\t];");
             fwrite($classFile, "\n");
             fwrite($classFile,"\t\t\t\t\$method = \"U\";");
@@ -473,7 +472,6 @@ class BuildTableModels extends _DB_TABLE
             fwrite($classFile, "\n");
             fwrite($classFile, "\t\t\t}");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\n");
             fwrite($classFile, "\t\t\t// Use LoggingHelper for proper change logging");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t\t\tif (LazyMePHP::ACTIVITY_LOG() && !empty(\$this->__log)) {");
@@ -489,7 +487,6 @@ class BuildTableModels extends _DB_TABLE
             fwrite($classFile, "\t\t\t\t}");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t\t\t}");
-            fwrite($classFile, "\n");
             fwrite($classFile, "\n");
             fwrite($classFile, "\t\t\treturn \$ret;");
             fwrite($classFile, "\n");

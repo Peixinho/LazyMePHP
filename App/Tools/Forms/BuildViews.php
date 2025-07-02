@@ -240,9 +240,13 @@ class BuildViews {
                   fwrite($viewFile, "\t\t<th><b>delete</b></th>");
                 }
                 fwrite($viewFile, "\n");
+                $processedFields = [];
                 foreach ($db->GetTableFields() as $field) {
-                  fwrite($viewFile, "\t\t<th><b>".$field->GetName()."</b></th>");
-                  fwrite($viewFile, "\n");
+                  if (!in_array($field->GetName(), $processedFields)) {
+                    fwrite($viewFile, "\t\t<th><b>".$field->GetName()."</b></th>");
+                    fwrite($viewFile, "\n");
+                    $processedFields[] = $field->GetName();
+                  }
                 }
                 fwrite($viewFile, "\t</tr>");
                 fwrite($viewFile, "\n");
@@ -265,14 +269,16 @@ class BuildViews {
                   fwrite($viewFile, "\t\t</form></td>\n");
                 }
                 fwrite($viewFile, "\n");
+                $processedDataFields = [];
                 foreach ($db->GetTableFields() as $field) {
-                  if ($primaryKey) { 
-                    if ($field->HasForeignKey()) 
+                  if ($primaryKey && !in_array($field->GetName(), $processedDataFields)) { 
+                    if ($field->HasForeignKey() && !$field->IsPrimaryKey()) 
                     fwrite($viewFile, "\t\t<td>{{\$member->get".ucfirst($field->GetName())."_OBJ() ? \$member->get".ucfirst($field->GetName())."_OBJ()->GetDescriptor() : ''}}</td>");
                     else
                     fwrite($viewFile, "\t\t<td>{{\$member->Get".ucfirst($field->GetName())."()}}</td>");
 
                     fwrite($viewFile, "\n");
+                    $processedDataFields[] = $field->GetName();
                   }
                 }
                 fwrite($viewFile, "\t</tr>");

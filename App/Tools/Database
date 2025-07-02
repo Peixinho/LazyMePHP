@@ -434,28 +434,30 @@ class _DB_TABLE {
                                     INFORMATION_SCHEMA.COLUMNS.ORDINAL_POSITION";
             break;
             case 'mysql': // MYSQL
-				$queryString = "SELECT DISTINCT `Field`, `Null`, `Default`, `Type`, `CNAME`, `PK`, `FK`, `Identity`, `Data_Length`, `ORDINAL_POSITION` FROM
-									(SELECT
-										information_schema.COLUMNS.COLUMN_NAME as `Field`,
-										CASE WHEN information_schema.COLUMNS.IS_NULLABLE = 'YES' THEN 1 ELSE 0 END AS `Null`,
-										information_schema.COLUMNS.COLUMN_DEFAULT as `Default`,
-										information_schema.COLUMNS.DATA_TYPE as `Type`,
-										information_schema.KEY_COLUMN_USAGE.CONSTRAINT_NAME AS `CNAME`,
-										CASE WHEN information_schema.KEY_COLUMN_USAGE.CONSTRAINT_NAME = 'PRIMARY' THEN 1 ELSE 0 END AS `PK`,
-										CASE WHEN information_schema.KEY_COLUMN_USAGE.CONSTRAINT_NAME IS NOT NULL AND information_schema.KEY_COLUMN_USAGE.CONSTRAINT_NAME != 'PRIMARY' THEN 1 ELSE 0 END AS `FK`,
-										CASE WHEN EXTRA = 'auto_increment' THEN 1 ELSE 0 END as `Identity`,
-										information_schema.COLUMNS.CHARACTER_MAXIMUM_LENGTH AS `Data_Length`,
-										information_schema.COLUMNS.ORDINAL_POSITION as `ORDINAL_POSITION`
-									FROM
-										information_schema.COLUMNS
-										LEFT JOIN
-										information_schema.KEY_COLUMN_USAGE
-										ON
-										information_schema.KEY_COLUMN_USAGE.COLUMN_NAME = information_schema.COLUMNS.COLUMN_NAME
-										AND information_schema.COLUMNS.TABLE_NAME=information_schema.KEY_COLUMN_USAGE.TABLE_NAME
-									WHERE
-										information_schema.COLUMNS.TABLE_SCHEMA='".LazyMePHP::DB_NAME()."' AND
-										information_schema.COLUMNS.TABLE_NAME='".$this->_Tablename."') SCH ORDER BY `ORDINAL_POSITION` ASC";
+				$queryString = "SELECT 
+									c.COLUMN_NAME as `Field`,
+									CASE WHEN c.IS_NULLABLE = 'YES' THEN 1 ELSE 0 END AS `Null`,
+									c.COLUMN_DEFAULT as `Default`,
+									c.DATA_TYPE as `Type`,
+									MAX(CASE WHEN kcu.CONSTRAINT_NAME = 'PRIMARY' THEN 1 ELSE 0 END) AS `PK`,
+									MAX(CASE WHEN kcu.CONSTRAINT_NAME IS NOT NULL AND kcu.CONSTRAINT_NAME != 'PRIMARY' THEN 1 ELSE 0 END) AS `FK`,
+									CASE WHEN c.EXTRA = 'auto_increment' THEN 1 ELSE 0 END as `Identity`,
+									c.CHARACTER_MAXIMUM_LENGTH AS `Data_Length`,
+									c.ORDINAL_POSITION as `ORDINAL_POSITION`
+								FROM
+									information_schema.COLUMNS c
+									LEFT JOIN
+									information_schema.KEY_COLUMN_USAGE kcu
+									ON
+									kcu.COLUMN_NAME = c.COLUMN_NAME
+									AND c.TABLE_NAME = kcu.TABLE_NAME
+									AND c.TABLE_SCHEMA = kcu.TABLE_SCHEMA
+								WHERE
+									c.TABLE_SCHEMA='".LazyMePHP::DB_NAME()."' AND
+									c.TABLE_NAME='".$this->_Tablename."'
+								GROUP BY 
+									c.COLUMN_NAME, c.IS_NULLABLE, c.COLUMN_DEFAULT, c.DATA_TYPE, c.EXTRA, c.CHARACTER_MAXIMUM_LENGTH, c.ORDINAL_POSITION
+								ORDER BY c.ORDINAL_POSITION ASC";
             break;
             case 'sqlite': // SQLITE
               $queryString = "PRAGMA table_info(".$this->_Tablename.")";
@@ -651,7 +653,19 @@ class _DB_TABLE {
                   }
                 }
             }
-            $this->_Tablefields[] = $field;
+            
+            // Check if field already exists to prevent duplicates
+            $fieldExists = false;
+            foreach ($this->_Tablefields as $existingField) {
+                if ($existingField->GetName() === $field->GetName()) {
+                    $fieldExists = true;
+                    break;
+                }
+            }
+            
+            if (!$fieldExists) {
+                $this->_Tablefields[] = $field;
+            }
         }
 	}
 

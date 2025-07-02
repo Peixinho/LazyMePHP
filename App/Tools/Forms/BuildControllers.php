@@ -9,6 +9,7 @@ require_once __DIR__ . '/../Helper';
 class BuildControllers {
     public function __construct($controllersPath, $classesPath, $db) {
         $this->constructController($controllersPath, $classesPath, $db);
+        $this->constructValidationService($controllersPath, $db);
     }
 
     public function constructController($controllersPath, $classesPath, $db) {
@@ -42,7 +43,7 @@ class BuildControllers {
                 fwrite($controllerFile, "namespace Controllers;");
                 fwrite($controllerFile, "\n");
                 fwrite($controllerFile, "\n");
-                fwrite($controllerFile, "use Core\\Validations\\ValidationsMethod;");
+                fwrite($controllerFile, "use App\\Services\\".$db->GetTableName()."ValidationService;");
                 fwrite($controllerFile, "\n");
                 fwrite($controllerFile, "use Core\\Http\\Request;");
 
@@ -119,72 +120,38 @@ class BuildControllers {
                   fwrite($controllerFile, "\n");
                   fwrite($controllerFile, "\t\t\$obj = new \\Models\\".$db->GetTableName()."(\$".$primaryKey->GetName().");");
                   fwrite($controllerFile, "\n");
-                  fwrite($controllerFile, "\t\t\$validationRules = [");
                   fwrite($controllerFile, "\n");
-                  foreach($db->GetTableFields() as $field)
-                  {
-                    if (!$field->IsPrimaryKey())
-                    {
-                      fwrite($controllerFile, "\t\t\t'".$field->GetName()."' => [");
-                      fwrite($controllerFile, "\n");
-                      fwrite($controllerFile, "\t\t\t\t'validations' => [");
-
-                      // Define validations
-                      switch($field->GetDataType()) {
-                        case "bool":
-                        case "bit":
-                          fwrite($controllerFile, "ValidationsMethod::BOOLEAN");
-                          break;
-                        case "int":
-                          fwrite($controllerFile, "ValidationsMethod::INT");
-                          break;
-                        case "float":
-                          fwrite($controllerFile, "ValidationsMethod::FLOAT");
-                          break;
-                        case "date":
-                        case "string":
-                        default:
-                          fwrite($controllerFile, "ValidationsMethod::STRING");
-                          break;
-                      }
-                      if (!$field->AllowNull() && $field->GetDataType() != "bool" && $field->GetDataType() != "bit") fwrite($controllerFile, ",ValidationsMethod::NOTNULL");
-                      fwrite($controllerFile, "],");
-                      fwrite($controllerFile, "\n");
-                      fwrite($controllerFile, "\t\t\t\t'required' => '".(!$field->AllowNull() && $field->GetDataType() != "bool" && $field->GetDataType() != "bit")."',");
-                      fwrite($controllerFile, "\n");
-                      fwrite($controllerFile, "\t\t\t\t'type' => ");
-                      switch($field->GetDataType()) {
-                        case "bool":
-                        case "bit":
-                          fwrite($controllerFile, "'bool'");
-                          break;
-                        case "int":
-                          fwrite($controllerFile, "'int'");
-                          break;
-                        case "float":
-                          fwrite($controllerFile, "'float'");
-                          break;
-                        case "date":
-                        case "string":
-                        default:
-                          fwrite($controllerFile, "'string'");
-                          break;
-                      }
-                      fwrite($controllerFile, "\n");
-                      fwrite($controllerFile, "\t\t\t],");
-                      fwrite($controllerFile, "\n");
-                    }
-                  }
-                  fwrite($controllerFile, "\t\t];");
+                  fwrite($controllerFile, "\t\t// Use validation service");
                   fwrite($controllerFile, "\n");
+                  fwrite($controllerFile, "\t\tif (!\$api) {");
                   fwrite($controllerFile, "\n");
-                  fwrite($controllerFile, "\t\tif (!\$api)");
+                  fwrite($controllerFile, "\t\t\t// Use partial validation for updates, full validation for creates");
                   fwrite($controllerFile, "\n");
-                  fwrite($controllerFile, "\t\t\t\$validatedData = \\Core\\Validations\\Validations::ValidateFormData(\$validationRules);");
+                  fwrite($controllerFile, "\t\t\tif (\$".$primaryKey->GetName().") {");
                   fwrite($controllerFile, "\n");
-                  fwrite($controllerFile, "\t\telse");
+                  fwrite($controllerFile, "\t\t\t\t\$validatedData = ".$db->GetTableName()."ValidationService::validateUpdate(\$this->request->post(), \$".$primaryKey->GetName().");");
                   fwrite($controllerFile, "\n");
-                  fwrite($controllerFile, "\t\t\t\$validatedData = \\Core\\Validations\\Validations::ValidateJsonData(\$this->request->json(), \$validationRules);");
+                  fwrite($controllerFile, "\t\t\t} else {");
+                  fwrite($controllerFile, "\n");
+                  fwrite($controllerFile, "\t\t\t\t\$validatedData = ".$db->GetTableName()."ValidationService::validateFormData(\$this->request->post());");
+                  fwrite($controllerFile, "\n");
+                  fwrite($controllerFile, "\t\t\t}");
+                  fwrite($controllerFile, "\n");
+                  fwrite($controllerFile, "\t\t} else {");
+                  fwrite($controllerFile, "\n");
+                  fwrite($controllerFile, "\t\t\t// Use partial validation for updates, full validation for creates");
+                  fwrite($controllerFile, "\n");
+                  fwrite($controllerFile, "\t\t\tif (\$".$primaryKey->GetName().") {");
+                  fwrite($controllerFile, "\n");
+                  fwrite($controllerFile, "\t\t\t\t\$validatedData = ".$db->GetTableName()."ValidationService::validateUpdate(\$this->request->json(), \$".$primaryKey->GetName().");");
+                  fwrite($controllerFile, "\n");
+                  fwrite($controllerFile, "\t\t\t} else {");
+                  fwrite($controllerFile, "\n");
+                  fwrite($controllerFile, "\t\t\t\t\$validatedData = ".$db->GetTableName()."ValidationService::validateJsonData(\$this->request->json());");
+                  fwrite($controllerFile, "\n");
+                  fwrite($controllerFile, "\t\t\t}");
+                  fwrite($controllerFile, "\n");
+                  fwrite($controllerFile, "\t\t}");
                   fwrite($controllerFile, "\n");
                   fwrite($controllerFile, "\n");
                   fwrite($controllerFile, "\t\tif (\$validatedData['success']) {");
@@ -337,5 +304,249 @@ class BuildControllers {
             else echo "ERROR: Check your permissions to write ".$controllersPath."/".$db->GetTableName().".php\n";
         }
         else echo "ERROR: Check your permissions to remove ".$controllersPath."/".$db->GetTableName().".php\n";
+    }
+
+    protected function constructValidationService($controllersPath, $db)
+    {
+        // Create Services Folder if doesn't exist
+        $servicesPath = dirname($controllersPath) . '/Services';
+        if (!is_dir($servicesPath)) \Tools\Helper\MKDIR($servicesPath);
+
+        if (\Tools\Helper\UNLINK($servicesPath."/".$db->GetTableName()."ValidationService.php")) {
+            if (\Tools\Helper\TOUCH($servicesPath."/".$db->GetTableName()."ValidationService.php")) {
+                $serviceFile = fopen($servicesPath."/".$db->GetTableName()."ValidationService.php","w+");
+                
+                fwrite($serviceFile,"<?php");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile,"/**");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile," * @copyright This file is part of the LazyMePHP Framework developed by Duarte Peixinho");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile," * @author Duarte Peixinho");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile," *");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile," * Source File Generated Automatically");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile," */");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile,"declare(strict_types=1);");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile,"namespace App\\Services;");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile,"use Core\\Validations\\ValidationsMethod;");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile,"use Core\\Validations\\Validations;");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile,"class ".$db->GetTableName()."ValidationService");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile,"{");
+                fwrite($serviceFile, "\n");
+                
+                // Generate validation rules
+                fwrite($serviceFile, "\t/**");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t * Get validation rules for ".$db->GetTableName());
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t *");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t * @return array");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t */");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\tpublic static function getValidationRules(): array");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t{");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t\treturn [");
+                fwrite($serviceFile, "\n");
+                
+                foreach($db->GetTableFields() as $field)
+                {
+                  if (!$field->IsPrimaryKey())
+                  {
+                    fwrite($serviceFile, "\t\t\t'".$field->GetName()."' => [");
+                    fwrite($serviceFile, "\n");
+                    fwrite($serviceFile, "\t\t\t\t'validations' => [");
+
+                    // Define validations
+                    switch($field->GetDataType()) {
+                      case "bool":
+                      case "bit":
+                        fwrite($serviceFile, "ValidationsMethod::BOOLEAN");
+                        break;
+                      case "int":
+                        fwrite($serviceFile, "ValidationsMethod::INT");
+                        break;
+                      case "float":
+                        fwrite($serviceFile, "ValidationsMethod::FLOAT");
+                        break;
+                      case "date":
+                      case "string":
+                      default:
+                        fwrite($serviceFile, "ValidationsMethod::STRING");
+                        break;
+                    }
+                    if (!$field->AllowNull() && $field->GetDataType() != "bool" && $field->GetDataType() != "bit") fwrite($serviceFile, ",ValidationsMethod::NOTNULL");
+                    fwrite($serviceFile, "],");
+                    fwrite($serviceFile, "\n");
+                    fwrite($serviceFile, "\t\t\t\t'required' => ".(!$field->AllowNull() && $field->GetDataType() != "bool" && $field->GetDataType() != "bit" ? "true" : "false").",");
+                    fwrite($serviceFile, "\n");
+                    fwrite($serviceFile, "\t\t\t\t'type' => ");
+                    switch($field->GetDataType()) {
+                      case "bool":
+                      case "bit":
+                        fwrite($serviceFile, "'bool'");
+                        break;
+                      case "int":
+                        fwrite($serviceFile, "'int'");
+                        break;
+                      case "float":
+                        fwrite($serviceFile, "'float'");
+                        break;
+                      case "date":
+                      case "string":
+                      default:
+                        fwrite($serviceFile, "'string'");
+                        break;
+                    }
+                    fwrite($serviceFile, "\n");
+                    fwrite($serviceFile, "\t\t\t],");
+                    fwrite($serviceFile, "\n");
+                  }
+                }
+                
+                fwrite($serviceFile, "\t\t];");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t}");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\n");
+
+                // Generate validate method
+                fwrite($serviceFile, "\t/**");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t * Validate form data");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t *");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t * @param array \$data");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t * @return array");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t */");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\tpublic static function validateFormData(array \$data): array");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t{");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t\treturn Validations::ValidateFormData(self::getValidationRules());");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t}");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\n");
+
+                // Generate validate JSON method
+                fwrite($serviceFile, "\t/**");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t * Validate JSON data");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t *");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t * @param array \$data");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t * @return array");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t */");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\tpublic static function validateJsonData(array \$data): array");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t{");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t\treturn Validations::ValidateJsonData(\$data, self::getValidationRules());");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t}");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\n");
+
+                // Generate partial validation method
+                fwrite($serviceFile, "\t/**");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t * Validate only the fields that are present in the data");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t *");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t * @param array \$data");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t * @return array");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t */");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\tpublic static function validatePartialData(array \$data): array");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t{");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t\t// Filter validation rules to only include fields present in data");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t\t\$partialRules = [];");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t\tforeach (\$data as \$field => \$value) {");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t\t\tif (isset(self::getValidationRules()[\$field])) {");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t\t\t\t\$partialRules[\$field] = self::getValidationRules()[\$field];");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t\t\t}");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t\t}");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t\treturn Validations::ValidateFormData(\$partialRules);");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t}");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\n");
+
+                // Generate update validation method
+                fwrite($serviceFile, "\t/**");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t * Validate data for updating existing record (partial validation)");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t *");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t * @param array \$data");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t * @param int \$id");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t * @return array");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t */");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\tpublic static function validateUpdate(array \$data, int \$id): array");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t{");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t\t// Use partial validation for updates");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t\treturn self::validatePartialData(\$data);");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t}");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\n");
+
+                fwrite($serviceFile, "}");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "?>");
+                
+                fclose($serviceFile);
+            }
+            else echo "ERROR: Check your permissions to write ".$servicesPath."/".$db->GetTableName()."ValidationService.php\n";
+        }
+        else echo "ERROR: Check your permissions to remove ".$servicesPath."/".$db->GetTableName()."ValidationService.php\n";
     }
 } 
