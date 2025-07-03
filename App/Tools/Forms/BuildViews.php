@@ -103,7 +103,28 @@ class BuildViews {
                     break;
                   } else $primaryKey = NULL;
                 }
-                fwrite($viewFile, "<form id='".$db->GetTableName()."Form' method='POST' action='/".$db->GetTableName()."/{!!\$".$db->GetTableName()."->Get".ucfirst($field->GetName())."()!!}'>");
+                // Check if there are file fields to add enctype
+                $hasFileFields = false;
+                foreach($db->GetTableFields() as $field)
+                {
+                  if ($this->isFileField($field->GetName()))
+                  {
+                    $hasFileFields = true;
+                    break;
+                  }
+                }
+                
+                // Determine form action based on whether this is a new or existing record
+                $formAction = "method='POST' action='/".$db->GetTableName();
+                if ($primaryKey) {
+                    $formAction .= "/{!!\$".$db->GetTableName()."->Get".ucfirst($primaryKey->GetName())."() ? \$".$db->GetTableName()."->Get".ucfirst($primaryKey->GetName())."() : ''!!}'";
+                } else {
+                    $formAction .= "'";
+                }
+                if ($hasFileFields) {
+                  $formAction .= " enctype='multipart/form-data'";
+                }
+                fwrite($viewFile, "<form id='".$db->GetTableName()."Form' ".$formAction.">");
                 foreach ($db->GetTableFields() as $field) {
                   if (!$field->IsAutoIncrement() || !$field->IsPrimaryKey())
                   {
@@ -113,6 +134,9 @@ class BuildViews {
                       fwrite($viewFile, "\t@component('_Components.Select',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'defaultValueEmpty' => true, 'options' => \$".$field->GetForeignTable()."->GetList(), 'selected' => \$".$db->GetTableName()."->Get".ucfirst($field->GetName())."() ".(!$field->AllowNull()?", 'validation' => 'notnull', 'validationfail' => '".$field->GetName()." cannot be empty'":"")." ))");
                     } else {
                       fwrite($viewFile, "\n");
+                      // Check if field name suggests file upload
+                      $isFileField = $this->isFileField($field->GetName());
+                      
                       switch ($field->GetDataType())
                       {
                         case "bool":
@@ -128,7 +152,13 @@ class BuildViews {
                           break;
                         case "string":
                         default:
-                          fwrite($viewFile, "\t@component('_Components.TextInput',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'placeholder' => '".$field->GetName()."', 'type' => 'text', 'value' => \$".$db->GetTableName()."->Get".ucfirst($field->GetName())."() ".(!$field->AllowNull()?", 'validation' => 'notnull', 'validationfail' => '".$field->GetName()." cannot be empty'":"")."".($field->GetDataLength()?", 'maxlength' => '".$field->GetDataLength()."'":"")."))");
+                          if ($isFileField) {
+                            // Generate file input for file-related fields
+                            $fileType = $this->getFileType($field->GetName());
+                            fwrite($viewFile, "\t@component('_Components.FileInput',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'placeholder' => 'Choose ".$field->GetName()."...', 'allowed_types' => ['".$fileType."'], 'max_size' => 5242880, 'required' => ".(!$field->AllowNull() ? 'true' : 'false')." ".(!$field->AllowNull()?", 'validation' => 'notnull', 'validationfail' => '".$field->GetName()." cannot be empty'":"").", 'upload_result' => \$result ?? null ))");
+                          } else {
+                            fwrite($viewFile, "\t@component('_Components.TextInput',array('name'=> '".$field->GetName()."', 'fieldname' => '".$field->GetName()."', 'placeholder' => '".$field->GetName()."', 'type' => 'text', 'value' => \$".$db->GetTableName()."->Get".ucfirst($field->GetName())."() ".(!$field->AllowNull()?", 'validation' => 'notnull', 'validationfail' => '".$field->GetName()." cannot be empty'":"")."".($field->GetDataLength()?", 'maxlength' => '".$field->GetDataLength()."'":"")."))");
+                          }
                           break;
                       }
                     }
@@ -295,5 +325,78 @@ class BuildViews {
             else echo "ERROR: Check your permissions to write ".$viewsPath."/".$db->GetTableName().".blade files\n";
         }
         else echo "ERROR: Check your permissions to remove ".$viewsPath."/".$db->GetTableName().".blade filesn";
+    }
+
+    /**
+     * Check if a field name suggests it's a file upload field
+     * 
+     * @param string $fieldName The field name to check
+     * @return bool True if it's likely a file field
+     */
+    private function isFileField(string $fieldName): bool
+    {
+        $fileKeywords = [
+            'file', 'upload', 'attachment', 'document', 'image', 'photo', 'picture',
+            'avatar', 'logo', 'banner', 'icon', 'media', 'video', 'audio',
+            'pdf', 'doc', 'xls', 'ppt', 'zip', 'archive'
+        ];
+        
+        $fieldNameLower = strtolower($fieldName);
+        
+        foreach ($fileKeywords as $keyword) {
+            if (strpos($fieldNameLower, $keyword) !== false) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    /**
+     * Determine the file type based on field name
+     * 
+     * @param string $fieldName The field name
+     * @return string The file type (image, document, etc.)
+     */
+    private function getFileType(string $fieldName): string
+    {
+        $fieldNameLower = strtolower($fieldName);
+        
+        // Image types
+        if (strpos($fieldNameLower, 'image') !== false || 
+            strpos($fieldNameLower, 'photo') !== false || 
+            strpos($fieldNameLower, 'picture') !== false ||
+            strpos($fieldNameLower, 'avatar') !== false ||
+            strpos($fieldNameLower, 'logo') !== false ||
+            strpos($fieldNameLower, 'banner') !== false ||
+            strpos($fieldNameLower, 'icon') !== false) {
+            return 'image';
+        }
+        
+        // Document types
+        if (strpos($fieldNameLower, 'document') !== false || 
+            strpos($fieldNameLower, 'pdf') !== false || 
+            strpos($fieldNameLower, 'doc') !== false) {
+            return 'document';
+        }
+        
+        // Video types
+        if (strpos($fieldNameLower, 'video') !== false) {
+            return 'video';
+        }
+        
+        // Audio types
+        if (strpos($fieldNameLower, 'audio') !== false) {
+            return 'audio';
+        }
+        
+        // Archive types
+        if (strpos($fieldNameLower, 'archive') !== false || 
+            strpos($fieldNameLower, 'zip') !== false) {
+            return 'archive';
+        }
+        
+        // Default to document for general file fields
+        return 'document';
     }
 } 

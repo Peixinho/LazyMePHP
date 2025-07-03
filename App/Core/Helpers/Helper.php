@@ -99,4 +99,22 @@ class Helper {
     }
     return htmlspecialchars((string)$value, $flags, $encoding);
   }
+
+  /**
+   * Format bytes to human readable format
+   * 
+   * @param int $bytes Number of bytes
+   * @return string Formatted string (e.g., "1.5 MB")
+   */
+  static function formatBytes(int $bytes): string
+  {
+    $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    $bytes = max($bytes, 0);
+    $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+    $pow = min($pow, count($units) - 1);
+    
+    $bytes /= pow(1024, $pow);
+    
+    return round($bytes, 2) . ' ' . $units[$pow];
+  }
 }

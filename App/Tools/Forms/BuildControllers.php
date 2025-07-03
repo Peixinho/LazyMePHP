@@ -80,7 +80,7 @@ class BuildControllers {
                 fwrite($controllerFile, "\t}");
 
                 fwrite($controllerFile, "\n");
-                fwrite($controllerFile, "\tfunction edit(?int \$".$field->GetName()." = null) : array {");
+                fwrite($controllerFile, "\tfunction edit(?int \$".$field->GetName()." = null, \$result = null) : array {");
                 fwrite($controllerFile, "\n");
                 fwrite($controllerFile, "\t\tif (isset(\$".$field->GetName().")) \$".$db->GetTableName()." = new \Models\\".$db->GetTableName()."(\$".$field->GetName().");");
                 fwrite($controllerFile, "\n");
@@ -107,7 +107,7 @@ class BuildControllers {
                     fwrite($controllerFile, ", '".$field->GetForeignTable()."' => \$".$field->GetForeignTable());
                   }
                 }
-                fwrite($controllerFile, "];");
+                fwrite($controllerFile, ", 'result' => \$result];");
 
                 fwrite($controllerFile, "\n");
                 fwrite($controllerFile, "\t}");
@@ -121,6 +121,59 @@ class BuildControllers {
                   fwrite($controllerFile, "\t\t\$obj = new \\Models\\".$db->GetTableName()."(\$".$primaryKey->GetName().");");
                   fwrite($controllerFile, "\n");
                   fwrite($controllerFile, "\n");
+
+                  // Check if there are file fields and add file upload handling
+                  $hasFileFields = false;
+                  $fileFields = [];
+                  foreach ($db->GetTableFields() as $field) {
+                    if ($this->isFileField($field->GetName())) {
+                      $hasFileFields = true;
+                      $fileFields[] = $field;
+                    }
+                  }
+
+                  if ($hasFileFields) {
+                    fwrite($controllerFile, "\t\t// Handle file uploads\n");
+                    fwrite($controllerFile, "\t\t\$fileResults = [];\n");
+                    fwrite($controllerFile, "\t\t\$uploadedFilePaths = [];\n");
+                    fwrite($controllerFile, "\n");
+                    
+                    foreach ($fileFields as $field) {
+                      $fieldName = $field->GetName();
+                      $fileType = $this->getFileType($fieldName);
+                      fwrite($controllerFile, "\t\tif (isset(\$_FILES['".$fieldName."']) && \$_FILES['".$fieldName."']['error'] !== UPLOAD_ERR_NO_FILE) {\n");
+                      fwrite($controllerFile, "\t\t\t\$uploadDir = __DIR__ . '/../../public/uploads/".$db->GetTableName()."/';\n");
+                      fwrite($controllerFile, "\t\t\tif (!is_dir(\$uploadDir)) {\n");
+                      fwrite($controllerFile, "\t\t\t\tmkdir(\$uploadDir, 0755, true);\n");
+                      fwrite($controllerFile, "\t\t\t}\n");
+                      fwrite($controllerFile, "\n");
+                      fwrite($controllerFile, "\t\t\t\$uploadResult = \\Core\\Helpers\\FileUploadHelper::uploadFile(\$_FILES['".$fieldName."'], \$uploadDir, [\n");
+                      fwrite($controllerFile, "\t\t\t\t'allowed_types' => ['".$fileType."'],\n");
+                      fwrite($controllerFile, "\t\t\t\t'max_size' => 10485760,\n");
+                      fwrite($controllerFile, "\t\t\t\t'create_thumbnails' => false\n");
+                      fwrite($controllerFile, "\t\t\t]);\n");
+                      fwrite($controllerFile, "\n");
+                      fwrite($controllerFile, "\t\t\tif (\$uploadResult['success']) {\n");
+                      fwrite($controllerFile, "\t\t\t\t\$uploadedFilePaths['".$fieldName."'] = \$uploadResult['file_path'];\n");
+                      fwrite($controllerFile, "\t\t\t\t\$fileResults['".$fieldName."'] = [\n");
+                      fwrite($controllerFile, "\t\t\t\t\t'valid' => true,\n");
+                      fwrite($controllerFile, "\t\t\t\t\t'uploaded_file' => \$uploadResult['file_path'],\n");
+                      fwrite($controllerFile, "\t\t\t\t\t'original_name' => \$_FILES['".$fieldName."']['name'],\n");
+                      fwrite($controllerFile, "\t\t\t\t\t'size' => \$_FILES['".$fieldName."']['size'],\n");
+                      fwrite($controllerFile, "\t\t\t\t\t'mime_type' => \$_FILES['".$fieldName."']['type']\n");
+                      fwrite($controllerFile, "\t\t\t\t];\n");
+                      fwrite($controllerFile, "\t\t\t} else {\n");
+                      fwrite($controllerFile, "\t\t\t\t\$fileResults['".$fieldName."'] = [\n");
+                      fwrite($controllerFile, "\t\t\t\t\t'valid' => false,\n");
+                      fwrite($controllerFile, "\t\t\t\t\t'errors' => [\$uploadResult['error']]\n");
+                      fwrite($controllerFile, "\t\t\t\t];\n");
+                      fwrite($controllerFile, "\t\t\t\treturn \$this->edit(\$".$primaryKey->GetName().", \$fileResults['".$fieldName."']);\n");
+                      fwrite($controllerFile, "\t\t\t}\n");
+                      fwrite($controllerFile, "\t\t}\n");
+                      fwrite($controllerFile, "\n");
+                    }
+                  }
+
                   fwrite($controllerFile, "\t\t// Use validation service");
                   fwrite($controllerFile, "\n");
                   fwrite($controllerFile, "\t\tif (!\$api) {");
@@ -164,6 +217,17 @@ class BuildControllers {
                   fwrite($controllerFile, "\n");
                   fwrite($controllerFile, "\t\t\t}");
                   fwrite($controllerFile, "\n");
+
+                  // Add file path storage if there are file fields
+                  if ($hasFileFields) {
+                    fwrite($controllerFile, "\n");
+                    fwrite($controllerFile, "\t\t\t// Store uploaded file paths\n");
+                    fwrite($controllerFile, "\t\t\tforeach (\$uploadedFilePaths as \$field => \$filePath) {\n");
+                    fwrite($controllerFile, "\t\t\t\t\$setter = 'Set' . ucfirst(\$field);\n");
+                    fwrite($controllerFile, "\t\t\t\t\$obj->\$setter(\$filePath);\n");
+                    fwrite($controllerFile, "\t\t\t}\n");
+                  }
+
                   fwrite($controllerFile, "\t\t\t\$obj->Save();");
                   fwrite($controllerFile, "\n");
                   fwrite($controllerFile, "\n");
@@ -183,6 +247,18 @@ class BuildControllers {
                   fwrite($controllerFile, "\n");
                   fwrite($controllerFile, "\t\t\t}");
                   fwrite($controllerFile, "\n");
+
+                  // Add file upload result handling
+                  if ($hasFileFields) {
+                    fwrite($controllerFile, "\n");
+                    fwrite($controllerFile, "\t\t\t// Return file upload results if files were uploaded\n");
+                    fwrite($controllerFile, "\t\t\tif (!empty(\$fileResults)) {\n");
+                    fwrite($controllerFile, "\t\t\t\t// Return the first file result for display\n");
+                    fwrite($controllerFile, "\t\t\t\t\$firstFileResult = reset(\$fileResults);\n");
+                    fwrite($controllerFile, "\t\t\t\treturn \$this->edit(\$".$primaryKey->GetName().", \$firstFileResult);\n");
+                    fwrite($controllerFile, "\t\t\t}\n");
+                  }
+
                   fwrite($controllerFile, "\n");
                   fwrite($controllerFile, "\t\t\treturn \$obj;");
                   fwrite($controllerFile, "\n");
@@ -629,5 +705,78 @@ class BuildControllers {
             else echo "ERROR: Check your permissions to write ".$servicesPath."/".$db->GetTableName()."ValidationService.php\n";
         }
         else echo "ERROR: Check your permissions to remove ".$servicesPath."/".$db->GetTableName()."ValidationService.php\n";
+    }
+
+    /**
+     * Check if a field name suggests it's a file upload field
+     * 
+     * @param string $fieldName The field name to check
+     * @return bool True if it's likely a file field
+     */
+    private function isFileField(string $fieldName): bool
+    {
+        $fileKeywords = [
+            'file', 'upload', 'attachment', 'document', 'image', 'photo', 'picture',
+            'avatar', 'logo', 'banner', 'icon', 'media', 'video', 'audio',
+            'pdf', 'doc', 'xls', 'ppt', 'zip', 'archive'
+        ];
+        
+        $fieldNameLower = strtolower($fieldName);
+        
+        foreach ($fileKeywords as $keyword) {
+            if (strpos($fieldNameLower, $keyword) !== false) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    /**
+     * Determine the file type based on field name
+     * 
+     * @param string $fieldName The field name
+     * @return string The file type (image, document, etc.)
+     */
+    private function getFileType(string $fieldName): string
+    {
+        $fieldNameLower = strtolower($fieldName);
+        
+        // Image types
+        if (strpos($fieldNameLower, 'image') !== false || 
+            strpos($fieldNameLower, 'photo') !== false || 
+            strpos($fieldNameLower, 'picture') !== false ||
+            strpos($fieldNameLower, 'avatar') !== false ||
+            strpos($fieldNameLower, 'logo') !== false ||
+            strpos($fieldNameLower, 'banner') !== false ||
+            strpos($fieldNameLower, 'icon') !== false) {
+            return 'image';
+        }
+        
+        // Document types
+        if (strpos($fieldNameLower, 'document') !== false || 
+            strpos($fieldNameLower, 'pdf') !== false || 
+            strpos($fieldNameLower, 'doc') !== false) {
+            return 'document';
+        }
+        
+        // Video types
+        if (strpos($fieldNameLower, 'video') !== false) {
+            return 'video';
+        }
+        
+        // Audio types
+        if (strpos($fieldNameLower, 'audio') !== false) {
+            return 'audio';
+        }
+        
+        // Archive types
+        if (strpos($fieldNameLower, 'archive') !== false || 
+            strpos($fieldNameLower, 'zip') !== false) {
+            return 'archive';
+        }
+        
+        // Default to document for general file fields
+        return 'document';
     }
 } 
