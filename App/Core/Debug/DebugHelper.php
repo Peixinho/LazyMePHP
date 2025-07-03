@@ -245,7 +245,7 @@ class DebugHelper
             'database_info' => self::getDatabaseInfo(),
             'environment_info' => [
                 'app_env' => $_ENV['APP_ENV'] ?? 'unknown',
-                'app_debug' => $_ENV['APP_DEBUG'] ?? 'false',
+                'app_debug' => $_ENV['APP_DEBUG_MODE'] ?? 'false',
                 'timezone' => date_default_timezone_get(),
                 'current_time' => date('Y-m-d H:i:s')
             ]

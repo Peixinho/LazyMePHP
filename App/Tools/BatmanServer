@@ -33,8 +33,8 @@ function logDebug($message) {
     if (isset($_ENV['BATMAN_DEBUG']) && $_ENV['BATMAN_DEBUG'] === 'true') {
         error_log("[BatmanServer] " . $message);
     }
-    // Also log if APP_DEBUG is enabled
-    if (isset($_ENV['APP_DEBUG']) && $_ENV['APP_DEBUG'] === 'true') {
+    // Also log if APP_DEBUG_MODE is enabled
+    if (isset($_ENV['APP_DEBUG_MODE']) && $_ENV['APP_DEBUG_MODE'] === 'true') {
         error_log("[BatmanServer] " . $message);
     }
 }

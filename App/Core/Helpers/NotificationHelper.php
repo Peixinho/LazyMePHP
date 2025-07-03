@@ -475,7 +475,7 @@ class NotificationHelper
     {
         return (isset($_ENV['DEBUG_MODE']) && $_ENV['DEBUG_MODE'] === 'true') ||
                (isset($_SERVER['DEBUG_MODE']) && $_SERVER['DEBUG_MODE'] === 'true') ||
-               (isset($_ENV['APP_DEBUG']) && $_ENV['APP_DEBUG'] === 'true');
+               (isset($_ENV['APP_DEBUG_MODE']) && $_ENV['APP_DEBUG_MODE'] === 'true');
     }
 
     /**

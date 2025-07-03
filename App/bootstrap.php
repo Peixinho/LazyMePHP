@@ -24,7 +24,7 @@ if (file_exists(__DIR__.'/../.env')) {
 /*
  * Set Error Reporting
  */
-if (isset($_ENV['APP_DEBUG']) && $_ENV['APP_DEBUG'] === 'true') {
+if (isset($_ENV['APP_DEBUG_MODE']) && $_ENV['APP_DEBUG_MODE'] === 'true') {
     error_reporting(E_ALL);
     ini_set('display_errors', '1');
     ini_set('display_startup_errors', '1');

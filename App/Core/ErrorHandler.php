@@ -469,7 +469,7 @@ class ErrorHandler
      */
     private static function isDebugMode(): bool {
         return \Core\LazyMePHP::DEBUG_MODE() || 
-               (isset($_ENV['APP_DEBUG']) && $_ENV['APP_DEBUG'] === 'true') ||
+               (isset($_ENV['APP_DEBUG_MODE']) && $_ENV['APP_DEBUG_MODE'] === 'true') ||
                (isset($_GET['debug']) && $_GET['debug'] === 'true');
     }
 

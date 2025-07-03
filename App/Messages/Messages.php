@@ -158,7 +158,15 @@ class Messages {
     static function ValidationErrors(array $errors, array $options = []) : void
     {
         foreach ($errors as $field => $message) {
-            self::ValidationError($field, $message, $options);
+            // Handle both string and array error messages
+            if (is_array($message)) {
+                // If it's an array of error messages, join them
+                $errorMessage = implode(', ', $message);
+            } else {
+                // If it's already a string, use it as is
+                $errorMessage = $message;
+            }
+            self::ValidationError($field, $errorMessage, $options);
         }
     }
 
@@ -171,7 +179,15 @@ class Messages {
             if ($error instanceof Error) {
                 self::ValidationErrorEnum($field, $error, [], $options);
             } else {
-                self::ValidationError($field, $error, $options);
+                // Handle both string and array error messages
+                if (is_array($error)) {
+                    // If it's an array of error messages, join them
+                    $errorMessage = implode(', ', $error);
+                } else {
+                    // If it's already a string, use it as is
+                    $errorMessage = $error;
+                }
+                self::ValidationError($field, $errorMessage, $options);
             }
         }
     }

@@ -280,7 +280,7 @@ if ($db) {
 
 // Get environment variables (filtered for security)
 $envVars = [];
-$safeEnvVars = ['DB_HOST', 'DB_NAME', 'DB_USER', 'APP_ENV', 'APP_DEBUG', 'APP_URL'];
+$safeEnvVars = ['DB_HOST', 'DB_NAME', 'DB_USER', 'APP_ENV', 'APP_DEBUG_MODE', 'APP_URL'];
 foreach ($safeEnvVars as $var) {
     if (isset($_ENV[$var])) {
         $envVars[$var] = $_ENV[$var];

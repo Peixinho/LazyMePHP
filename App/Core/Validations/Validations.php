@@ -516,14 +516,16 @@ class Validations {
               continue;
           }
 
-          // Handle empty values
-          if ($value === '' || ($rule['type'] === 'string' && $value === null)) {
-              if ($rule['required'] ?? true) {
-                  $errors[$field] = ['Field cannot be empty.'];
-              } else {
-                  $validatedData[$field] = null;
-                  $validatedFields[] = $field;
-              }
+          // Handle empty values - only reject if field is required
+          if (($value === '' || ($rule['type'] === 'string' && $value === null)) && ($rule['required'] ?? true)) {
+              $errors[$field] = ['Field cannot be empty.'];
+              continue;
+          }
+          
+          // For optional fields with empty values, set to null and continue
+          if (($value === '' || ($rule['type'] === 'string' && $value === null)) && !($rule['required'] ?? true)) {
+              $validatedData[$field] = null;
+              $validatedFields[] = $field;
               continue;
           }
 

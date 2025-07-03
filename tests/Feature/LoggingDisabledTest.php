@@ -119,7 +119,7 @@ describe('Error Handling with Logging Disabled', function () {
     it('should provide correct environment information', function () {
         $_ENV['APP_ACTIVITY_LOG'] = 'false';
         $_ENV['APP_ENV'] = 'testing';
-        $_ENV['APP_DEBUG'] = 'true';
+        $_ENV['APP_DEBUG_MODE'] = 'true';
         LazyMePHP::reset();
         new LazyMePHP();
         expect(LazyMePHP::ACTIVITY_LOG())->toBeFalse();

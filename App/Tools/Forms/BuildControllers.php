@@ -193,7 +193,7 @@ class BuildControllers {
                   fwrite($controllerFile, "\n");
                   fwrite($controllerFile, "\t\tif (!\$api) {");
                   fwrite($controllerFile, "\n");
-                  fwrite($controllerFile, "\t\t\t\\Messages\\Messages::ValidationErrors(\$validatedData['errors'], 'Validation failed for ".$db->GetTableName()."');");
+                  fwrite($controllerFile, "\t\t\t\\Messages\\Messages::ValidationErrors(\$validatedData['errors'], ['type' => '".$db->GetTableName()."']);");
                   fwrite($controllerFile, "\n");
                   fwrite($controllerFile, "\t\t\treturn false;");
                   fwrite($controllerFile, "\n");
@@ -262,9 +262,11 @@ class BuildControllers {
                   fwrite($controllerFile, "\n");
                   fwrite($controllerFile, "\t\t\t}");
                   fwrite($controllerFile, "\n");
-                  fwrite($controllerFile, "\t\t}");
+                  fwrite($controllerFile, "\t\t} else {");
                   fwrite($controllerFile, "\n");
-                  fwrite($controllerFile, "\t\telse \$".$db->GetTableName()."->FindAll();");
+                  fwrite($controllerFile, "\t\t\t\$".$db->GetTableName()."->FindAll();");
+                  fwrite($controllerFile, "\n");
+                  fwrite($controllerFile, "\t\t}");
                   fwrite($controllerFile, "\n");
                   fwrite($controllerFile, "\t\t\$length = \$".$db->GetTableName()."->GetCount();");
                   fwrite($controllerFile, "\n");
@@ -368,65 +370,113 @@ class BuildControllers {
                 
                 foreach($db->GetTableFields() as $field)
                 {
-                  fwrite($serviceFile, "\t\t\t'".$field->GetName()."' => [");
-                  fwrite($serviceFile, "\n");
-                  fwrite($serviceFile, "\t\t\t\t'validations' => [");
+                  fwrite($serviceFile, "\t\t\t'".$field->GetName()."' => [\n");
+                  fwrite($serviceFile, "\t\t\t\t'validations' => [\n");
 
-                  // Define validations
+                  // Define validations with improved logic
+                  $validations = [];
+                  
+                  // Add type-specific validations
                   switch($field->GetDataType()) {
                     case "bool":
                     case "bit":
-                      fwrite($serviceFile, "ValidationsMethod::BOOLEAN");
+                      $validations[] = "ValidationsMethod::BOOLEAN";
                       break;
                     case "int":
-                      fwrite($serviceFile, "ValidationsMethod::INT");
+                      $validations[] = "ValidationsMethod::INT";
                       break;
                     case "float":
-                      fwrite($serviceFile, "ValidationsMethod::FLOAT");
+                      $validations[] = "ValidationsMethod::FLOAT";
                       break;
                     case "date":
+                      $validations[] = "ValidationsMethod::DATE";
+                      break;
+                    case "datetime":
+                    case "timestamp":
+                      $validations[] = "ValidationsMethod::DATETIME";
+                      break;
                     case "string":
                     default:
-                      fwrite($serviceFile, "ValidationsMethod::STRING");
+                      // Check if field name suggests email
+                      if (stripos($field->GetName(), 'email') !== false) {
+                        $validations[] = "ValidationsMethod::EMAIL";
+                      }
+                      // Check if field name suggests phone number
+                      elseif (stripos($field->GetName(), 'phone') !== false || stripos($field->GetName(), 'telefone') !== false || stripos($field->GetName(), 'tel') !== false) {
+                        $validations[] = "ValidationsMethod::STRING";
+                        // Add max_length param for STRING validation immediately after STRING
+                        if ($field->GetDataLength() > 0) {
+                          $validations[] = "['max_length' => " . $field->GetDataLength() . "]";
+                        }
+                        $validations[] = "ValidationsMethod::REGEXP";
+                        $validations[] = "/^[+]?[0-9\\s\\-\\(\\)]+$/";
+                      }
+                      // Check if field name suggests URL
+                      elseif (stripos($field->GetName(), 'url') !== false || stripos($field->GetName(), 'link') !== false || stripos($field->GetName(), 'website') !== false) {
+                        $validations[] = "ValidationsMethod::STRING";
+                        // Add max_length param for STRING validation immediately after STRING
+                        if ($field->GetDataLength() > 0) {
+                          $validations[] = "['max_length' => " . $field->GetDataLength() . "]";
+                        }
+                        $validations[] = "ValidationsMethod::REGEXP";
+                        $validations[] = "/^https?:\\/\\/.+/";
+                      }
+                      else {
+                        $validations[] = "ValidationsMethod::STRING";
+                        // Add max_length param for STRING validation
+                        if ($field->GetDataLength() > 0) {
+                          $validations[] = "['max_length' => " . $field->GetDataLength() . "]";
+                        }
+                      }
                       break;
                   }
                   
-                  // Add NOTNULL validation for required fields (but not for auto-increment primary keys)
-                  if (!$field->AllowNull() && $field->GetDataType() != "bool" && $field->GetDataType() != "bit" && !($field->IsPrimaryKey() && $field->IsAutoIncrement())) {
-                    fwrite($serviceFile, ",ValidationsMethod::NOTNULL");
+                  // When outputting validations, wrap strings in single quotes
+                  $validations_quoted = array_map(function($v) {
+                    if (is_string($v) && !str_starts_with($v, 'ValidationsMethod::')) {
+                      // Don't quote array-like strings (they should be output as-is)
+                      if (str_starts_with($v, '[') && str_ends_with($v, ']')) {
+                        return $v;
+                      }
+                      $v = str_replace("'", "\\'", $v);
+                      return "'" . $v . "'";
+                    }
+                    return $v;
+                  }, $validations);
+                  foreach ($validations_quoted as $v) {
+                    fwrite($serviceFile, "\t\t\t\t\t$v,\n");
                   }
-                  
-                  fwrite($serviceFile, "],");
-                  fwrite($serviceFile, "\n");
+                  fwrite($serviceFile, "\t\t\t\t],\n");
                   
                   // Determine if field is required
                   // Primary keys with auto-increment are never required for inserts
                   // Other fields are required if they don't allow null
                   $isRequired = !$field->AllowNull() && $field->GetDataType() != "bool" && $field->GetDataType() != "bit" && !($field->IsPrimaryKey() && $field->IsAutoIncrement());
-                  fwrite($serviceFile, "\t\t\t\t'required' => ".($isRequired ? "true" : "false").",");
-                  fwrite($serviceFile, "\n");
+                  fwrite($serviceFile, "\t\t\t\t'required' => ".($isRequired ? "true" : "false").",\n");
                   
                   fwrite($serviceFile, "\t\t\t\t'type' => ");
                   switch($field->GetDataType()) {
                     case "bool":
                     case "bit":
-                      fwrite($serviceFile, "'bool'");
+                      fwrite($serviceFile, "'bool'\n");
                       break;
                     case "int":
-                      fwrite($serviceFile, "'int'");
+                      fwrite($serviceFile, "'int'\n");
                       break;
                     case "float":
-                      fwrite($serviceFile, "'float'");
+                      fwrite($serviceFile, "'float'\n");
                       break;
                     case "date":
+                    case "datetime":
+                    case "timestamp":
+                      fwrite($serviceFile, "'iso_date'\n");
+                      break;
                     case "string":
                     default:
-                      fwrite($serviceFile, "'string'");
+                      fwrite($serviceFile, "'string'\n");
                       break;
                   }
-                  fwrite($serviceFile, "\n");
-                  fwrite($serviceFile, "\t\t\t],");
-                  fwrite($serviceFile, "\n");
+                  fwrite($serviceFile, "\t\t\t],\n");
                 }
                 
                 fwrite($serviceFile, "\t\t];");
@@ -435,14 +485,14 @@ class BuildControllers {
                 fwrite($serviceFile, "\n");
                 fwrite($serviceFile, "\n");
 
-                // Generate validate method
+                // Generate validate form data method
                 fwrite($serviceFile, "\t/**");
                 fwrite($serviceFile, "\n");
-                fwrite($serviceFile, "\t * Validate form data");
+                fwrite($serviceFile, "\t * Validate form data from \$_POST");
                 fwrite($serviceFile, "\n");
                 fwrite($serviceFile, "\t *");
                 fwrite($serviceFile, "\n");
-                fwrite($serviceFile, "\t * @param array \$data");
+                fwrite($serviceFile, "\t * @param array \$data (ignored - always uses \$_POST)");
                 fwrite($serviceFile, "\n");
                 fwrite($serviceFile, "\t * @return array");
                 fwrite($serviceFile, "\n");
@@ -453,6 +503,29 @@ class BuildControllers {
                 fwrite($serviceFile, "\t{");
                 fwrite($serviceFile, "\n");
                 fwrite($serviceFile, "\t\treturn Validations::ValidateFormData(self::getValidationRules());");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t}");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\n");
+
+                // Generate validate data method
+                fwrite($serviceFile, "\t/**");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t * Validate arbitrary data array");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t *");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t * @param array \$data");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t * @return array");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t */");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\tpublic static function validateData(array \$data): array");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t{");
+                fwrite($serviceFile, "\n");
+                fwrite($serviceFile, "\t\treturn Validations::ValidateJsonData(\$data, self::getValidationRules());");
                 fwrite($serviceFile, "\n");
                 fwrite($serviceFile, "\t}");
                 fwrite($serviceFile, "\n");
@@ -513,7 +586,7 @@ class BuildControllers {
                 fwrite($serviceFile, "\t\t}");
                 fwrite($serviceFile, "\n");
                 fwrite($serviceFile, "\n");
-                fwrite($serviceFile, "\t\treturn Validations::ValidateFormData(\$partialRules);");
+                fwrite($serviceFile, "\t\treturn Validations::ValidateJsonData(\$data, \$partialRules);");
                 fwrite($serviceFile, "\n");
                 fwrite($serviceFile, "\t}");
                 fwrite($serviceFile, "\n");
