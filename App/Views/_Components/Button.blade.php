@@ -22,9 +22,9 @@
       type="button"
     @break
   @endswitch
-  name="{{$name}}"
-  id="{{$id or $name}}"
-  @if (isset($onclick)) onclick="{{$onclick}}" @endif
+  name="{{ \Core\Helpers\Helper::e($name) }}"
+  id="{{ \Core\Helpers\Helper::e($id ?? $name) }}"
+  @if (isset($onclick)) onclick="{{ \Core\Helpers\Helper::e($onclick) }}" @endif
 >
-  {{$fieldname or $name}}
+  {{ \Core\Helpers\Helper::e($fieldname ?? $name) }}
   </button>

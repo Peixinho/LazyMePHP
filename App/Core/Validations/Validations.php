@@ -170,8 +170,12 @@ class Validations {
           return false;
       }
 
+      // Enhanced sanitization: strip HTML tags and encode entities
       if (!empty($params['sanitize'])) {
-        $value = strip_tags($value);
+          // Remove HTML tags
+          $value = strip_tags($value);
+          // Encode HTML entities to prevent XSS
+          $value = htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
       }
 
       return self::ValidateRegExp($value, $regex) || empty($value);
@@ -428,7 +432,8 @@ class Validations {
           }
           break;
         case 'string':
-          $validatedData[$field] = (string)$value;
+          // Encode HTML entities to prevent XSS attacks
+          $validatedData[$field] = htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
           break;
         case 'iso_date':
           // Verify ISO_DATE format
@@ -571,7 +576,8 @@ class Validations {
                       }
                       break;
                   case 'string':
-                      $validatedData[$field] = (string)$value;
+                      // Encode HTML entities to prevent XSS attacks
+                      $validatedData[$field] = htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
                       break;
                   case 'iso_date':
                       // Verify ISO 8601 date format

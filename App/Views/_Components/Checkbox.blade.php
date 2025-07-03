@@ -5,31 +5,28 @@
  * @author Duarte Peixinho
  *
  * $name (string)
- * $type (string)
  * $fieldname (string)
+ * $placeholder (string) opcional
  * $id (string) opcional
- * $value (string)
+ * $value (string) opcional
+ * $validation (string) opcional
+ * $validationfail (string) opcional
  */
 ?>
 
-<p>
-  <label>
-    <span>{{$fieldname or $name}}</span>
-    <input 
-      @switch($type)
-        @case('radio')
-          type="radio"
-        @break
-        @default
-        @case('checkbox')
-          type="checkbox"
-        @break
-      @endswitch
-      id="{{$id or $name}}" 
-      name="{{$name}}"
-      value="{{$value}}"
-      @if (isset($checked)) checked @endif
-    />
-  </label>
-</p>
+<div>
+  <label for="{{$name}}">{{ \Core\Helpers\Helper::e($fieldname ?? $name) }}</label>
+  <input 
+    type="checkbox"
+    id="{{$id ?? $name}}" 
+    name="{{$name}}"
+    value="{{ \Core\Helpers\Helper::e($value ?? '1') }}"
+    class="form-control"
+    placeholder="{{ \Core\Helpers\Helper::e($placeholder ?? ' ') }}"
+    @if (isset($validation)) validation="{{ \Core\Helpers\Helper::e($validation ?? '') }}" @endif
+    @if (isset($validationfail)) validation-fail="{{ \Core\Helpers\Helper::e($validationfail ?? '') }}" @endif
+    @if (isset($checked) && $checked) checked @endif
+    @if (isset($validation)) aria-describedby="validation{{$id ?? $name}}Feedback" @endif
+   />
+</div>
 

@@ -77,15 +77,26 @@ class Helper {
 
   /**
    * Get current csrf-token
-   * @return string|null
    */
   static function csrf_token(): ?string
   {
     $baseVerifier = Router::router()->getCsrfVerifier();
-    if ($baseVerifier !== null) {
-      return $baseVerifier->getTokenProvider()->getToken();
-    }
+    return $baseVerifier ? $baseVerifier->getTokenProvider()->getToken() : null;
+  }
 
-    return null;
+  /**
+   * Safely escape output to prevent XSS attacks
+   * 
+   * @param mixed $value The value to escape
+   * @param int $flags HTML entity encoding flags
+   * @param string $encoding Character encoding
+   * @return string Escaped string
+   */
+  static function e($value, int $flags = ENT_QUOTES, string $encoding = 'UTF-8'): string
+  {
+    if (is_null($value)) {
+      return '';
+    }
+    return htmlspecialchars((string)$value, $flags, $encoding);
   }
 }

@@ -22,6 +22,29 @@ if (file_exists(__DIR__.'/../.env')) {
 }
 
 /*
+ * Set Security Headers
+ */
+if (!headers_sent()) {
+    // Prevent XSS attacks
+    header('X-XSS-Protection: 1; mode=block');
+    
+    // Prevent MIME type sniffing
+    header('X-Content-Type-Options: nosniff');
+    
+    // Prevent clickjacking
+    header('X-Frame-Options: DENY');
+    
+    // Content Security Policy - restrict resource loading
+    header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self';");
+    
+    // Referrer Policy
+    header('Referrer-Policy: strict-origin-when-cross-origin');
+    
+    // Permissions Policy (formerly Feature Policy)
+    header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
+}
+
+/*
  * Set Error Reporting
  */
 if (isset($_ENV['APP_DEBUG_MODE']) && $_ENV['APP_DEBUG_MODE'] === 'true') {

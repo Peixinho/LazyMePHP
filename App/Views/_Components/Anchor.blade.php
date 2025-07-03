@@ -11,6 +11,6 @@
 ?>
 
 <a 
-  href="{{$href}}" 
+  href="{{ \Core\Helpers\Helper::e($href) }}" 
   @if (isset($target)) target="{{$target}}" @endif
->{{$link}}</a>
+>{{ \Core\Helpers\Helper::e($link) }}</a>

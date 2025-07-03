@@ -15,19 +15,19 @@
 ?>
 
 <div>
-  <label>{{$fieldname}}</label>
+  <label>{{ \Core\Helpers\Helper::e($fieldname) }}</label>
   <select
     id="{{$id or $name}}" 
     name="{{$name}}"
     class="validate"
-    validation="{{$validation or ''}}"
-    validation-fail="{{$validationfail or ''}}"
+    validation="{{ \Core\Helpers\Helper::e($validation ?? '') }}"
+    validation-fail="{{ \Core\Helpers\Helper::e($validationfail ?? '') }}"
   >
     @if ($defaultValueEmpty) 
       <option value="">-</option>
     @endif
     @foreach($options as $o)
-      <option value="{{$o->GetPrimaryKey()}}" @if (isset($selected) && $selected==$o->GetPrimaryKey()) selected @endif>{{$o->Getdescriptor()}}</option> 
+      <option value="{{ \Core\Helpers\Helper::e($o->GetPrimaryKey()) }}" @if (isset($selected) && $selected==$o->GetPrimaryKey()) selected @endif>{{ \Core\Helpers\Helper::e($o->Getdescriptor()) }}</option> 
     @endforeach
   </select>
 </div>
