@@ -65,20 +65,35 @@ enum Operator:string {
  */
 class Select {
 
-  private $queryTables;
-  private $queryFields;
-  private $queryWhere;
-  private $hasWhereCondition;
-  private $queryOrder;
-  private $tables;
-  private $tableAliases;
+  private string $queryTables;
+  private string $queryFields;
+  private string $queryWhere;
+  private bool $hasWhereCondition;
+  private string $queryOrder;
+  /**
+   * @var array<int, array{table: string, alias: string, fields: list<string>}> 
+   */
+  private array $tables;
+  private string $tableAliases;
+  /**
+   * @var array<int, mixed> 
+   */
   private array $queryParams;
-  private $queryGroupBy;
-  private $queryHaving;
-  private $queryLimit;
-  private $selectedFields = [];
-  private $selectExpressions = [];
-  private $dbDriver = 'mysql'; // default, can be set to 'mysql', 'mssql', 'sqlite'
+  private string $queryGroupBy;
+  private string $queryHaving;
+  /**
+   * @var array{limit: int, offset: int}|null
+   */
+  private ?array $queryLimit;
+  /**
+   * @var array<int, array{table: string, field: string}> 
+   */
+  private array $selectedFields = [];
+  /**
+   * @var list<string> 
+   */
+  private array $selectExpressions = [];
+  private string $dbDriver = 'mysql'; // default, can be set to 'mysql', 'mssql', 'sqlite'
 
   public function __construct() {
     $this->queryTables = '';
@@ -89,6 +104,9 @@ class Select {
     $this->tables = array();
     $this->tableAliases = 'A';
     $this->queryParams = [];
+    $this->queryGroupBy = '';
+    $this->queryHaving = '';
+    $this->queryLimit = null;
   }
 
   public function setDbDriver(string $driver): self {
@@ -106,12 +124,15 @@ class Select {
       case 'mssql':
         return "[$name]";
       case 'sqlite':
-        return '"' . $name . '"';
+        return '"' . str_replace('"', '""', $name) . '"';
       default:
         return $name;
     }
   }
 
+  /**
+   * @param list<string> $fields
+   */
   public function SelectFields(string $table, array $fields): self {
     $alias = $this->getTableAlias($table);
     foreach ($fields as $field) {
@@ -121,12 +142,22 @@ class Select {
   }
 
   public function GroupBy(string $table, string $field): self {
-    $this->queryGroupBy .= (!empty($this->queryGroupBy)?",":"") . $this->quoteIdentifier($this->getTableAlias($table)) . "." . $this->quoteIdentifier($field);
+    $alias = $this->getTableAlias($table);
+    if ($alias === null) {
+        throw new \InvalidArgumentException("Table '$table' not found in query.");
+    }
+    $this->queryGroupBy .= (!empty($this->queryGroupBy)?",":"") . $this->quoteIdentifier($alias) . "." . $this->quoteIdentifier($field);
     return $this;
   }
 
+  /**
+   * @param mixed $value
+   */
   public function Having(string $table, string $field, Operator $operator, $value = null, string $aggregator = "AND"): self {
     $alias = $this->getTableAlias($table);
+    if ($alias === null) {
+        throw new \InvalidArgumentException("Table '$table' not found in query.");
+    }
     $fragment = '';
     switch ($operator) {
       case Operator::In:
@@ -160,17 +191,10 @@ class Select {
   }
 
   public function Limit(int $limit, int $offset = 0): self {
-    switch ($this->dbDriver) {
-      case 'mysql':
-      case 'sqlite':
-        $this->queryLimit = "LIMIT $offset, $limit";
-        break;
-      case 'mssql':
-        $this->queryLimit = "OFFSET $offset ROWS FETCH NEXT $limit ROWS ONLY";
-        break;
-      default:
-        $this->queryLimit = '';
-    }
+    $this->queryLimit = [
+        'limit' => $limit,
+        'offset' => $offset,
+    ];
     return $this;
   }
 
@@ -182,7 +206,7 @@ class Select {
    */
   public function From(string $table): self {
     $this->getFields($table, $this->tableAliases);
-    $this->queryTables .= (!empty($this->queryTables)?",":"").$table." ".$this->tableAliases;
+    $this->queryTables .= (!empty($this->queryTables) ? ", " : "") . $this->quoteIdentifier($table) . " " . $this->quoteIdentifier($this->tableAliases);
     $this->tableAliases++;
     return $this;
  }
@@ -257,7 +281,7 @@ class Select {
   * @return self
   */
  public function OJoin(string $table1, string $table2, string $field1, string $field2, Operator $operator = Operator::Equal): self {
-   $this->_Join("OUTTER JOIN", $table1, $table2, $field1, $field2, $operator);
+   $this->_Join("OUTER JOIN", $table1, $table2, $field1, $field2, $operator);
    return $this;
  }
 
@@ -273,18 +297,22 @@ class Select {
   * @return self
   */
  public function _Join(string $type, string $table1, string $table2, string $field1, string $field2, Operator $operator = Operator::Equal): self {
-   $this->getFields($table2, $this->tableAliases);
-   // Joins should always be between fields, never values. No placeholders allowed here.
-   switch($operator) {
-     case Operator::IsNull:
-       $this->queryTables .= " $type $table2 " . $this->tableAliases . " ON " . $this->getTableAlias($table1) . ".$field1 IS NULL";
-       break;
-     default:
-       $this->queryTables .= " $type $table2 " . $this->tableAliases . " ON " . $this->getTableAlias($table1) . ".$field1 {$operator->value} " . $this->tableAliases . ".$field2";
-       break;
-   }
-   $this->tableAliases++;
-   return $this;
+    $this->getFields($table2, $this->tableAliases);
+    $t1Alias = $this->getTableAlias($table1);
+    if ($t1Alias === null) {
+        throw new \InvalidArgumentException("Table '$table1' not found in query.");
+    }
+    $t2Alias = $this->tableAliases;
+
+    $joinCondition = $this->quoteIdentifier($t1Alias) . "." . $this->quoteIdentifier($field1) . " {$operator->value} " . $this->quoteIdentifier($t2Alias) . "." . $this->quoteIdentifier($field2);
+
+    if ($operator === Operator::IsNull) {
+        $joinCondition = $this->quoteIdentifier($t1Alias) . "." . $this->quoteIdentifier($field1) . " IS NULL";
+    }
+
+    $this->queryTables .= " $type " . $this->quoteIdentifier($table2) . " " . $this->quoteIdentifier($t2Alias) . " ON " . $joinCondition;
+    $this->tableAliases++;
+    return $this;
  }
   /**
   * Adds a WHERE condition to the query.
@@ -296,11 +324,19 @@ class Select {
   * @param string $aggregator Logical aggregator (AND/OR)
   * @return self
   */
-   public function Where(string $table, string $field, Operator $operator, $value = null, string $aggregator = "AND"): self {
+   /**
+   * @param mixed $value
+   */
+  public function Where(string $table, string $field, Operator $operator, $value = null, string $aggregator = "AND"): self {
      $alias = $this->getTableAlias($table);
+     if ($alias === null) {
+         throw new \InvalidArgumentException("Table '$table' not found in query.");
+     }
+     $fieldIdentifier = $this->quoteIdentifier($alias) . '.' . $this->quoteIdentifier($field);
+
      switch ($operator) {
          case Operator::IsNull:
-             $fragment = ($this->hasWhereCondition ? " $aggregator " : "") . "$alias.$field IS NULL";
+             $fragment = ($this->hasWhereCondition ? " $aggregator " : "") . "$fieldIdentifier IS NULL";
              $this->queryWhere .= $fragment;
              break;
          case Operator::In:
@@ -310,7 +346,7 @@ class Select {
              }
              $placeholders = implode(', ', array_fill(0, count($value), '?'));
              $op = $operator === Operator::In ? 'IN' : 'NOT IN';
-             $fragment = ($this->hasWhereCondition ? " $aggregator " : "") . "$alias.$field $op ($placeholders)";
+             $fragment = ($this->hasWhereCondition ? " $aggregator " : "") . "$fieldIdentifier $op ($placeholders)";
              $this->queryWhere .= $fragment;
              foreach ($value as $v) {
                  $this->queryParams[] = $v;
@@ -320,7 +356,7 @@ class Select {
              if ($value === null) {
                  throw new \InvalidArgumentException('Value cannot be null for this operator');
              }
-             $fragment = ($this->hasWhereCondition ? " $aggregator " : "") . "$alias.$field {$operator->value} ?";
+             $fragment = ($this->hasWhereCondition ? " $aggregator " : "") . "$fieldIdentifier {$operator->value} ?";
              $this->queryWhere .= $fragment;
              $this->queryParams[] = $value;
              break;
@@ -358,7 +394,15 @@ class Select {
   * @return self
   */
   public function Order(string $table, string $field, string $order = "ASC"): self {
-    $this->queryOrder .= (!empty($this->queryOrder)?",":"").$this->getTableAlias($table).".$field $order";
+    $order = strtoupper($order);
+    if ($order !== 'ASC' && $order !== 'DESC') {
+        throw new \InvalidArgumentException('Invalid order direction. Must be ASC or DESC.');
+    }
+    $alias = $this->getTableAlias($table);
+    if ($alias === null) {
+        throw new \InvalidArgumentException("Table '$table' not found in query.");
+    }
+    $this->queryOrder .= (!empty($this->queryOrder) ? ", " : "") . $this->quoteIdentifier($alias) . "." . $this->quoteIdentifier($field) . " $order";
     return $this;
   }
 
@@ -370,7 +414,7 @@ class Select {
   /**
   * Executes the built query and fetches the results as arrays of model objects.
   *
-  * @return array Array of arrays, each containing ['table' => string, 'object' => Model]
+  * @return array<int, mixed>
   */
   public function Fetch(): array {
     // Build SELECT fields
@@ -378,6 +422,9 @@ class Select {
     if (!empty($this->selectedFields)) {
       foreach ($this->selectedFields as $sf) {
         $alias = $this->getTableAlias((string)$sf["table"]);
+        if ($alias === null) {
+            throw new \InvalidArgumentException("Table '{$sf["table"]}' not found in query.");
+        }
         $fields[] = $this->quoteIdentifier($alias) . "." . $this->quoteIdentifier((string)$sf["field"]) . " AS " . $this->quoteIdentifier($alias . "_" . (string)$sf["field"]);
       }
     } else {
@@ -389,11 +436,30 @@ class Select {
       }
     }
     $selectClause = implode(",", array_filter($fields));
-    $sql = "SELECT " . $selectClause . " FROM " . $this->queryTables . " " . ($this->hasWhereCondition ? " WHERE " . $this->queryWhere : "") .
-      (!empty($this->queryGroupBy) ? " GROUP BY " . $this->queryGroupBy : "") .
-      (!empty($this->queryHaving) ? " HAVING " . $this->queryHaving : "") .
-      (!empty($this->queryOrder) ? " ORDER BY " . $this->queryOrder : "") .
-      (!empty($this->queryLimit) ? " " . $this->queryLimit : "");
+
+    $limitClause = '';
+    if (!empty($this->queryLimit)) {
+        switch ($this->dbDriver) {
+            case 'mysql':
+            case 'sqlite':
+                $limitClause = "LIMIT ?, ?";
+                $this->queryParams[] = (int)$this->queryLimit['offset'];
+                $this->queryParams[] = (int)$this->queryLimit['limit'];
+                break;
+            case 'mssql':
+                $limitClause = "OFFSET ? ROWS FETCH NEXT ? ROWS ONLY";
+                $this->queryParams[] = (int)$this->queryLimit['offset'];
+                $this->queryParams[] = (int)$this->queryLimit['limit'];
+                break;
+        }
+    }
+
+    $sql = "SELECT " . $selectClause . " FROM " . $this->queryTables . " " . ($this->hasWhereCondition ? " WHERE " . $this->queryWhere : "") . 
+      (!empty($this->queryGroupBy) ? " GROUP BY " . $this->queryGroupBy : "") . 
+      (!empty($this->queryHaving) ? " HAVING " . $this->queryHaving : "") . 
+      (!empty($this->queryOrder) ? " ORDER BY " . $this->queryOrder : "") . 
+      (!empty($limitClause) ? " " . $limitClause : "");
+
     $params = $this->queryParams;
     $this->queryParams = [];
     $placeholderCount = substr_count($sql, '?');
@@ -401,19 +467,28 @@ class Select {
       throw new \RuntimeException("Parameter/placeholder mismatch in Fetch: SQL has $placeholderCount placeholders, but params has " . count($params) . " values. SQL: $sql Params: " . var_export($params, true));
     }
     $result = array();
-    $resultObj = LazyMePHP::DB_CONNECTION()->Query($sql, $params);
+    $dbConnection = LazyMePHP::DB_CONNECTION();
+    if ($dbConnection === null) {
+        throw new \RuntimeException("Database connection not established.");
+    }
+
+    $resultObj = $dbConnection->Query($sql, $params);
+    
     // If any selectExpressions are present (aggregate query), return raw associative arrays
     if (!empty($this->selectExpressions)) {
-      while ($row = $resultObj->fetchArray()) {
-        $result[] = $row;
-      }
-      return $result;
+        $result = [];
+        while (($row = $resultObj->fetchArray()) !== null) {
+            $result[] = $row;
+        }
+        return $result;
     }
-    while ($o = $resultObj->fetchArray()) {
-        $objs = array();
+
+    $result = [];
+    while (($o = $resultObj->fetchArray()) !== null) {
+        $objs = [];
         foreach ($this->tables as $t) {
             $class = "\\Models\\" . $t["table"];
-            $data = array();
+            $data = [];
             // If we have selectedFields, only include those fields for this table
             if (!empty($this->selectedFields)) {
                 foreach ($this->selectedFields as $sf) {
@@ -427,11 +502,13 @@ class Select {
             } else {
                 // Use all fields from the table
                 foreach ($t["fields"] as $f) {
-                    $data[$f] = $o[$t["alias"] . "_" . $f];
+                    if (isset($o[$t["alias"] . "_" . $f])) {
+                        $data[$f] = $o[$t["alias"] . "_" . $f];
+                    }
                 }
             }
             $obj = new $class($data);
-            array_push($objs, array("table" => $t["table"], "object" => $obj));
+            array_push($objs, ["table" => $t["table"], "object" => $obj]);
         }
         array_push($result, $objs);
     }
@@ -443,8 +520,9 @@ class Select {
   *
   * Private method that gets table's fields
   *
-  * @table (NULL)
-  * @return (array)
+  * @param string $table
+  * @param string $alias
+  * @return void
   */
   private function getFields(string $table, string $alias): void {
     $fields = array();
@@ -464,8 +542,8 @@ class Select {
   *
   * Private method that gets table's alias
   *
-  * @table (NULL)
-  * @return (array)
+  * @param string $table
+  * @return string|null
   */
   private function getTableAlias(string $table): ?string {
     // We reverse search so our where conditions could be added after left join
@@ -480,6 +558,19 @@ class Select {
    * @return void
    */
   public function debug(): void {
-    echo "SELECT ".$this->queryFields." FROM ".$this->queryTables." WHERE ".$this->queryWhere." ORDER BY ".$this->queryOrder;
+    $limitClause = '';
+    if (!empty($this->queryLimit)) {
+        switch ($this->dbDriver) {
+            case 'mysql':
+            case 'sqlite':
+                $limitClause = "LIMIT {$this->queryLimit['offset']}, {$this->queryLimit['limit']}";
+                break;
+            case 'mssql':
+                $limitClause = "OFFSET {$this->queryLimit['offset']} ROWS FETCH NEXT {$this->queryLimit['limit']} ROWS ONLY";
+                break;
+        }
+    }
+
+    echo "SELECT ".$this->queryFields." FROM ".$this->queryTables." WHERE ".$this->queryWhere." ORDER BY ".$this->queryOrder . " " . $limitClause;
   }
 }

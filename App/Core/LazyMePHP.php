@@ -170,7 +170,7 @@ class LazyMePHP
    *
    * @return ?object The database connection object (MYSQL, MSSQL, or SQLITE instance), or null on failure.
    */
-  static function DB_CONNECTION(): ?object
+  static function DB_CONNECTION(): ?\Core\DB\ISQL
   {
     if (!self::$_db_connection) {
       // Ensure $_db_type is a string before strtolower, defaulting to 'mysql' if not set.
