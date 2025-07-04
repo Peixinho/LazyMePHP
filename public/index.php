@@ -72,7 +72,7 @@ echo $blade->run("_Layouts.app", [
 // 7. Perform Post-Request Tasks
 // (These could also be in a register_shutdown_function if needed)
 if (class_exists('Core\LazyMePHP')) {
-    \Core\LazyMePHP::LOG_ACTIVITY();
+    \Core\Helpers\ActivityLogger::logActivity();
     if (\Core\LazyMePHP::DB_CONNECTION()) {
         \Core\LazyMePHP::DB_CONNECTION()->Close();
     }

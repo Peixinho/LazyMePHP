@@ -29,6 +29,17 @@ class FileUploadHelper
         $validation = FileValidation::validateFile($file, $options);
         
         if (!$validation['valid']) {
+            $errorData = [
+                'file_name' => $file['name'] ?? 'unknown',
+                'file_size' => $file['size'] ?? 0,
+                'file_type' => $file['type'] ?? 'unknown',
+                'destination_path' => $destinationPath,
+                'validation_errors' => $validation['errors'],
+                'validation_warnings' => $validation['warnings'] ?? []
+            ];
+            
+            self::logUploadError('File validation failed', $errorData);
+            
             return [
                 'success' => false,
                 'errors' => $validation['errors'],
@@ -39,6 +50,14 @@ class FileUploadHelper
         // Create destination directory if it doesn't exist
         if (!is_dir($destinationPath)) {
             if (!mkdir($destinationPath, 0755, true)) {
+                $errorData = [
+                    'file_name' => $file['name'] ?? 'unknown',
+                    'destination_path' => $destinationPath,
+                    'error_type' => 'directory_creation_failed'
+                ];
+                
+                self::logUploadError('Unable to create destination directory', $errorData);
+                
                 return [
                     'success' => false,
                     'errors' => ['Unable to create destination directory']
@@ -56,6 +75,14 @@ class FileUploadHelper
 
         // Check if file already exists
         if (file_exists($destinationFile) && !($options['overwrite'] ?? false)) {
+            $errorData = [
+                'file_name' => $file['name'] ?? 'unknown',
+                'destination_file' => $destinationFile,
+                'error_type' => 'file_already_exists'
+            ];
+            
+            self::logUploadError('File already exists', $errorData);
+            
             return [
                 'success' => false,
                 'errors' => ['File already exists']
@@ -64,6 +91,15 @@ class FileUploadHelper
 
         // Move uploaded file
         if (!move_uploaded_file($file['tmp_name'], $destinationFile)) {
+            $errorData = [
+                'file_name' => $file['name'] ?? 'unknown',
+                'tmp_name' => $file['tmp_name'] ?? 'unknown',
+                'destination_file' => $destinationFile,
+                'error_type' => 'move_upload_failed'
+            ];
+            
+            self::logUploadError('Failed to move uploaded file', $errorData);
+            
             return [
                 'success' => false,
                 'errors' => ['Failed to move uploaded file']
@@ -172,6 +208,14 @@ class FileUploadHelper
     public static function generateThumbnail(string $sourcePath, string $destinationPath, int $width, int $height): array
     {
         if (!file_exists($sourcePath)) {
+            $errorData = [
+                'source_path' => $sourcePath,
+                'destination_path' => $destinationPath,
+                'error_type' => 'source_image_not_found'
+            ];
+            
+            self::logUploadError('Source image does not exist', $errorData);
+            
             return [
                 'success' => false,
                 'errors' => ['Source image does not exist']
@@ -280,6 +324,13 @@ class FileUploadHelper
     public static function deleteFile(string $filePath, bool $deleteThumbnail = true): array
     {
         if (!file_exists($filePath)) {
+            $errorData = [
+                'file_path' => $filePath,
+                'error_type' => 'file_not_found_for_deletion'
+            ];
+            
+            self::logUploadError('File does not exist for deletion', $errorData);
+            
             return [
                 'success' => false,
                 'errors' => ['File does not exist']
@@ -288,6 +339,13 @@ class FileUploadHelper
 
         // Delete main file
         if (!unlink($filePath)) {
+            $errorData = [
+                'file_path' => $filePath,
+                'error_type' => 'file_deletion_failed'
+            ];
+            
+            self::logUploadError('Failed to delete file', $errorData);
+            
             return [
                 'success' => false,
                 'errors' => ['Failed to delete file']
@@ -393,6 +451,19 @@ class FileUploadHelper
                 }
             }
         } else {
+            // Additional logging for processFileUpload failures
+            $errorData = [
+                'file_name' => $file['name'] ?? 'unknown',
+                'file_size' => $file['size'] ?? 0,
+                'file_type' => $file['type'] ?? 'unknown',
+                'destination_path' => $destinationPath,
+                'upload_errors' => $result['errors'],
+                'upload_warnings' => $result['warnings'] ?? [],
+                'error_type' => 'process_upload_failed'
+            ];
+            
+            self::logUploadError('File upload processing failed', $errorData);
+            
             NotificationHelper::error(
                 'File upload failed',
                 ['errors' => $result['errors']]
@@ -406,10 +477,10 @@ class FileUploadHelper
      * Get upload configuration for forms
      *
      * @param array $allowedTypes Allowed file types
-     * @param int $maxSize Maximum file size in bytes
+     * @param int|null $maxSize Maximum file size in bytes
      * @return array Configuration for form
      */
-    public static function getUploadConfig(array $allowedTypes, int $maxSize = null): array
+    public static function getUploadConfig(array $allowedTypes, ?int $maxSize = null): array
     {
         $mimeTypes = [];
         foreach ($allowedTypes as $type) {
@@ -424,5 +495,60 @@ class FileUploadHelper
             'max_size_formatted' => self::formatBytes($maxSize),
             'allowed_types' => $allowedTypes
         ];
+    }
+
+    /**
+     * Log file upload errors to the logging system
+     *
+     * @param string $message Error message
+     * @param array $context Additional context data
+     */
+    private static function logUploadError(string $message, array $context = []): void
+    {
+        try {
+            // Check if logging is enabled
+            if (!\Core\LazyMePHP::ACTIVITY_LOG()) {
+                return;
+            }
+
+            // Prepare log data
+            $logData = [
+                'error_message' => $message,
+                'timestamp' => date('Y-m-d H:i:s'),
+                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown',
+                'ip_address' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+                'request_uri' => $_SERVER['REQUEST_URI'] ?? 'unknown',
+                'request_method' => $_SERVER['REQUEST_METHOD'] ?? 'unknown'
+            ];
+
+            // Merge context data
+            $logData = array_merge($logData, $context);
+
+            // Log to file system as fallback
+            $logDir = __DIR__ . '/../../../logs';
+            if (!is_dir($logDir)) {
+                mkdir($logDir, 0755, true);
+            }
+
+            $logFile = $logDir . '/file_upload_errors.log';
+            $logEntry = date('Y-m-d H:i:s') . ' - ' . $message . ' - ' . json_encode($logData) . PHP_EOL;
+            file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
+
+            // Log to database using LoggingHelper
+            if (class_exists('Core\Helpers\LoggingHelper')) {
+                \Core\Helpers\LoggingHelper::logError(
+                    'FILE_UPLOAD_ERROR',
+                    $message,
+                    500,
+                    'ERROR',
+                    'FILE_UPLOAD',
+                    $logData
+                );
+            }
+
+        } catch (\Throwable $e) {
+            // If logging fails, at least try to write to error log
+            error_log("FileUploadHelper logging failed: " . $e->getMessage());
+        }
     }
 } 

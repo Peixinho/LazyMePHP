@@ -275,6 +275,29 @@ class ErrorHandler
     }
 
     /**
+     * Log a simple error message to database (for non-exception errors)
+     */
+    public static function logErrorMessage(string $message, string $errorCode = 'INTERNAL_ERROR', int $httpStatus = 500, string $context = 'API', ?array $additionalContext = null): void {
+        // Log to database if possible
+        self::logErrorToDatabase(
+            $message,
+            $errorCode,
+            $httpStatus,
+            null, // no exception
+            $context,
+            $additionalContext
+        );
+        
+        // Fallback to old logging - skip in test environment
+        if (self::isDebugMode() && !self::isTestEnvironment()) {
+            error_log("[$context] Error: $message");
+            if ($additionalContext) {
+                error_log("[$context] Additional Context: " . json_encode($additionalContext));
+            }
+        }
+    }
+
+    /**
      * Enhanced error logging to database with better context
      */
     private static function logErrorToDatabase(
@@ -304,9 +327,21 @@ class ErrorHandler
             $line = $exception ? $exception->getLine() : 0;
             $contextData = $additionalContext ? json_encode($additionalContext) : '';
 
-            $sql = "INSERT INTO __LOG_ERRORS (error_message, error_code, http_status, severity, context, file_path, line_number, stack_trace, context_data, created_at, error_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)";
+            // Generate error_id if not provided
+            if (!$errorId) {
+                $errorId = self::generateErrorId();
+            }
+
+            $sql = "INSERT INTO __LOG_ERRORS (error_id, error_message, error_code, http_status, severity, context, file_path, line_number, user_agent, ip_address, request_uri, request_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            
+            // Get request information
+            $requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'CLI';
+            $requestUri = $_SERVER['REQUEST_URI'] ?? '';
+            $ipAddress = $_SERVER['REMOTE_ADDR'] ?? $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['HTTP_CLIENT_IP'] ?? 'unknown';
+            $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
             
             $db->Query($sql, [
+                $errorId,
                 $message,
                 $errorCode,
                 $httpStatus,
@@ -314,9 +349,10 @@ class ErrorHandler
                 $context,
                 $file,
                 $line,
-                $stackTrace,
-                $contextData,
-                $errorId
+                $userAgent,
+                $ipAddress,
+                $requestUri,
+                $requestMethod
             ]);
 
         } catch (\Throwable $e) {

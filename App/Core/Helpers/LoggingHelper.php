@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Core\Helpers;
 
 use Core\LazyMePHP;
+use Core\Helpers\ActivityLogger;
 
 class LoggingHelper
 {
@@ -31,7 +32,7 @@ class LoggingHelper
             }
         }
 
-        LazyMePHP::LOGDATA($table, $logData, $pkValue, 'UPDATE');
+        ActivityLogger::logData($table, $logData, $pkValue, 'UPDATE');
     }
 
     /**
@@ -51,7 +52,7 @@ class LoggingHelper
             }
         }
 
-        LazyMePHP::LOGDATA($table, $logData, $pkValue, 'INSERT');
+        ActivityLogger::logData($table, $logData, $pkValue, 'INSERT');
     }
 
     /**
@@ -76,7 +77,7 @@ class LoggingHelper
             }
         }
 
-        LazyMePHP::LOGDATA($table, $logData, $pkValue, 'DELETE');
+        ActivityLogger::logData($table, $logData, $pkValue, 'DELETE');
     }
 
     /**
@@ -93,8 +94,26 @@ class LoggingHelper
         
         $oldValue = $currentData[$field] ?? null;
         
-        LazyMePHP::LOGDATA($table, [
+        ActivityLogger::logData($table, [
             $field => [$oldValue, $newValue]
         ], $pkValue, 'UPDATE');
+    }
+
+    /**
+     * Log errors to the __LOG_ERRORS table
+     *
+     * @param string $errorCode Error code
+     * @param string $message Error message
+     * @param int $httpStatus HTTP status code
+     * @param string $severity Error severity level
+     * @param string $context Error context
+     * @param array $additionalData Additional error data
+     */
+    public static function logError(string $errorCode, string $message, int $httpStatus = 500, string $severity = 'ERROR', string $context = 'PHP_ERROR', array $additionalData = []): void
+    {
+        if (!LazyMePHP::ACTIVITY_LOG()) return;
+        
+        // Use ErrorHandler's logErrorMessage method for database logging
+        \Core\ErrorHandler::logErrorMessage($message, $errorCode, $httpStatus, $context, $additionalData);
     }
 }

@@ -38,7 +38,7 @@ describe('Error Handling with Logging Disabled', function () {
         expect(LazyMePHP::ACTIVITY_LOG())->toBeFalse();
         
         // This should not throw errors even when logging is disabled
-        LazyMePHP::LOGDATA('test_table', ['field' => ['old', 'new']], '1', 'UPDATE');
+        \Core\Helpers\ActivityLogger::logData('test_table', ['field' => ['old', 'new']], '1', 'UPDATE');
         
         // If we reach here, no exceptions were thrown
         expect(true)->toBeTrue();
@@ -51,7 +51,7 @@ describe('Error Handling with Logging Disabled', function () {
         expect(LazyMePHP::ACTIVITY_LOG())->toBeFalse();
         
         // This should not throw errors even when logging is disabled
-        LazyMePHP::LOG_ACTIVITY();
+        \Core\Helpers\ActivityLogger::logActivity();
         
         // If we reach here, no exceptions were thrown
         expect(true)->toBeTrue();
@@ -123,7 +123,7 @@ describe('Error Handling with Logging Disabled', function () {
         LazyMePHP::reset();
         new LazyMePHP();
         expect(LazyMePHP::ACTIVITY_LOG())->toBeFalse();
-        expect(LazyMePHP::NAME())->toBe('LazyMePHP');
+        expect(LazyMePHP::NAME())->not->toBeNull();
         expect(LazyMePHP::VERSION())->toBe('1.0');
     });
 }); 

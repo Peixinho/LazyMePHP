@@ -137,7 +137,7 @@ describe('LoggingHelper Functionality', function () {
         $db->Query("INSERT INTO test_table (id, test_field) VALUES (1, 'original_value')");
         
         // Test manual LOGDATA (incorrect - before values are null) - should not throw
-        LazyMePHP::LOGDATA('test_table', [
+        \Core\Helpers\ActivityLogger::logData('test_table', [
             'test_field' => [null, 'manual_value']  // Before is null instead of actual value
         ], '1', 'UPDATE');
         

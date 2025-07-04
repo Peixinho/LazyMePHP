@@ -194,7 +194,7 @@ class FileValidation
             }
         }
 
-        return [
+        $result = [
             'valid' => empty($errors),
             'errors' => $errors,
             'warnings' => $warnings,
@@ -207,6 +207,13 @@ class FileValidation
                 'dimensions' => $imageValidation['dimensions'] ?? null
             ]
         ];
+
+        // Log validation errors if any
+        if (!empty($errors)) {
+            self::logValidationError($file, $errors, $warnings);
+        }
+
+        return $result;
     }
 
     /**
@@ -605,5 +612,64 @@ class FileValidation
         }
 
         return $result;
+    }
+
+    /**
+     * Log file validation errors to the logging system
+     *
+     * @param array $file The file data
+     * @param array $errors Validation errors
+     * @param array $warnings Validation warnings
+     */
+    private static function logValidationError(array $file, array $errors, array $warnings = []): void
+    {
+        try {
+            // Check if logging is enabled
+            if (!\Core\LazyMePHP::ACTIVITY_LOG()) {
+                return;
+            }
+
+            // Prepare log data
+            $logData = [
+                'error_type' => 'file_validation_failed',
+                'timestamp' => date('Y-m-d H:i:s'),
+                'file_name' => $file['name'] ?? 'unknown',
+                'file_size' => $file['size'] ?? 0,
+                'file_type' => $file['type'] ?? 'unknown',
+                'file_extension' => pathinfo($file['name'] ?? '', PATHINFO_EXTENSION),
+                'validation_errors' => $errors,
+                'validation_warnings' => $warnings,
+                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown',
+                'ip_address' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+                'request_uri' => $_SERVER['REQUEST_URI'] ?? 'unknown',
+                'request_method' => $_SERVER['REQUEST_METHOD'] ?? 'unknown'
+            ];
+
+            // Log to file system as fallback
+            $logDir = __DIR__ . '/../../../logs';
+            if (!is_dir($logDir)) {
+                mkdir($logDir, 0755, true);
+            }
+
+            $logFile = $logDir . '/file_validation_errors.log';
+            $logEntry = date('Y-m-d H:i:s') . ' - File validation failed - ' . json_encode($logData) . PHP_EOL;
+            file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
+
+            // Log to database using LoggingHelper
+            if (class_exists('Core\Helpers\LoggingHelper')) {
+                \Core\Helpers\LoggingHelper::logError(
+                    'FILE_VALIDATION_ERROR',
+                    'File validation failed: ' . implode(', ', $errors),
+                    400,
+                    'WARNING',
+                    'FILE_VALIDATION',
+                    $logData
+                );
+            }
+
+        } catch (\Throwable $e) {
+            // If logging fails, at least try to write to error log
+            error_log("FileValidation logging failed: " . $e->getMessage());
+        }
     }
 } 

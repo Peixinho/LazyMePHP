@@ -135,7 +135,7 @@ if (class_exists('Core\Helpers\PerformanceUtil')) {
 /*
  * Runs logging activity
  */
-LazyMePHP::LOG_ACTIVITY();
+\Core\Helpers\ActivityLogger::logActivity();
 LazyMePHP::DB_CONNECTION()->Close();
 
 // Load environment variables

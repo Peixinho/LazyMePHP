@@ -165,7 +165,7 @@ class BuildControllers {
                       fwrite($controllerFile, "\t\t\t} else {\n");
                       fwrite($controllerFile, "\t\t\t\t\$fileResults['".$fieldName."'] = [\n");
                       fwrite($controllerFile, "\t\t\t\t\t'valid' => false,\n");
-                      fwrite($controllerFile, "\t\t\t\t\t'errors' => [\$uploadResult['error']]\n");
+                      fwrite($controllerFile, "\t\t\t\t\t'errors' => \$uploadResult['errors']\n");
                       fwrite($controllerFile, "\t\t\t\t];\n");
                       fwrite($controllerFile, "\t\t\t\treturn \$this->edit(\$".$primaryKey->GetName().", \$fileResults['".$fieldName."']);\n");
                       fwrite($controllerFile, "\t\t\t}\n");

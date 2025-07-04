@@ -66,7 +66,7 @@ class Helper {
   static function redirect(string $url, ?int $code = null): void
   {
     // Save activity before redirect
-    \Core\LazyMePHP::LOG_ACTIVITY();
+    \Core\Helpers\ActivityLogger::logActivity();
 
     if ($code !== null) {
       self::response()->httpCode($code);
