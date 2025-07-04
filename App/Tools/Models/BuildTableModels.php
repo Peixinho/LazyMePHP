@@ -770,6 +770,11 @@ class BuildTableModels extends _DB_TABLE
           fwrite($classFile, "\n");
         }
         fwrite($classFile, "\n");
+        fwrite($classFile, "\t\t\t\t// Initialize the object so Save() knows it's an existing record");
+        fwrite($classFile, "\n");
+        fwrite($classFile, "\t\t\t\t\$obj->initialize();");
+        fwrite($classFile, "\n");
+        fwrite($classFile, "\n");
         fwrite($classFile, "\t\t\tif (\$serialize) \$this->_list[]=\$obj->Serialize(\$mask);");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t\t\telse \$this->_list[]=\$obj;");
