@@ -14,7 +14,7 @@ class ModelBase
 {
   protected bool $__initialized = false;
 
-  protected function initialize() : void {
+  public function initialize() : void {
     $this->__initialized = true;
   }
 
