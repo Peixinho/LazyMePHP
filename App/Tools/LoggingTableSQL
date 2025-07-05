@@ -91,6 +91,19 @@ CREATE TABLE IF NOT EXISTS __LOG_PERFORMANCE (
   KEY idx_created_at (created_at),
   KEY idx_method (method)
 );
+
+CREATE TABLE IF NOT EXISTS __RATE_LIMITS (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  action VARCHAR(100) NOT NULL,
+  identifier VARCHAR(255) NOT NULL,
+  created_at INT NOT NULL,
+  ip_address VARCHAR(45) NOT NULL,
+  user_agent TEXT DEFAULT NULL,
+  KEY idx_action_identifier (action, identifier),
+  KEY idx_created_at (created_at),
+  KEY idx_action (action),
+  KEY idx_ip_address (ip_address)
+);
 ";
         case 'sqlite':
             return "
@@ -187,6 +200,20 @@ CREATE INDEX IF NOT EXISTS idx_performance_operation_name ON __LOG_PERFORMANCE (
 CREATE INDEX IF NOT EXISTS idx_performance_duration_ms ON __LOG_PERFORMANCE (duration_ms);
 CREATE INDEX IF NOT EXISTS idx_performance_created_at ON __LOG_PERFORMANCE (created_at);
 CREATE INDEX IF NOT EXISTS idx_performance_method ON __LOG_PERFORMANCE (method);
+
+CREATE TABLE IF NOT EXISTS __RATE_LIMITS (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  action TEXT NOT NULL,
+  identifier TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  ip_address TEXT NOT NULL,
+  user_agent TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_rate_action_identifier ON __RATE_LIMITS (action, identifier);
+CREATE INDEX IF NOT EXISTS idx_rate_created_at ON __RATE_LIMITS (created_at);
+CREATE INDEX IF NOT EXISTS idx_rate_action ON __RATE_LIMITS (action);
+CREATE INDEX IF NOT EXISTS idx_rate_ip_address ON __RATE_LIMITS (ip_address);
 ";
         case 'mssql':
         case 'sqlsrv':
@@ -262,6 +289,16 @@ CREATE TABLE __LOG_PERFORMANCE (
   created_at DATETIME DEFAULT GETDATE()
 );
 
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='__RATE_LIMITS' AND xtype='U')
+CREATE TABLE __RATE_LIMITS (
+  id INT IDENTITY(1,1) PRIMARY KEY,
+  action NVARCHAR(100) NOT NULL,
+  identifier NVARCHAR(255) NOT NULL,
+  created_at INT NOT NULL,
+  ip_address NVARCHAR(45) NOT NULL,
+  user_agent NVARCHAR(MAX) NULL
+);
+
 -- Create indexes for __LOG_ACTIVITY table
 IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_activity_date' AND object_id = OBJECT_ID('__LOG_ACTIVITY'))
 CREATE INDEX idx_activity_date ON __LOG_ACTIVITY (date);
@@ -329,6 +366,19 @@ CREATE INDEX idx_performance_created_at ON __LOG_PERFORMANCE (created_at);
 
 IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_performance_method' AND object_id = OBJECT_ID('__LOG_PERFORMANCE'))
 CREATE INDEX idx_performance_method ON __LOG_PERFORMANCE (method);
+
+-- Create indexes for __RATE_LIMITS table
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_rate_action_identifier' AND object_id = OBJECT_ID('__RATE_LIMITS'))
+CREATE INDEX idx_rate_action_identifier ON __RATE_LIMITS (action, identifier);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_rate_created_at' AND object_id = OBJECT_ID('__RATE_LIMITS'))
+CREATE INDEX idx_rate_created_at ON __RATE_LIMITS (created_at);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_rate_action' AND object_id = OBJECT_ID('__RATE_LIMITS'))
+CREATE INDEX idx_rate_action ON __RATE_LIMITS (action);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_rate_ip_address' AND object_id = OBJECT_ID('__RATE_LIMITS'))
+CREATE INDEX idx_rate_ip_address ON __RATE_LIMITS (ip_address);
 ";
         default:
             throw new Exception("Unsupported DB type: $dbType");
