@@ -688,20 +688,24 @@ class BuildTableModels extends _DB_TABLE
         fwrite($classFile, "\t}");
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\tpublic function GetCount() : int {");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\n");
-        fwrite($classFile,"\t\t\$_sql = \"SELECT ");
-        $countFields = 0;
-        foreach ($db->_Tablefields as $field2)
-        {
-          fwrite($classFile,($countFields++>0?",":"").$db->_Tablename.".".$field2->GetName());
-        }
-        fwrite($classFile," FROM ".$db->_Tablename."\".(!empty(\$this->_sql)?\" WHERE \".\$this->_sql:\"\");");
+        	fwrite($classFile, "\tpublic function GetCount() : int {");
+	fwrite($classFile, "\n");
+	fwrite($classFile, "\n");
+	fwrite($classFile,"\t\t// Store WHERE clause before overwriting _sql");
+	fwrite($classFile, "\n");
+	fwrite($classFile,"\t\t\$whereClause = \$this->_sql;");
+	fwrite($classFile, "\n");
+	fwrite($classFile,"\t\t\$_sql = \"SELECT ");
+	$countFields = 0;
+	foreach ($db->_Tablefields as $field2)
+	{
+	  fwrite($classFile,($countFields++>0?",":"").$db->_Tablename.".".$field2->GetName());
+	}
+	fwrite($classFile," FROM ".$db->_Tablename."\".(!empty(\$whereClause)?\" WHERE \".\$whereClause:\"\");");
 
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t\t\$rtn = LazyMePHP::DB_CONNECTION()->Query(\$_sql.\" \".(!empty(\$this->_group)?\"GROUP BY \".\$this->_group:\"\").\" \".(!empty(\$this->_order)?\"ORDER BY \".\$this->_order:\"\").\" \".(\$this->_limitEnd?(empty(\$this->_order)?\"ORDER BY ".$db->_Tablename.".".$db->_PrimaryFieldName." \":\"\").LazyMePHP::DB_CONNECTION()->Limit(\$this->_limitEnd, \$this->_limitStart):\"\"), \$this->_args);");
+	fwrite($classFile, "\n");
+	fwrite($classFile, "\n");
+	fwrite($classFile, "\t\t\$rtn = LazyMePHP::DB_CONNECTION()->Query(\$_sql.\" \".(!empty(\$this->_group)?\"GROUP BY \".\$this->_group:\"\").\" \".(!empty(\$this->_order)?\"ORDER BY \".\$this->_order:\"\").\" \".(\$this->_limitEnd?(empty(\$this->_order)?\"ORDER BY ".$db->_Tablename.".".$db->_PrimaryFieldName." \":\"\").LazyMePHP::DB_CONNECTION()->Limit(\$this->_limitEnd, \$this->_limitStart):\"\"), \$this->_args);");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t\treturn \$rtn->getRowCount();");
         fwrite($classFile, "\n");
@@ -726,18 +730,22 @@ class BuildTableModels extends _DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\t */");
         fwrite($classFile, "\n");
-        fwrite($classFile, "\tpublic function GetList(bool \$serialize=false, array \$mask=array()) : array {");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\n");
-        fwrite($classFile, "\t\t\$this->_list = array();");
-        fwrite($classFile, "\n");
-        fwrite($classFile,"\t\t\$this->_sql = \"SELECT ");
-        $countFields = 0;
-        foreach ($db->_Tablefields as $field2)
-        {
-          fwrite($classFile,($countFields++>0?",":"").$db->_Tablename.".".$field2->GetName());
-        }
-        fwrite($classFile," FROM ".$db->_Tablename."\".(!empty(\$this->_sql)?\" WHERE \".\$this->_sql:\"\");");
+        	fwrite($classFile, "\tpublic function GetList(bool \$serialize=false, array \$mask=array()) : array {");
+	fwrite($classFile, "\n");
+	fwrite($classFile, "\n");
+	fwrite($classFile, "\t\t\$this->_list = array();");
+	fwrite($classFile, "\n");
+	fwrite($classFile,"\t\t// Store WHERE clause before overwriting _sql");
+	fwrite($classFile, "\n");
+	fwrite($classFile,"\t\t\$whereClause = \$this->_sql;");
+	fwrite($classFile, "\n");
+	fwrite($classFile,"\t\t\$this->_sql = \"SELECT ");
+	$countFields = 0;
+	foreach ($db->_Tablefields as $field2)
+	{
+	  fwrite($classFile,($countFields++>0?",":"").$db->_Tablename.".".$field2->GetName());
+	}
+	fwrite($classFile," FROM ".$db->_Tablename."\".(!empty(\$whereClause)?\" WHERE \".\$whereClause:\"\");");
 
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
