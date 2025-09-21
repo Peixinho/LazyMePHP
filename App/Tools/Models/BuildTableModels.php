@@ -968,6 +968,64 @@ class BuildTableModels extends _DB_TABLE
                 $generatedMethods[$methodName] = true;
             }
 
+            // FindByIsNull
+            $methodName = 'FindBy' . ucfirst($fieldName) . 'IsNull';
+            if (!isset($generatedMethods[$methodName])) {
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t/**");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t * FindBy".$field->GetName()."IsNull");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t *");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t * Finds result where ".$field->GetName()." IS NULL");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t *");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t * @return void");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t */");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\tpublic function FindBy".$field->GetName()."IsNull() : void {");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t\t\$this->_sql .= \" \".(!empty(\$this->_listHasCondition)?\"AND\":\"\").\" \".\$this->_sqlToAdd.\" ".$db->GetTableName().".".$field->GetName()." IS NULL\";");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t\t\$this->_listHasCondition = true;");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t}");
+                fwrite($classFile, "\n");
+                $generatedMethods[$methodName] = true;
+            }
+
+            // FindByIsNotNull
+            $methodName = 'FindBy' . ucfirst($fieldName) . 'IsNotNull';
+            if (!isset($generatedMethods[$methodName])) {
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t/**");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t * FindBy".$field->GetName()."IsNotNull");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t *");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t * Finds result where ".$field->GetName()." IS NOT NULL");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t *");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t * @return void");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t */");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\tpublic function FindBy".$field->GetName()."IsNotNull() : void {");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t\t\$this->_sql .= \" \".(!empty(\$this->_listHasCondition)?\"AND\":\"\").\" \".\$this->_sqlToAdd.\" ".$db->GetTableName().".".$field->GetName()." IS NOT NULL\";");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t\t\$this->_listHasCondition = true;");
+                fwrite($classFile, "\n");
+                fwrite($classFile, "\t}");
+                fwrite($classFile, "\n");
+                $generatedMethods[$methodName] = true;
+            }
+
             // OrderBy
             $methodName = 'OrderBy' . ucfirst($fieldName);
             if (!isset($generatedMethods[$methodName])) {
