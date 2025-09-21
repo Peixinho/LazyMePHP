@@ -372,36 +372,10 @@ class BuildTableModels extends _DB_TABLE
             fwrite($classFile, "\n");
             fwrite($classFile,"\tpublic function Save() : mixed {");
             fwrite($classFile, "\n");
-            $fieldsNotnull = null;
-            fwrite($classFile, "\t\t\$fieldsnull = '';");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\$nullFields = [];");
-            foreach ($db->_Tablefields as $field2)
-            {
-              // Skip auto-increment primary keys for null checks (they can be null for new records)
-              if (!$field2->Allownull() && !($field2->IsPrimaryKey() && $field2->IsAutoIncrement())) {
-                $fieldsNotnull.= "\t\tif (!isset(\$this->".$field2->GetName().")) \$nullFields[] = '".$field2->GetName()."';\n";
-              }
-            }
-            fwrite($classFile, "\n");
-            if (isset($fieldsNotnull)) {
-              fwrite($classFile, $fieldsNotnull);
-              fwrite($classFile, "\t\t\$fieldsnull = implode(',', \$nullFields);");
-            }
-            fwrite($classFile, "\n");
-
-            fwrite($classFile, "\t\tif (\$fieldsnull) {");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\tErrorUtil::trigger_error(\"null value not allowed!\\nFields: \$fieldsnull\", E_USER_ERROR);");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\treturn false;");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t} else {");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\tif (\$this->isInitialized()) {");
+            fwrite($classFile, "\t\tif (\$this->isInitialized()) {");
             // Update
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\t\t\$sql = \"UPDATE ".$db->_Tablename." SET ");
+            fwrite($classFile, "\t\t\t\$sql = \"UPDATE ".$db->_Tablename." SET ");
             $countFields = 0;
             foreach ($db->_Tablefields as $field2)
             {
@@ -412,29 +386,29 @@ class BuildTableModels extends _DB_TABLE
             }
             fwrite($classFile," WHERE ".$field->GetName()."=:".$field->GetName()."\";");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\t\t\$params = [");
+            fwrite($classFile, "\t\t\t\$params = [");
             fwrite($classFile, "\n");
             $countFields = 0;
             foreach ($db->_Tablefields as $field2)
             {
                 if ($field!=$field2)
                 {
-                    fwrite($classFile,"\t\t\t\t\t':".$field2->GetName()."' => ".(LazyMePHP::DB_TYPE() == 2 && $field2->GetDataType()=="bit"?"\$this->".$field2->GetName()."||0":"\$this->".$field2->GetName()).",");
+                    fwrite($classFile,"\t\t\t\t':".$field2->GetName()."' => ".(LazyMePHP::DB_TYPE() == 2 && $field2->GetDataType()=="bit"?"\$this->".$field2->GetName()."||0":"\$this->".$field2->GetName()).",");
                     fwrite($classFile, "\n");
                 }
             }
-            fwrite($classFile,"\t\t\t\t\t':".$field->GetName()."' => \$this->".$field->GetName().",");
+            fwrite($classFile,"\t\t\t\t':".$field->GetName()."' => \$this->".$field->GetName().",");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\t\t];");
+            fwrite($classFile, "\t\t\t];");
             fwrite($classFile, "\n");
-            fwrite($classFile,"\t\t\t\t\$method = \"U\";");
+            fwrite($classFile,"\t\t\t\$method = \"U\";");
             fwrite($classFile, "\n");
-            fwrite($classFile,"\t\t\t\t\$ret = LazyMePHP::DB_CONNECTION()->Query(\$sql, \$params);");
+            fwrite($classFile,"\t\t\t\$ret = LazyMePHP::DB_CONNECTION()->Query(\$sql, \$params);");
             fwrite($classFile, "\n");
-            fwrite($classFile,"\t\t\t} else {");
+            fwrite($classFile,"\t\t} else {");
             // Insert
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\t\t\$sql = \"INSERT INTO ".$db->_Tablename." (");
+            fwrite($classFile, "\t\t\t\$sql = \"INSERT INTO ".$db->_Tablename." (");
             $countFields = 0;
             foreach ($db->_Tablefields as $field2)
             {
@@ -455,47 +429,45 @@ class BuildTableModels extends _DB_TABLE
             fwrite($classFile, ")\";");
             fwrite($classFile, "\n");
             $countFields = 1;
-            fwrite($classFile, "\t\t\t\t\$params = [");
+            fwrite($classFile, "\t\t\t\$params = [");
             fwrite($classFile, "\n");
             foreach ($db->_Tablefields as $field2)
             {
               if ($field!=$field2)
               {
-                fwrite($classFile,"\t\t\t\t\t':".$field2->GetName()."' => ".(LazyMePHP::DB_TYPE() == 2 && $field2->GetDataType()=="bit"?"\$this->".$field2->GetName()."||0":"\$this->".$field2->GetName()).",");
+                fwrite($classFile,"\t\t\t\t':".$field2->GetName()."' => ".(LazyMePHP::DB_TYPE() == 2 && $field2->GetDataType()=="bit"?"\$this->".$field2->GetName()."||0":"\$this->".$field2->GetName()).",");
                 fwrite($classFile, "\n");
               }
             }
-            fwrite($classFile, "\t\t\t\t];");
+            fwrite($classFile, "\t\t\t];");
             fwrite($classFile, "\n");
-            fwrite($classFile,"\t\t\t\t\$method = \"I\";");
+            fwrite($classFile,"\t\t\t\$method = \"I\";");
             fwrite($classFile, "\n");
-            fwrite($classFile,"\t\t\t\t\$ret = LazyMePHP::DB_CONNECTION()->Query(\$sql, \$params);");
+            fwrite($classFile,"\t\t\t\$ret = LazyMePHP::DB_CONNECTION()->Query(\$sql, \$params);");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\t\tif (\$ret) \$this->".$field->GetName()." = LazyMePHP::DB_CONNECTION()->GetLastInsertedID('".$db->_Tablename."');");
+            fwrite($classFile, "\t\t\tif (\$ret) \$this->".$field->GetName()." = LazyMePHP::DB_CONNECTION()->GetLastInsertedID('".$db->_Tablename."');");
             fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\t}");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\t// Use LoggingHelper for proper change logging");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\tif (LazyMePHP::ACTIVITY_LOG() && !empty(\$this->__log)) {");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\t\tif (\$method === 'I') {");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\t\t\t\\Core\\Helpers\\LoggingHelper::logInsert('".$db->_Tablename."', \$this->__log, (string)\$this->".$field->GetName().");");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\t\t} else {");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\t\t\t\\Core\\Helpers\\LoggingHelper::logUpdate('".$db->_Tablename."', \$this->__log, '".$field->GetName()."', (string)\$this->".$field->GetName().");");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\t\t}");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\t}");
-            fwrite($classFile, "\n");
-            fwrite($classFile, "\t\t\treturn \$ret;");
-            fwrite($classFile, "\n");
-            // End Save
             fwrite($classFile, "\t\t}");
             fwrite($classFile, "\n");
+            fwrite($classFile, "\t\t// Use LoggingHelper for proper change logging");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t\tif (LazyMePHP::ACTIVITY_LOG() && !empty(\$this->__log)) {");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t\t\tif (\$method === 'I') {");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t\t\t\t\\Core\\Helpers\\LoggingHelper::logInsert('".$db->_Tablename."', \$this->__log, (string)\$this->".$field->GetName().");");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t\t\t} else {");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t\t\t\t\\Core\\Helpers\\LoggingHelper::logUpdate('".$db->_Tablename."', \$this->__log, '".$field->GetName()."', (string)\$this->".$field->GetName().");");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t\t\t}");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t\t}");
+            fwrite($classFile, "\n");
+            fwrite($classFile, "\t\treturn \$ret;");
+            fwrite($classFile, "\n");
+            // End Save
             fwrite($classFile, "\t}");
             // Delete
             fwrite($classFile, "\n");
@@ -688,24 +660,20 @@ class BuildTableModels extends _DB_TABLE
         fwrite($classFile, "\t}");
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
-        	fwrite($classFile, "\tpublic function GetCount() : int {");
-	fwrite($classFile, "\n");
-	fwrite($classFile, "\n");
-	fwrite($classFile,"\t\t// Store WHERE clause before overwriting _sql");
-	fwrite($classFile, "\n");
-	fwrite($classFile,"\t\t\$whereClause = \$this->_sql;");
-	fwrite($classFile, "\n");
-	fwrite($classFile,"\t\t\$_sql = \"SELECT ");
-	$countFields = 0;
-	foreach ($db->_Tablefields as $field2)
-	{
-	  fwrite($classFile,($countFields++>0?",":"").$db->_Tablename.".".$field2->GetName());
-	}
-	fwrite($classFile," FROM ".$db->_Tablename."\".(!empty(\$whereClause)?\" WHERE \".\$whereClause:\"\");");
+        fwrite($classFile, "\tpublic function GetCount() : int {");
+        fwrite($classFile, "\n");
+        fwrite($classFile, "\n");
+        fwrite($classFile,"\t\t\$_sql = \"SELECT ");
+        $countFields = 0;
+        foreach ($db->_Tablefields as $field2)
+        {
+          fwrite($classFile,($countFields++>0?",":"").$db->_Tablename.".".$field2->GetName());
+        }
+        fwrite($classFile," FROM ".$db->_Tablename."\".(!empty(\$this->_sql)?\" WHERE \".\$this->_sql:\"\");");
 
-	fwrite($classFile, "\n");
-	fwrite($classFile, "\n");
-	fwrite($classFile, "\t\t\$rtn = LazyMePHP::DB_CONNECTION()->Query(\$_sql.\" \".(!empty(\$this->_group)?\"GROUP BY \".\$this->_group:\"\").\" \".(!empty(\$this->_order)?\"ORDER BY \".\$this->_order:\"\").\" \".(\$this->_limitEnd?(empty(\$this->_order)?\"ORDER BY ".$db->_Tablename.".".$db->_PrimaryFieldName." \":\"\").LazyMePHP::DB_CONNECTION()->Limit(\$this->_limitEnd, \$this->_limitStart):\"\"), \$this->_args);");
+        fwrite($classFile, "\n");
+        fwrite($classFile, "\n");
+        fwrite($classFile, "\t\t\$rtn = LazyMePHP::DB_CONNECTION()->Query(\$_sql.\" \".(!empty(\$this->_group)?\"GROUP BY \".\$this->_group:\"\").\" \".(!empty(\$this->_order)?\"ORDER BY \".\$this->_order:\"\").\" \".(\$this->_limitEnd?(empty(\$this->_order)?\"ORDER BY ".$db->_Tablename.".".$db->_PrimaryFieldName." \":\"\").LazyMePHP::DB_CONNECTION()->Limit(\$this->_limitEnd, \$this->_limitStart):\"\"), \$this->_args);");
         fwrite($classFile, "\n");
         fwrite($classFile, "\t\treturn \$rtn->getRowCount();");
         fwrite($classFile, "\n");
@@ -730,22 +698,18 @@ class BuildTableModels extends _DB_TABLE
         fwrite($classFile, "\n");
         fwrite($classFile, "\t */");
         fwrite($classFile, "\n");
-        	fwrite($classFile, "\tpublic function GetList(bool \$serialize=false, array \$mask=array()) : array {");
-	fwrite($classFile, "\n");
-	fwrite($classFile, "\n");
-	fwrite($classFile, "\t\t\$this->_list = array();");
-	fwrite($classFile, "\n");
-	fwrite($classFile,"\t\t// Store WHERE clause before overwriting _sql");
-	fwrite($classFile, "\n");
-	fwrite($classFile,"\t\t\$whereClause = \$this->_sql;");
-	fwrite($classFile, "\n");
-	fwrite($classFile,"\t\t\$this->_sql = \"SELECT ");
-	$countFields = 0;
-	foreach ($db->_Tablefields as $field2)
-	{
-	  fwrite($classFile,($countFields++>0?",":"").$db->_Tablename.".".$field2->GetName());
-	}
-	fwrite($classFile," FROM ".$db->_Tablename."\".(!empty(\$whereClause)?\" WHERE \".\$whereClause:\"\");");
+        fwrite($classFile, "\tpublic function GetList(bool \$serialize=false, array \$mask=array()) : array {");
+        fwrite($classFile, "\n");
+        fwrite($classFile, "\n");
+        fwrite($classFile, "\t\t\$this->_list = array();");
+        fwrite($classFile, "\n");
+        fwrite($classFile,"\t\t\$this->_sql = \"SELECT ");
+        $countFields = 0;
+        foreach ($db->_Tablefields as $field2)
+        {
+          fwrite($classFile,($countFields++>0?",":"").$db->_Tablename.".".$field2->GetName());
+        }
+        fwrite($classFile," FROM ".$db->_Tablename."\".(!empty(\$this->_sql)?\" WHERE \".\$this->_sql:\"\");");
 
         fwrite($classFile, "\n");
         fwrite($classFile, "\n");
@@ -1252,4 +1216,5 @@ class BuildTableModels extends _DB_TABLE
 		else echo "ERROR: Check your permissions to remove ".$classesPath."/".$db->_Tablename.".php\n";
 	}
 }
+?>
 ?>
