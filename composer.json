@@ -55,6 +55,8 @@
             "Core\\Security\\": "App/Core/Security/",
             "Core\\Auth\\": "App/Core/Auth/",
             "Core\\Migration\\": "App/Core/Migration/",
+            "Core\\Relationships\\": "App/Core/Relationships/",
+            "Core\\GraphQL\\": "App/Core/GraphQL/",
             "Core\\Session\\": "App/Core/Session/",
             "Tools\\": "App/Tools/",
             "Core\\Validations\\": "App/Core/Validations/",

@@ -13,6 +13,11 @@ namespace Core;
 use Core\DB\IDB;
 use Core\DB\DatabaseException;
 use Core\LazyMePHP;
+use Core\Relationships\Relationship;
+use Core\Relationships\HasOne;
+use Core\Relationships\HasMany;
+use Core\Relationships\BelongsTo;
+use Core\Relationships\BelongsToMany;
 
 /**
  * Dynamic ORM model — full CRUD against any table, no code generation needed.
@@ -69,6 +74,9 @@ class Model implements IDB
     /** @var array<string, array{mixed, mixed}> change log for activity logging */
     private array $changeLog = [];
 
+    /** @var array<string, mixed> eagerly or lazily loaded relations */
+    private array $relations = [];
+
     /** @var array<string, array<string, array{type:string, nullable:bool, pk:bool, default:mixed}>> */
     private static array $schemaCache = [];
 
@@ -110,7 +118,7 @@ class Model implements IDB
         if ($t === '') {
             throw new \InvalidArgumentException('Table name required.');
         }
-        return new ModelQuery($t);
+        return new ModelQuery($t, static::class);
     }
 
     /**
@@ -363,7 +371,24 @@ class Model implements IDB
 
     public function __get(string $name): mixed
     {
-        return $this->data[$name] ?? null;
+        // Already-loaded relation (eager or previous lazy load)
+        if (array_key_exists($name, $this->relations)) {
+            return $this->relations[$name];
+        }
+        // Raw data column
+        if (array_key_exists($name, $this->data)) {
+            return $this->data[$name];
+        }
+        // Lazy-load: call the relationship method if it exists and returns a Relationship
+        if (method_exists($this, $name)) {
+            $rel = $this->$name();
+            if ($rel instanceof Relationship) {
+                $result = $rel->getResults();
+                $this->relations[$name] = $result;
+                return $result;
+            }
+        }
+        return null;
     }
 
     public function __set(string $name, mixed $value): void
@@ -378,7 +403,19 @@ class Model implements IDB
 
     public function __isset(string $name): bool
     {
-        return isset($this->data[$name]);
+        return isset($this->data[$name]) || isset($this->relations[$name]);
+    }
+
+    /** Called by Relationship::eagerLoad() to inject pre-fetched results. */
+    public function setRelation(string $name, mixed $value): void
+    {
+        $this->relations[$name] = $value;
+    }
+
+    /** Return all loaded relation results keyed by relation name. */
+    public function getRelations(): array
+    {
+        return $this->relations;
     }
 
     /**
@@ -420,7 +457,15 @@ class Model implements IDB
 
     public function toArray(): array
     {
-        return $this->data;
+        $out = $this->data;
+        foreach ($this->relations as $name => $value) {
+            if (is_array($value)) {
+                $out[$name] = array_map(fn($v) => $v instanceof Model ? $v->toArray() : $v, $value);
+            } else {
+                $out[$name] = $value instanceof Model ? $value->toArray() : $value;
+            }
+        }
+        return $out;
     }
 
     /**
@@ -431,6 +476,78 @@ class Model implements IDB
     public function only(array $columns): array
     {
         return array_intersect_key($this->data, array_flip($columns));
+    }
+
+    // -------------------------------------------------------------------------
+    // Relationship helpers — call these inside subclass relationship methods
+    // -------------------------------------------------------------------------
+
+    /**
+     * One-to-many: related table holds a FK pointing back to this model.
+     *
+     *   public function posts(): HasMany {
+     *       return $this->hasMany('posts', 'user_id');
+     *   }
+     */
+    protected function hasMany(string $relatedTable, string $foreignKey, ?string $localKey = null): HasMany
+    {
+        return new HasMany($this, $relatedTable, $foreignKey, $localKey ?? $this->primaryKey ?? 'id');
+    }
+
+    /**
+     * One-to-one: related table holds a FK pointing back to this model.
+     *
+     *   public function profile(): HasOne {
+     *       return $this->hasOne('profiles', 'user_id');
+     *   }
+     */
+    protected function hasOne(string $relatedTable, string $foreignKey, ?string $localKey = null): HasOne
+    {
+        return new HasOne($this, $relatedTable, $foreignKey, $localKey ?? $this->primaryKey ?? 'id');
+    }
+
+    /**
+     * Inverse: this model's table holds the FK.
+     *
+     *   public function author(): BelongsTo {
+     *       return $this->belongsTo('users', 'user_id');
+     *   }
+     *
+     * @param string $foreignKey  Column on THIS table (e.g. 'user_id')
+     * @param string|null $localKey   PK on the RELATED table (default 'id')
+     */
+    protected function belongsTo(string $relatedTable, string $foreignKey, ?string $localKey = null): BelongsTo
+    {
+        return new BelongsTo($this, $relatedTable, $foreignKey, $localKey ?? 'id');
+    }
+
+    /**
+     * Many-to-many through a pivot table.
+     *
+     *   public function tags(): BelongsToMany {
+     *       return $this->belongsToMany('tags', 'post_tags', 'post_id', 'tag_id');
+     *   }
+     *
+     * @param string $pivotTable        The join table
+     * @param string $foreignKey        Pivot column → this model's PK
+     * @param string $relatedForeignKey Pivot column → related model's PK
+     * @param string|null $localKey     This model's PK (auto-detected when null)
+     * @param string|null $relatedKey   Related model's PK (auto-detected when null)
+     */
+    protected function belongsToMany(
+        string  $relatedTable,
+        string  $pivotTable,
+        string  $foreignKey,
+        string  $relatedForeignKey,
+        ?string $localKey   = null,
+        ?string $relatedKey = null,
+    ): BelongsToMany {
+        return new BelongsToMany(
+            $this, $relatedTable, $pivotTable,
+            $foreignKey, $relatedForeignKey,
+            $localKey ?? $this->primaryKey ?? 'id',
+            $relatedKey,
+        );
     }
 
     // -------------------------------------------------------------------------
@@ -527,6 +644,7 @@ class Model implements IDB
 class ModelQuery
 {
     private string $tableName;
+    private string $modelClass;
     /** @var list<string> */
     private array $conditions = [];
     /** @var list<mixed> */
@@ -536,10 +654,13 @@ class ModelQuery
     private int $limitCount = 0;
     private int $limitOffset = 0;
     private bool $hasCondition = false;
+    /** @var list<string> relation names to eager-load */
+    private array $with = [];
 
-    public function __construct(string $tableName)
+    public function __construct(string $tableName, ?string $modelClass = null)
     {
-        $this->tableName = $tableName;
+        $this->tableName  = $tableName;
+        $this->modelClass = $modelClass ?? Model::class;
     }
 
     public function where(string $column, mixed $value, string $operator = '=', string $logic = 'AND'): static
@@ -577,6 +698,40 @@ class ModelQuery
         return $this;
     }
 
+    /**
+     * Add a WHERE … IN (…) condition.
+     * Passing an empty array produces a permanent false condition (returns no rows).
+     *
+     * @param list<mixed> $values
+     */
+    public function whereIn(string $column, array $values, string $logic = 'AND'): static
+    {
+        $connector = $this->hasCondition ? " $logic " : '';
+        if (empty($values)) {
+            $this->conditions[] = "{$connector}1=0";
+            $this->hasCondition = true;
+            return $this;
+        }
+        $placeholders = implode(', ', array_fill(0, count($values), '?'));
+        $this->conditions[] = "{$connector}\"{$column}\" IN ({$placeholders})";
+        array_push($this->bindings, ...$values);
+        $this->hasCondition = true;
+        return $this;
+    }
+
+    /**
+     * Eagerly load the named relationships when get() executes.
+     * Only works when query() is called on a Model subclass that defines
+     * the relationship methods.
+     *
+     *   User::query()->with('posts', 'profile')->get();
+     */
+    public function with(string ...$relations): static
+    {
+        $this->with = array_merge($this->with, $relations);
+        return $this;
+    }
+
     public function orderBy(string $column, string $direction = 'ASC'): static
     {
         $d = strtoupper($direction) === 'DESC' ? 'DESC' : 'ASC';
@@ -607,6 +762,10 @@ class ModelQuery
     }
 
     /**
+     * Execute the query and return model instances.
+     * When ->with() relations are specified and the model class defines them,
+     * they are loaded in a single batch query each (no N+1).
+     *
      * @return list<Model>
      */
     public function get(): array
@@ -622,10 +781,24 @@ class ModelQuery
             $this->bindings
         );
 
-        $rows = [];
+        $class = $this->modelClass;
+        $rows  = [];
         while ($row = $result->fetchArray()) {
-            $rows[] = new Model($this->tableName, $row);
+            $rows[] = new $class($this->tableName, $row);
         }
+
+        // Eager-load relationships — one batch query per relation, no N+1
+        if (!empty($rows) && !empty($this->with)) {
+            $representative = $rows[0];
+            foreach ($this->with as $relation) {
+                if (!method_exists($representative, $relation)) continue;
+                $rel = $representative->$relation();
+                if ($rel instanceof \Core\Relationships\Relationship) {
+                    $rel->eagerLoad($rows, $relation);
+                }
+            }
+        }
+
         return $rows;
     }
 
