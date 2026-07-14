@@ -155,28 +155,41 @@ class DebugToolbar
         // Add fallback error indicator if there are errors
         $errorIndicator = '';
         if ($errorCount > 0) {
+            $errorLabel = $errorCount === 1 ? 'erro' : 'erros';
             $errorIndicator = "
-            <div class='lazymephp-debug-error-indicator' onclick='document.getElementById(\"lazymephp-debug-toolbar\").style.display=\"block\";'>
-                ⚠️ {$errorCount} Error(s) - Click to view debug info
+            <div class='lazymephp-debug-error-indicator' id='lazymephp-debug-error-indicator' role='button' tabindex='0'>
+                â� ï¸� {$errorCount} {$errorLabel} â�� Clique ou Ctrl+Shift+D
             </div>
             ";
+        }
+
+        if ($errorCount > 0) {
+            $toolbarClasses = 'lazymephp-debug-toolbar lazymephp-debug-toolbar--expanded';
+            $contentHidden = '';
+        } else {
+            $toolbarClasses = 'lazymephp-debug-toolbar lazymephp-debug-toolbar--minimized';
+            $contentHidden = ' hidden';
         }
         
         return "
         {$errorIndicator}
-        <div id='lazymephp-debug-toolbar' class='lazymephp-debug-toolbar'>
-            <div class='lazymephp-debug-header'>
-                <span class='lazymephp-debug-title'>🚀 LazyMePHP Debug</span>
+        <div id='lazymephp-debug-toolbar' class='{$toolbarClasses}' data-error-count='{$errorCount}' data-restore-state='1'>
+            <div class='lazymephp-debug-header' id='lazymephp-debug-header' title='Clique para expandir ou recolher Â· Ctrl+Shift+D'>
+                <span class='lazymephp-debug-title'>ð��� LazyMePHP Debug</span>
                 <div class='lazymephp-debug-stats'>
-                    <span class='lazymephp-debug-stat' title='Execution Time'>{$executionTime}ms</span>
-                    <span class='lazymephp-debug-stat' title='Memory Usage'>{$memoryUsage}</span>
-                    <span class='lazymephp-debug-stat' title='SQL Queries'>{$queryCount}</span>
-                    <span class='lazymephp-debug-stat' title='Errors'>{$errorCount}</span>
+                    <span class='lazymephp-debug-stat lazymephp-debug-stat--time' title='Execution Time'>{$executionTime}ms</span>
+                    <span class='lazymephp-debug-stat lazymephp-debug-stat--memory' title='Memory Usage'>{$memoryUsage}</span>
+                    <span class='lazymephp-debug-stat lazymephp-debug-stat--queries' title='SQL Queries'>{$queryCount} SQL</span>
+                    <span class='lazymephp-debug-stat lazymephp-debug-stat--errors" . ($errorCount > 0 ? ' lazymephp-debug-stat--errors-active' : '') . "' title='Errors'>{$errorCount} err</span>
                 </div>
-                <span style='font-size: 10px; color: #888; margin-right: 10px;' title='Keyboard shortcut'>Ctrl+Shift+D</span>
-                <button class='lazymephp-debug-toggle' type='button'>📊</button>
+                <span class='lazymephp-debug-shortcut' title='Toggle panel'>â�¨ Ctrl+Shift+D</span>
+                <span class='lazymephp-debug-chevron lazymephp-debug-icon-btn' aria-hidden='true' title='Clique para expandir / recolher'></span>
+                <button class='lazymephp-debug-dock' type='button' title='Ocultar barra de debug' aria-label='Ocultar barra de debug'>
+                    <span class='lazymephp-debug-dock__open'>Ocultar</span>
+                    <span class='lazymephp-debug-dock__closed'>Debug</span>
+                </button>
             </div>
-            <div id='lazymephp-debug-content' class='lazymephp-debug-content' style='display: none;'>
+            <div id='lazymephp-debug-content' class='lazymephp-debug-content'{$contentHidden}>
                 " . $this->generateTabs($data, $errorCount) . "
             </div>
         </div>
@@ -191,23 +204,24 @@ class DebugToolbar
     private function generateTabs(array $data, int $errorCount): string
     {
         $queryCount = count($data['queries']);
+        $defaultTab = $errorCount > 0 ? 'errors' : 'queries';
         $tabs = [
-            'queries' => ['label' => "Queries ({$queryCount})", 'icon' => '🗄️'],
-            'errors' => ['label' => "Errors ({$errorCount})", 'icon' => '⚠️'],
-            'request' => ['label' => 'Request', 'icon' => '📡'],
-            'performance' => ['label' => 'Performance', 'icon' => '⚡']
+            'queries' => ['label' => "Queries ({$queryCount})", 'icon' => 'ð���ï¸�'],
+            'errors' => ['label' => "Errors ({$errorCount})", 'icon' => 'â� ï¸�'],
+            'request' => ['label' => 'Request', 'icon' => 'ð��¡'],
+            'performance' => ['label' => 'Performance', 'icon' => 'â�¡']
         ];
         
         $tabContent = '';
         $tabButtons = '';
         
         foreach ($tabs as $tabId => $tab) {
-            $active = $tabId === 'queries' ? 'active' : '';
+            $active = $tabId === $defaultTab ? 'active' : '';
             $tabButtons .= "<button class='lazymephp-debug-tab {$active}' type='button' data-tab-id='{$tabId}'>{$tab['icon']} {$tab['label']}</button>";
             
             $content = $this->generateTabContent($tabId, $data);
-            $display = $tabId === 'queries' ? 'block' : 'none';
-            $tabContent .= "<div id='lazymephp-debug-tab-{$tabId}' class='lazymephp-debug-tab-content' style='display: {$display};'>{$content}</div>";
+            $hidden = $tabId === $defaultTab ? '' : ' hidden';
+            $tabContent .= "<div id='lazymephp-debug-tab-{$tabId}' class='lazymephp-debug-tab-content'{$hidden}>{$content}</div>";
         }
         
         return "
@@ -240,19 +254,20 @@ class DebugToolbar
         }
         
         $html = '';
-        foreach ($queries as $query) {
-            $sql = htmlspecialchars($query['sql']);
+        foreach ($queries as $index => $query) {
+            $sql = htmlspecialchars($query['sql'], ENT_QUOTES, 'UTF-8');
             $time = number_format($query['time'] * 1000, 2);
-            $params = is_array($query['params']) ? json_encode($query['params']) : htmlspecialchars($query['params']);
+            $params = is_array($query['params']) ? json_encode($query['params'], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) : htmlspecialchars((string) $query['params'], ENT_QUOTES, 'UTF-8');
+            $blockId = 'lazymephp-debug-query-' . $index;
             
             $html .= "
             <div class='lazymephp-debug-query'>
-                <div class='lazymephp-debug-query-header'>
+                <div class='lazymephp-debug-block-header'>
                     <span class='lazymephp-debug-query-time'>{$time}ms</span>
-                    <span class='lazymephp-debug-query-number'>{$query['timestamp']}</span>
+                    <button type='button' class='lazymephp-debug-copy-btn' data-copy-target='{$blockId}' title='Copy SQL'>ð��� Copy</button>
                 </div>
-                <div class='lazymephp-debug-query-sql'>{$sql}</div>
-                <div class='lazymephp-debug-query-params'>{$params}</div>
+                <pre id='{$blockId}' class='lazymephp-debug-copyable lazymephp-debug-query-sql'>{$sql}</pre>
+                <div class='lazymephp-debug-query-params lazymephp-debug-copyable'>{$params}</div>
             </div>
             ";
         }
@@ -270,15 +285,28 @@ class DebugToolbar
         }
         
         $html = '';
-        foreach ($errors as $error) {
-            $message = htmlspecialchars($error['message']);
-            $file = htmlspecialchars($error['file']);
-            $line = $error['line'];
+        foreach ($errors as $index => $error) {
+            $message = htmlspecialchars($error['message'] ?? '', ENT_QUOTES, 'UTF-8');
+            $file = htmlspecialchars($error['file'] ?? '', ENT_QUOTES, 'UTF-8');
+            $line = (int) ($error['line'] ?? 0);
+            $errorId = htmlspecialchars($error['error_id'] ?? '', ENT_QUOTES, 'UTF-8');
+            $type = htmlspecialchars($error['type'] ?? '', ENT_QUOTES, 'UTF-8');
+            $timestamp = htmlspecialchars($error['timestamp'] ?? '', ENT_QUOTES, 'UTF-8');
+            $blockId = 'lazymephp-debug-error-' . $index;
+
+            $copyText = ($error['message'] ?? '') . "\n"
+                . ($error['file'] ?? '') . ':' . ($error['line'] ?? '') . "\n"
+                . (isset($error['error_id']) ? 'Error ID: ' . $error['error_id'] . "\n" : '')
+                . (isset($error['type']) ? 'Type: ' . $error['type'] . "\n" : '');
+            $copyTextEscaped = htmlspecialchars($copyText, ENT_QUOTES, 'UTF-8');
             
             $html .= "
             <div class='lazymephp-debug-error'>
-                <div class='lazymephp-debug-error-message'>{$message}</div>
-                <div class='lazymephp-debug-error-location'>{$file}:{$line}</div>
+                <div class='lazymephp-debug-block-header'>
+                    <span class='lazymephp-debug-error-badge'>" . ($errorId !== '' ? "ID {$errorId}" : 'Error') . "</span>
+                    <button type='button' class='lazymephp-debug-copy-btn' data-copy-text='{$copyTextEscaped}' data-copy-target='{$blockId}' title='Copy error'>ð��� Copy</button>
+                </div>
+                <pre id='{$blockId}' class='lazymephp-debug-copyable lazymephp-debug-error-body'>{$message}\n\n{$file}:{$line}" . ($type !== '' ? "\n\nType: {$type}" : '') . ($timestamp !== '' ? "\nTime: {$timestamp}" : '') . "</pre>
             </div>
             ";
         }
@@ -361,224 +389,406 @@ class DebugToolbar
     private function generateToolbarCSS(): string
     {
         return "
-        <style>
+        <style id='lazymephp-debug-styles'>
+        @media print {
+            .lazymephp-debug-toolbar,
+            .lazymephp-debug-error-indicator,
+            #lazymephp-debug-toolbar,
+            #lazymephp-debug-error-indicator {
+                display: none !important;
+            }
+        }
+
         .lazymephp-debug-toolbar {
             position: fixed;
             bottom: 0;
             left: 0;
             right: 0;
-            background: #1a1a1a;
-            color: #fff;
-            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            background: #12151c;
+            color: #e8ecf4;
+            font-family: 'SF Mono', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
             font-size: 12px;
-            z-index: 9999999;
-            border-top: 2px solid #007acc;
-            /* Ensure toolbar is always on top and clickable */
+            z-index: 2147483646;
+            border-top: 2px solid #3b82f6;
+            box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.45);
             pointer-events: auto;
-            user-select: none;
         }
-        
+
+        .lazymephp-debug-toolbar--minimized {
+            left: auto;
+            right: 16px;
+            bottom: 16px;
+            width: auto;
+            max-height: none;
+            border-top: none;
+            border-radius: 8px;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+            overflow: visible;
+        }
+
+        .lazymephp-debug-toolbar--minimized .lazymephp-debug-content {
+            display: none !important;
+        }
+
+        .lazymephp-debug-toolbar--minimized .lazymephp-debug-header {
+            padding: 0;
+            background: transparent;
+            border: none;
+            cursor: default;
+            pointer-events: none;
+        }
+
+        .lazymephp-debug-toolbar--minimized .lazymephp-debug-title,
+        .lazymephp-debug-toolbar--minimized .lazymephp-debug-stats,
+        .lazymephp-debug-toolbar--minimized .lazymephp-debug-shortcut,
+        .lazymephp-debug-toolbar--minimized .lazymephp-debug-chevron {
+            display: none;
+        }
+
+        .lazymephp-debug-toolbar--minimized .lazymephp-debug-dock {
+            pointer-events: auto;
+        }
+
+        body.lazymephp-debug-minimized {
+            padding-bottom: 0;
+        }
+
         .lazymephp-debug-header {
             display: flex;
             align-items: center;
-            padding: 8px 12px;
-            background: #2d2d2d;
-            border-bottom: 1px solid #444;
-            /* Ensure header is always clickable */
+            gap: 10px;
+            padding: 8px 14px;
+            background: linear-gradient(180deg, #1e2430 0%, #181c26 100%);
+            border-bottom: 1px solid #2d3548;
             cursor: pointer;
+            user-select: none;
         }
-        
+
         .lazymephp-debug-title {
-            font-weight: bold;
-            margin-right: 20px;
+            font-weight: 700;
+            font-size: 12px;
+            letter-spacing: 0.02em;
+            white-space: nowrap;
         }
-        
+
         .lazymephp-debug-stats {
             display: flex;
-            gap: 15px;
+            gap: 8px;
             flex: 1;
+            flex-wrap: wrap;
         }
-        
+
         .lazymephp-debug-stat {
-            padding: 2px 6px;
-            background: #007acc;
-            border-radius: 3px;
+            padding: 3px 8px;
+            background: #2a3344;
+            border-radius: 999px;
             font-size: 11px;
+            font-weight: 600;
+            border: 1px solid #3d4a63;
         }
-        
-        .lazymephp-debug-toggle {
-            background: #007acc;
-            border: none;
-            color: white;
-            padding: 4px 8px;
-            border-radius: 3px;
+
+        .lazymephp-debug-stat--time { color: #86efac; }
+        .lazymephp-debug-stat--memory { color: #93c5fd; }
+        .lazymephp-debug-stat--queries { color: #fcd34d; }
+        .lazymephp-debug-stat--errors { color: #fca5a5; }
+        .lazymephp-debug-stat--errors-active {
+            background: #7f1d1d;
+            border-color: #ef4444;
+            animation: lazymephp-debug-pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes lazymephp-debug-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.75; }
+        }
+
+        .lazymephp-debug-shortcut {
+            font-size: 10px;
+            color: #8b95a8;
+            white-space: nowrap;
+        }
+
+        .lazymephp-debug-icon-btn {
+            flex-shrink: 0;
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #8b95a8;
+            font-size: 11px;
+            border-radius: 6px;
+            background: #2a3344;
+            border: 1px solid #3d4a63;
+            box-sizing: border-box;
+        }
+
+        .lazymephp-debug-chevron::before {
+            content: 'â�²';
+        }
+
+        .lazymephp-debug-toolbar--expanded .lazymephp-debug-chevron::before {
+            content: 'â�¼';
+        }
+
+        .lazymephp-debug-icon-btn:hover {
+            background: #343f52;
+            color: #e8ecf4;
+            border-color: #4b5870;
+        }
+
+        #lazymephp-debug-toolbar button.lazymephp-debug-dock {
+            appearance: none;
+            -webkit-appearance: none;
+            flex-shrink: 0;
+            margin: 0;
+            padding: 0 10px;
+            height: 28px;
+            min-height: 28px;
+            border: 1px solid #3d4a63;
+            border-radius: 6px;
+            background: #2a3344;
+            color: #8b95a8;
+            font-family: inherit;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            text-decoration: none;
             cursor: pointer;
-            font-size: 12px;
-            /* Ensure button is always clickable */
-            pointer-events: auto;
-            z-index: 10000000;
+            line-height: 1;
+            box-sizing: border-box;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
-        
-        .lazymephp-debug-toggle:hover {
-            background: #005a9e;
+
+        #lazymephp-debug-toolbar button.lazymephp-debug-dock span {
+            color: inherit;
+            background: transparent;
+            border: none;
+            padding: 0;
+            margin: 0;
+            font: inherit;
         }
-        
+
+        #lazymephp-debug-toolbar button.lazymephp-debug-dock:hover {
+            background: #2a3344;
+            color: #8b95a8;
+            border-color: #3d4a63;
+        }
+
+        .lazymephp-debug-dock__closed {
+            display: none;
+        }
+
+        .lazymephp-debug-toolbar--minimized .lazymephp-debug-dock__open {
+            display: none;
+        }
+
+        .lazymephp-debug-toolbar--minimized .lazymephp-debug-dock__closed {
+            display: inline;
+        }
+
         .lazymephp-debug-content {
-            max-height: 400px;
-            overflow-y: auto;
-            /* Ensure content is always accessible */
+            max-height: min(55vh, 520px);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
             pointer-events: auto;
         }
-        
+
+        .lazymephp-debug-content[hidden] {
+            display: none !important;
+        }
+
         .lazymephp-debug-tabs {
             display: flex;
-            background: #333;
-            border-bottom: 1px solid #555;
+            background: #1a1f2b;
+            border-bottom: 1px solid #2d3548;
+            overflow-x: auto;
+            flex-shrink: 0;
         }
-        
-        .lazymephp-debug-tab {
-            background: #444;
+
+        #lazymephp-debug-toolbar button.lazymephp-debug-tab {
+            background: transparent;
             border: none;
-            color: #ccc;
+            color: #7d8799;
             cursor: pointer;
             font-size: 11px;
-            border-right: 1px solid #555;
-            padding: 8px 12px;
-            /* Ensure tabs are always clickable */
-            pointer-events: auto;
+            font-weight: 600;
+            border-bottom: 2px solid transparent;
+            padding: 10px 14px;
+            white-space: nowrap;
+            font-family: inherit;
+            border-radius: 0;
+            min-height: 0;
+            transition: color 0.15s, background 0.15s, border-color 0.15s;
         }
-        
-        .lazymephp-debug-tab:hover {
-            background: #555;
+
+        #lazymephp-debug-toolbar button.lazymephp-debug-tab:hover:not(.active) {
+            color: #c5ccd8;
+            background: #222836;
         }
-        
-        .lazymephp-debug-tab.active {
-            background: #007acc;
-            color: white;
+
+        #lazymephp-debug-toolbar button.lazymephp-debug-tab.active {
+            color: #fff;
+            background: #2a3344;
+            border-bottom-color: #60a5fa;
+            box-shadow: inset 0 -2px 0 #3b82f6;
+            font-weight: 700;
         }
-        
-        .lazymephp-debug-tab-content {
-            padding: 12px;
-            max-height: 300px;
+
+        .lazymephp-debug-tab-panels {
             overflow-y: auto;
+            flex: 1;
         }
-        
-        .lazymephp-debug-query {
-            margin-bottom: 10px;
-            padding: 8px;
-            background: #2a2a2a;
-            border-left: 3px solid #007acc;
+
+        .lazymephp-debug-tab-content {
+            padding: 12px 14px;
         }
-        
-        .lazymephp-debug-query-header {
+
+        .lazymephp-debug-tab-content[hidden] {
+            display: none !important;
+        }
+
+        .lazymephp-debug-copyable {
+            user-select: text !important;
+            -webkit-user-select: text !important;
+            cursor: text;
+        }
+
+        .lazymephp-debug-block-header {
             display: flex;
+            align-items: center;
             justify-content: space-between;
-            margin-bottom: 5px;
+            gap: 10px;
+            margin-bottom: 6px;
         }
-        
+
+        #lazymephp-debug-toolbar button.lazymephp-debug-copy-btn {
+            background: #2a3344;
+            border: 1px solid #3d4a63;
+            color: #e8ecf4;
+            border-radius: 6px;
+            padding: 4px 10px;
+            font-size: 11px;
+            cursor: pointer;
+            flex-shrink: 0;
+            font-family: inherit;
+            font-weight: 600;
+            min-height: 0;
+        }
+
+        #lazymephp-debug-toolbar button.lazymephp-debug-copy-btn:hover { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+        #lazymephp-debug-toolbar button.lazymephp-debug-copy-btn.copied { background: #166534; border-color: #22c55e; color: #fff; }
+
+        .lazymephp-debug-query {
+            margin-bottom: 12px;
+            padding: 10px;
+            background: #181c26;
+            border: 1px solid #2d3548;
+            border-left: 3px solid #3b82f6;
+            border-radius: 8px;
+        }
+
         .lazymephp-debug-query-time {
-            color: #00ff00;
-            font-weight: bold;
+            color: #86efac;
+            font-weight: 700;
         }
-        
-        .lazymephp-debug-query-number {
-            color: #888;
-        }
-        
-        .lazymephp-debug-query-sql {
-            background: #1a1a1a;
-            padding: 5px;
-            border-radius: 3px;
-            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+
+        .lazymephp-debug-query-sql,
+        .lazymephp-debug-error-body {
+            margin: 0;
+            background: #0f1218;
+            padding: 10px;
+            border-radius: 6px;
             white-space: pre-wrap;
-            word-break: break-all;
+            word-break: break-word;
+            overflow-x: auto;
+            font-family: inherit;
+            font-size: 11px;
+            line-height: 1.5;
+            color: #e8ecf4;
+            border: 1px solid #252b3a;
         }
-        
+
         .lazymephp-debug-query-params {
-            margin-top: 5px;
-            padding: 3px 5px;
-            background: #333;
-            border-radius: 2px;
+            margin-top: 8px;
+            padding: 8px 10px;
+            background: #141820;
+            border-radius: 6px;
             font-size: 11px;
-            color: #ccc;
+            color: #b6c0d4;
+            white-space: pre-wrap;
+            word-break: break-word;
         }
-        
+
         .lazymephp-debug-error {
-            margin-bottom: 10px;
-            padding: 8px;
-            background: #2a2a2a;
-            border-left: 3px solid #ff4444;
+            margin-bottom: 12px;
+            padding: 10px;
+            background: #1f1418;
+            border: 1px solid #4c1d1d;
+            border-left: 3px solid #ef4444;
+            border-radius: 8px;
         }
-        
-        .lazymephp-debug-error-message {
-            color: #ff6666;
-            font-weight: bold;
-            margin-bottom: 3px;
-        }
-        
-        .lazymephp-debug-error-location {
-            color: #888;
+
+        .lazymephp-debug-error-badge {
+            color: #fca5a5;
+            font-weight: 700;
             font-size: 11px;
         }
-        
-        .lazymephp-debug-section {
-            margin-bottom: 15px;
-        }
-        
+
+        .lazymephp-debug-section { margin-bottom: 15px; }
+
         .lazymephp-debug-item {
-            padding: 2px 0;
-            border-bottom: 1px solid #333;
+            padding: 4px 0;
+            border-bottom: 1px solid #2d3548;
+            user-select: text;
+            word-break: break-word;
         }
-        
-        .lazymephp-debug-performance {
-            line-height: 1.6;
-        }
-        
-        .lazymephp-debug-perf-item {
-            padding: 3px 0;
-        }
-        
-        .lazymephp-debug-summary {
-            background: #007acc;
-            color: white;
-            padding: 5px 8px;
-            margin-bottom: 10px;
-            border-radius: 3px;
-            font-weight: bold;
-        }
-        
+
+        .lazymephp-debug-performance { line-height: 1.7; }
+        .lazymephp-debug-perf-item { padding: 4px 0; user-select: text; }
+
         .lazymephp-debug-empty {
-            color: #888;
+            color: #8b95a8;
             font-style: italic;
             text-align: center;
-            padding: 20px;
+            padding: 24px;
         }
-        
-        /* Fallback error indicator */
+
         .lazymephp-debug-error-indicator {
             position: fixed;
-            top: 10px;
-            right: 10px;
-            background: #ff4444;
+            top: 14px;
+            right: 14px;
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
             color: white;
-            padding: 8px 12px;
-            border-radius: 4px;
+            padding: 10px 14px;
+            border-radius: 8px;
             font-size: 12px;
-            z-index: 10000001;
+            font-weight: 600;
+            z-index: 2147483647;
             cursor: pointer;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            box-shadow: 0 8px 24px rgba(220, 38, 38, 0.35);
+            user-select: none;
         }
-        
-        /* Ensure no other elements interfere with debug toolbar */
-        body {
-            margin-bottom: 50px; /* Make room for debug toolbar */
+
+        .lazymephp-debug-error-indicator:hover {
+            transform: translateY(-1px);
         }
-        
-        h4 {
-            margin: 15px 0 8px 0;
-            color: #007acc;
-            border-bottom: 1px solid #444;
-            padding-bottom: 3px;
+
+        body.lazymephp-debug-active {
+            padding-bottom: 42px;
+        }
+
+        .lazymephp-debug-tab-panels h4 {
+            margin: 14px 0 8px;
+            color: #93c5fd;
+            border-bottom: 1px solid #2d3548;
+            padding-bottom: 4px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
         </style>
         ";
@@ -589,137 +799,351 @@ class DebugToolbar
      */
     private function generateToolbarJS(): string
     {
-        return "
+        return <<<'JS'
         <script>
-        // Ensure functions are available globally and handle errors gracefully
-        window.LazyMePHPDebug = window.LazyMePHPDebug || {};
-        
-        // Initialize debug toolbar functionality
-        document.addEventListener('DOMContentLoaded', function() {
-            initializeDebugToolbar();
-        });
-        
-        // Also try to initialize immediately in case DOMContentLoaded already fired
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initializeDebugToolbar);
-        } else {
-            // DOM is already loaded, initialize immediately
-            initializeDebugToolbar();
-        }
-        
-        function initializeDebugToolbar() {
-            try {
-                // Add event listeners instead of inline onclick
-                const toggleButton = document.querySelector('.lazymephp-debug-toggle');
-                if (toggleButton) {
-                    toggleButton.addEventListener('click', toggleDebugToolbar);
+        (function() {
+            'use strict';
+
+            var STATE_KEY = 'lazymephp-debug-state';
+            var VALID_TABS = ['queries', 'errors', 'request', 'performance'];
+
+            function isDebugShortcut(event) {
+                if (!event.ctrlKey || !event.shiftKey || event.altKey || event.metaKey) {
+                    return false;
                 }
-                
-                // Add event listeners to all tab buttons
-                const tabButtons = document.querySelectorAll('.lazymephp-debug-tab');
-                tabButtons.forEach(function(button) {
-                    button.addEventListener('click', function() {
-                        const tabId = this.getAttribute('data-tab-id');
+                var key = event.key || '';
+                return event.code === 'KeyD' || key.toLowerCase() === 'd';
+            }
+
+            function getToolbar() {
+                return document.getElementById('lazymephp-debug-toolbar');
+            }
+
+            function getContent() {
+                return document.getElementById('lazymephp-debug-content');
+            }
+
+            function isExpanded() {
+                var content = getContent();
+                return content && !content.hasAttribute('hidden');
+            }
+
+            function loadDebugState() {
+                try {
+                    var raw = sessionStorage.getItem(STATE_KEY);
+                    if (!raw) return null;
+                    var state = JSON.parse(raw);
+                    if (!state || typeof state !== 'object') return null;
+                    if (state.tab && VALID_TABS.indexOf(state.tab) === -1) {
+                        state.tab = 'queries';
+                    }
+                    return state;
+                } catch (e) {
+                    return null;
+                }
+            }
+
+            function saveDebugState() {
+                var toolbar = getToolbar();
+                if (!toolbar) return;
+
+                var activeTab = document.querySelector('.lazymephp-debug-tab.active');
+                var state = {
+                    minimized: toolbar.classList.contains('lazymephp-debug-toolbar--minimized'),
+                    expanded: isExpanded(),
+                    tab: activeTab ? activeTab.getAttribute('data-tab-id') : 'queries'
+                };
+
+                try {
+                    sessionStorage.setItem(STATE_KEY, JSON.stringify(state));
+                } catch (e) {
+                    // ignore quota / private mode
+                }
+            }
+
+            function updateDockButtonTitle(dockButton) {
+                if (!dockButton) {
+                    var toolbar = getToolbar();
+                    dockButton = toolbar ? toolbar.querySelector('.lazymephp-debug-dock') : null;
+                }
+                if (!dockButton) return;
+
+                var toolbar = getToolbar();
+                dockButton.title = toolbar && toolbar.classList.contains('lazymephp-debug-toolbar--minimized')
+                    ? 'Mostrar barra de debug'
+                    : 'Ocultar barra de debug';
+            }
+
+            function setDockedCollapsed() {
+                var toolbar = getToolbar();
+                var content = getContent();
+                if (!toolbar || !content) return;
+
+                toolbar.classList.remove('lazymephp-debug-toolbar--minimized');
+                document.body.classList.remove('lazymephp-debug-minimized');
+                toolbar.classList.remove('lazymephp-debug-toolbar--expanded');
+                content.setAttribute('hidden', '');
+                document.body.classList.remove('lazymephp-debug-active');
+                saveDebugState();
+            }
+
+            function setExpanded(expanded, preferErrorsTab) {
+                var toolbar = getToolbar();
+                var content = getContent();
+                if (!toolbar || !content) return;
+
+                toolbar.classList.remove('lazymephp-debug-toolbar--minimized');
+                document.body.classList.remove('lazymephp-debug-minimized');
+                if (expanded) {
+                    toolbar.classList.add('lazymephp-debug-toolbar--expanded');
+                } else {
+                    toolbar.classList.remove('lazymephp-debug-toolbar--expanded');
+                }
+                if (expanded) {
+                    content.removeAttribute('hidden');
+                    document.body.classList.add('lazymephp-debug-active');
+                    if (preferErrorsTab) {
+                        showDebugTab('errors', true);
+                    }
+                } else {
+                    content.setAttribute('hidden', '');
+                    document.body.classList.remove('lazymephp-debug-active');
+                }
+                saveDebugState();
+            }
+
+            function toggleExpanded(preferErrorsTab) {
+                setExpanded(!isExpanded(), preferErrorsTab);
+            }
+
+            function toggleMinimized() {
+                var toolbar = getToolbar();
+                var content = getContent();
+                if (!toolbar) return;
+
+                if (toolbar.classList.contains('lazymephp-debug-toolbar--minimized')) {
+                    var errorCount = parseInt(toolbar.getAttribute('data-error-count') || '0', 10);
+                    setExpanded(true, errorCount > 0);
+                } else {
+                    toolbar.classList.add('lazymephp-debug-toolbar--minimized');
+                    document.body.classList.add('lazymephp-debug-minimized');
+                    if (content) {
+                        content.setAttribute('hidden', '');
+                    }
+                    toolbar.classList.remove('lazymephp-debug-toolbar--expanded');
+                    document.body.classList.remove('lazymephp-debug-active');
+                    saveDebugState();
+                }
+            }
+
+            function showDebugTab(tabId, skipSave) {
+                document.querySelectorAll('.lazymephp-debug-tab-content').forEach(function(panel) {
+                    panel.setAttribute('hidden', '');
+                });
+                document.querySelectorAll('.lazymephp-debug-tab').forEach(function(tab) {
+                    tab.classList.remove('active');
+                });
+
+                var panel = document.getElementById('lazymephp-debug-tab-' + tabId);
+                var tab = document.querySelector('.lazymephp-debug-tab[data-tab-id="' + tabId + '"]');
+                if (panel) panel.removeAttribute('hidden');
+                if (tab) tab.classList.add('active');
+                if (!skipSave) {
+                    saveDebugState();
+                }
+            }
+
+            function applySavedDebugState(errorCount) {
+                if (errorCount > 0) {
+                    setExpanded(true, true);
+                    updateDockButtonTitle();
+                    return;
+                }
+
+                var saved = loadDebugState();
+                if (!saved) {
+                    document.body.classList.add('lazymephp-debug-minimized');
+                    saveDebugState();
+                    updateDockButtonTitle();
+                    return;
+                }
+
+                if (saved.minimized) {
+                    var toolbar = getToolbar();
+                    var content = getContent();
+                    if (toolbar) {
+                        toolbar.classList.add('lazymephp-debug-toolbar--minimized');
+                    }
+                    document.body.classList.add('lazymephp-debug-minimized');
+                    if (content) {
+                        content.setAttribute('hidden', '');
+                    }
+                    if (toolbar) {
+                        toolbar.classList.remove('lazymephp-debug-toolbar--expanded');
+                    }
+                    document.body.classList.remove('lazymephp-debug-active');
+                } else if (saved.expanded) {
+                    setExpanded(true, false);
+                    if (saved.tab) {
+                        showDebugTab(saved.tab, true);
+                    }
+                    saveDebugState();
+                } else {
+                    setDockedCollapsed();
+                    if (saved.tab) {
+                        showDebugTab(saved.tab, true);
+                    }
+                }
+
+                updateDockButtonTitle();
+            }
+
+            function copyText(text, button) {
+                if (!text) return;
+
+                function onSuccess() {
+                    if (!button) return;
+                    var original = button.textContent;
+                    button.textContent = 'â�� Copied';
+                    button.classList.add('copied');
+                    setTimeout(function() {
+                        button.textContent = original;
+                        button.classList.remove('copied');
+                    }, 1500);
+                }
+
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(onSuccess).catch(function() {
+                        fallbackCopy(text, button, onSuccess);
+                    });
+                } else {
+                    fallbackCopy(text, button, onSuccess);
+                }
+            }
+
+            function fallbackCopy(text, button, onSuccess) {
+                var area = document.createElement('textarea');
+                area.value = text;
+                area.setAttribute('readonly', '');
+                area.style.position = 'fixed';
+                area.style.left = '-9999px';
+                document.body.appendChild(area);
+                area.select();
+                try {
+                    document.execCommand('copy');
+                    onSuccess();
+                } catch (e) {
+                    console.warn('Copy failed', e);
+                }
+                document.body.removeChild(area);
+            }
+
+            function handleCopyClick(event) {
+                var button = event.target.closest('.lazymephp-debug-copy-btn');
+                if (!button) return;
+
+                event.preventDefault();
+                event.stopPropagation();
+
+                var text = button.getAttribute('data-copy-text') || '';
+                if (!text) {
+                    var targetId = button.getAttribute('data-copy-target');
+                    var target = targetId ? document.getElementById(targetId) : null;
+                    text = target ? target.textContent : '';
+                }
+                copyText(text, button);
+            }
+
+            function openFromErrorIndicator() {
+                var toolbar = getToolbar();
+                if (!toolbar) return;
+                setExpanded(true, true);
+                toolbar.scrollIntoView({ block: 'end' });
+            }
+
+            function initDebugToolbar() {
+                var toolbar = getToolbar();
+                if (!toolbar || toolbar.dataset.initialized === '1') return;
+                toolbar.dataset.initialized = '1';
+
+                var dockButton = toolbar.querySelector('.lazymephp-debug-dock');
+                var header = document.getElementById('lazymephp-debug-header');
+                var errorIndicator = document.getElementById('lazymephp-debug-error-indicator');
+                var errorCount = parseInt(toolbar.getAttribute('data-error-count') || '0', 10);
+
+                if (dockButton) {
+                    dockButton.addEventListener('click', function(event) {
+                        event.stopPropagation();
+                        toggleMinimized();
+                        updateDockButtonTitle(dockButton);
+                    });
+                }
+
+                if (header) {
+                    header.addEventListener('click', function(event) {
+                        if (event.target.closest('button')) return;
+                        if (toolbar.classList.contains('lazymephp-debug-toolbar--minimized')) return;
+                        toggleExpanded(errorCount > 0);
+                    });
+                }
+
+                toolbar.querySelectorAll('.lazymephp-debug-tab').forEach(function(button) {
+                    button.addEventListener('click', function(event) {
+                        event.stopPropagation();
+                        var tabId = button.getAttribute('data-tab-id');
                         if (tabId) {
+                            setExpanded(true, false);
                             showDebugTab(tabId);
                         }
                     });
                 });
-                
-                // Make functions globally available for backward compatibility
-                window.toggleDebugToolbar = toggleDebugToolbar;
+
+                toolbar.addEventListener('click', handleCopyClick);
+
+                if (errorIndicator) {
+                    errorIndicator.addEventListener('click', openFromErrorIndicator);
+                    errorIndicator.addEventListener('keydown', function(event) {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            openFromErrorIndicator();
+                        }
+                    });
+                }
+
+                window.toggleDebugToolbar = function() { toggleExpanded(false); };
                 window.showDebugTab = showDebugTab;
-                
-            } catch (error) {
-                console.error('Failed to initialize debug toolbar:', error);
+                window.LazyMePHPDebug = window.LazyMePHPDebug || {};
+                window.LazyMePHPDebug.toggle = function(preferErrors) { toggleExpanded(preferErrors); };
+                window.LazyMePHPDebug.expand = function(preferErrors) { setExpanded(true, !!preferErrors); };
+
+                applySavedDebugState(errorCount);
             }
-        }
-        
-        function toggleDebugToolbar() {
-            try {
-                const content = document.getElementById('lazymephp-debug-content');
-                const toggle = document.querySelector('.lazymephp-debug-toggle');
-                
-                if (content && toggle) {
-                    if (content.style.display === 'none') {
-                        content.style.display = 'block';
-                        toggle.textContent = '📊';
-                    } else {
-                        content.style.display = 'none';
-                        toggle.textContent = '📊';
-                    }
-                }
-            } catch (error) {
-                console.error('Error toggling debug toolbar:', error);
-            }
-        }
-        
-        function showDebugTab(tabId) {
-            try {
-                // Hide all tab contents
-                const tabContents = document.querySelectorAll('.lazymephp-debug-tab-content');
-                tabContents.forEach(function(content) {
-                    content.style.display = 'none';
-                });
-                
-                // Remove active class from all tabs
-                const tabs = document.querySelectorAll('.lazymephp-debug-tab');
-                tabs.forEach(function(tab) {
-                    tab.classList.remove('active');
-                });
-                
-                // Show selected tab content
-                const selectedContent = document.getElementById('lazymephp-debug-tab-' + tabId);
-                if (selectedContent) {
-                    selectedContent.style.display = 'block';
-                }
-                
-                // Add active class to selected tab
-                const selectedTab = document.querySelector('[data-tab-id=\"' + tabId + '\"]');
-                if (selectedTab) {
-                    selectedTab.classList.add('active');
-                }
-            } catch (error) {
-                console.error('Error showing debug tab:', error);
-            }
-        }
-        
-        // Fallback: if event listeners fail, try to make functions work with onclick
-        if (typeof window.toggleDebugToolbar === 'undefined') {
-            window.toggleDebugToolbar = toggleDebugToolbar;
-        }
-        if (typeof window.showDebugTab === 'undefined') {
-            window.showDebugTab = showDebugTab;
-        }
-        
-        // Emergency fallback: ensure debug toolbar is always accessible
-        window.addEventListener('error', function() {
-            // If there's a JavaScript error, make sure debug toolbar is visible
-            setTimeout(function() {
-                const toolbar = document.getElementById('lazymephp-debug-toolbar');
-                if (toolbar && toolbar.style.display === 'none') {
-                    toolbar.style.display = 'block';
-                }
-            }, 100);
-        });
-        
-        // Keyboard shortcut to toggle debug toolbar (Ctrl+Shift+D)
-        document.addEventListener('keydown', function(event) {
-            if (event.ctrlKey && event.shiftKey && event.key === 'D') {
+
+            window.addEventListener('keydown', function(event) {
+                if (!isDebugShortcut(event)) return;
                 event.preventDefault();
-                toggleDebugToolbar();
+                event.stopImmediatePropagation();
+                var toolbar = getToolbar();
+                if (!toolbar) return;
+                var errorCount = parseInt(toolbar.getAttribute('data-error-count') || '0', 10);
+                if (toolbar.classList.contains('lazymephp-debug-toolbar--minimized') || !isExpanded()) {
+                    setExpanded(true, errorCount > 0);
+                } else {
+                    setExpanded(false, false);
+                }
+            }, true);
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initDebugToolbar);
+            } else {
+                initDebugToolbar();
             }
-        });
-        
-        // Fallback for when DOMContentLoaded doesn't fire
-        setTimeout(function() {
-            if (typeof window.LazyMePHPDebug.initialized === 'undefined') {
-                initializeDebugToolbar();
-                window.LazyMePHPDebug.initialized = true;
-            }
-        }, 1000);
+
+            setTimeout(initDebugToolbar, 0);
+            setTimeout(initDebugToolbar, 500);
+        })();
         </script>
-        ";
+        JS;
     }
     
     /**
@@ -736,4 +1160,4 @@ class DebugToolbar
         
         return round($bytes, 2) . ' ' . $units[$pow];
     }
-} 
+}
