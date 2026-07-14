@@ -60,6 +60,7 @@
             "Core\\OpenAPI\\": "App/Core/OpenAPI/",
             "Core\\Seeder\\": "App/Core/Seeder/",
             "Core\\Factory\\": "App/Core/Factory/",
+            "Core\\Events\\": "App/Core/Events/",
             "Core\\Session\\": "App/Core/Session/",
             "Tools\\": "App/Tools/",
             "Core\\Validations\\": "App/Core/Validations/",

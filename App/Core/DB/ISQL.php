@@ -52,6 +52,29 @@ abstract class ISQL
      * @return IDBObject
      * @throws DatabaseException
      */
+    /**
+     * Execute a callable inside a database transaction.
+     * Rolls back and re-throws on any exception.
+     *
+     *   $db->transaction(function($db) {
+     *       $db->query('INSERT INTO ...');
+     *       $db->query('UPDATE ...');
+     *   });
+     */
+    public function transaction(callable $callback): mixed
+    {
+        $this->connect();
+        $this->connection->beginTransaction();
+        try {
+            $result = $callback($this);
+            $this->connection->commit();
+            return $result;
+        } catch (\Throwable $e) {
+            $this->connection->rollBack();
+            throw $e;
+        }
+    }
+
     public function query(string $query, array $params = []): IDBObject
     {
         $this->connect();

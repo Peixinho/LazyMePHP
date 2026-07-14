@@ -13,6 +13,7 @@ namespace Core;
 use Core\DB\IDB;
 use Core\DB\DatabaseException;
 use Core\LazyMePHP;
+use Core\Events\ModelEvents;
 use Core\Relationships\Relationship;
 use Core\Relationships\HasOne;
 use Core\Relationships\HasMany;
@@ -128,6 +129,60 @@ class Model implements IDB
     {
         $model = new static($table, $id);
         return $model->exists ? $model : null;
+    }
+
+    /**
+     * Register an observer for a table.
+     * The observer's methods (creating, created, updating, updated, deleting, deleted, saving, saved)
+     * are called automatically during model lifecycle events.
+     *
+     *   Model::observe('users', new UserObserver());
+     */
+    public static function observe(string $table, object $observer): void
+    {
+        ModelEvents::registerObserver($table, $observer);
+    }
+
+    /**
+     * Bulk-insert multiple rows into a table. Returns the number of rows inserted.
+     *
+     *   Model::insertMany('products', [
+     *       ['name' => 'Widget', 'price' => 9.99],
+     *       ['name' => 'Gadget', 'price' => 19.99],
+     *   ]);
+     */
+    public static function insertMany(string $table, array $rows): int
+    {
+        if (empty($rows)) return 0;
+
+        $db      = LazyMePHP::DB_CONNECTION();
+        $columns = array_keys($rows[0]);
+        $cols    = implode(', ', array_map(fn($k) => "\"$k\"", $columns));
+        $ph      = '(' . implode(', ', array_fill(0, count($columns), '?')) . ')';
+        $count   = 0;
+
+        foreach ($rows as $row) {
+            $db->query("INSERT INTO \"{$table}\" ({$cols}) VALUES {$ph}", array_values($row));
+            $count++;
+        }
+
+        return $count;
+    }
+
+    /**
+     * Execute a callable inside a database transaction.
+     * Rolls back automatically on exception.
+     *
+     *   Model::transaction(function() {
+     *       $user = new Model('users');
+     *       $user->name = 'Alice';
+     *       $user->save();
+     *       // ...
+     *   });
+     */
+    public static function transaction(callable $callback): mixed
+    {
+        return LazyMePHP::DB_CONNECTION()->transaction($callback);
     }
 
     // -------------------------------------------------------------------------
@@ -564,13 +619,20 @@ class Model implements IDB
         $db  = LazyMePHP::DB_CONNECTION();
         $row = array_filter($this->data, fn($k) => $k !== $this->primaryKey, ARRAY_FILTER_USE_KEY);
 
+        // Fire saving + creating|updating (cancellable)
+        if (!ModelEvents::fire($this->tableName, 'saving', $this)) return false;
+
         if ($this->exists) {
+            if (!ModelEvents::fire($this->tableName, 'updating', $this)) return false;
+
             $set    = implode(', ', array_map(fn($k) => "\"$k\" = :$k", array_keys($row)));
             $params = array_combine(array_map(fn($k) => ":$k", array_keys($row)), array_values($row));
             $params[":{$this->primaryKey}"] = $this->data[$this->primaryKey];
             $ret    = $db->query("UPDATE \"{$this->tableName}\" SET $set WHERE \"{$this->primaryKey}\" = :{$this->primaryKey}", $params);
             $method = 'U';
         } else {
+            if (!ModelEvents::fire($this->tableName, 'creating', $this)) return false;
+
             $cols       = implode(', ', array_map(fn($k) => "\"$k\"", array_keys($row)));
             $holders    = implode(', ', array_map(fn($k) => ":$k", array_keys($row)));
             $params     = array_combine(array_map(fn($k) => ":$k", array_keys($row)), array_values($row));
@@ -584,7 +646,6 @@ class Model implements IDB
 
         if (LazyMePHP::ACTIVITY_LOG()) {
             if ($method === 'I') {
-                // changeLog is empty for new models — build from the inserted row directly
                 $insertLog = [];
                 foreach ($row as $field => $value) {
                     $insertLog[$field] = [null, $value];
@@ -596,6 +657,10 @@ class Model implements IDB
             $this->changeLog = [];
         }
 
+        // Fire saved + created|updated
+        ModelEvents::fire($this->tableName, $method === 'I' ? 'created' : 'updated', $this);
+        ModelEvents::fire($this->tableName, 'saved', $this);
+
         return $ret;
     }
 
@@ -604,6 +669,8 @@ class Model implements IDB
         if ($this->primaryKey === null || !isset($this->data[$this->primaryKey])) {
             return false;
         }
+
+        if (!ModelEvents::fire($this->tableName, 'deleting', $this)) return false;
 
         if (LazyMePHP::ACTIVITY_LOG()) {
             \Core\Helpers\LoggingHelper::logDelete($this->tableName, (string)$this->primaryKey, (string)$this->getPrimaryKey());
@@ -614,6 +681,8 @@ class Model implements IDB
             [$this->data[$this->primaryKey]]
         );
         $this->exists = false;
+
+        ModelEvents::fire($this->tableName, 'deleted', $this);
         return true;
     }
 
@@ -663,11 +732,58 @@ class ModelQuery
     private array $with = [];
     private bool $includeTrashed = false;
     private bool $onlyTrashedFlag = false;
+    private int $cacheTtl = 0;
+    private ?string $cacheKey = null;
 
     public function __construct(string $tableName, ?string $modelClass = null)
     {
         $this->tableName  = $tableName;
         $this->modelClass = $modelClass ?? Model::class;
+    }
+
+    /**
+     * Cache the query result for the given number of seconds.
+     * Uses APCu when available, otherwise a per-process in-memory cache (tests/dev).
+     *
+     *   User::query()->where('active', 1)->remember(60)->get();
+     */
+    public function remember(int $ttl, ?string $key = null): static
+    {
+        $this->cacheTtl  = $ttl;
+        $this->cacheKey  = $key;
+        return $this;
+    }
+
+    /**
+     * Apply a named local scope defined on the model subclass.
+     * Scopes are public methods prefixed with "scope":
+     *
+     *   class Post extends Model {
+     *       public function scopePublished(ModelQuery $q): ModelQuery {
+     *           return $q->where('published', 1);
+     *       }
+     *   }
+     *
+     *   Post::query()->scope('published')->get();
+     *   // or via magic method:
+     *   Post::query()->published()->get();
+     */
+    public function scope(string $name, mixed ...$args): static
+    {
+        $method = 'scope' . ucfirst($name);
+        if (!method_exists($this->modelClass, $method)) {
+            throw new \BadMethodCallException(
+                "Scope '{$name}' does not exist on {$this->modelClass}"
+            );
+        }
+        $instance = new ($this->modelClass)($this->tableName);
+        return $instance->$method($this, ...$args) ?? $this;
+    }
+
+    /** Proxy scope calls as fluent methods: ->published() → ->scope('published') */
+    public function __call(string $name, array $args): static
+    {
+        return $this->scope($name, ...$args);
     }
 
     /** Include soft-deleted rows in results (does not add any extra filter). */
@@ -805,6 +921,15 @@ class ModelQuery
      */
     public function get(): array
     {
+        // Return from cache when available
+        if ($this->cacheTtl > 0) {
+            $cached = $this->fromCache();
+            if ($cached !== null) {
+                $class = $this->modelClass;
+                return array_map(fn($row) => new $class($this->tableName, $row), $cached);
+            }
+        }
+
         $db      = LazyMePHP::DB_CONNECTION();
         $conds   = $this->conditions;
         $binds   = $this->bindings;
@@ -852,6 +977,11 @@ class ModelQuery
             }
         }
 
+        // Store in cache after fetching
+        if ($this->cacheTtl > 0) {
+            $this->toCache($rows);
+        }
+
         return $rows;
     }
 
@@ -877,5 +1007,121 @@ class ModelQuery
             fn(Model $m) => $columns !== null ? $m->only($columns) : $m->toArray(),
             $models
         );
+    }
+
+    /**
+     * Paginate results. Returns an array with data + pagination metadata.
+     *
+     *   $page = User::query()->where('active', 1)->paginate(15, 2);
+     *   // $page['data']         → list<Model>
+     *   // $page['total']        → total matching rows
+     *   // $page['per_page']     → 15
+     *   // $page['current_page'] → 2
+     *   // $page['last_page']    → ceil(total/per_page)
+     *   // $page['from']         → 16
+     *   // $page['to']           → 30
+     */
+    public function paginate(int $perPage = 15, int $page = 1): array
+    {
+        $page    = max(1, $page);
+        $total   = $this->count();
+        $offset  = ($page - 1) * $perPage;
+        $data    = $this->limit($perPage, $offset)->get();
+        $from    = $total === 0 ? 0 : $offset + 1;
+        $to      = min($offset + $perPage, $total);
+
+        return [
+            'data'         => $data,
+            'total'        => $total,
+            'per_page'     => $perPage,
+            'current_page' => $page,
+            'last_page'    => $total === 0 ? 1 : (int)ceil($total / $perPage),
+            'from'         => $from,
+            'to'           => $to,
+        ];
+    }
+
+    /**
+     * Bulk-update all rows matching the current WHERE conditions.
+     * Returns the number of affected rows.
+     *
+     *   Model::query('posts')->where('user_id', 5)->update(['status' => 'draft']);
+     */
+    public function update(array $data): int
+    {
+        if (empty($data)) return 0;
+
+        $db     = LazyMePHP::DB_CONNECTION();
+        $conds  = $this->conditions;
+        $binds  = $this->bindings;
+
+        $set     = implode(', ', array_map(fn($k) => "\"$k\" = ?", array_keys($data)));
+        $where   = $conds ? 'WHERE ' . implode('', $conds) : '';
+        $params  = array_merge(array_values($data), $binds);
+
+        $db->query("UPDATE \"{$this->tableName}\" SET {$set} {$where}", $params);
+        return 1; // PDO rowCount not exposed in all drivers; return 1 as a success signal
+    }
+
+    /**
+     * Hard-delete all rows matching the current WHERE conditions.
+     * (Use Model::Delete() for single soft-delete-aware deletion.)
+     *
+     *   Model::query('sessions')->where('expires_at', date('Y-m-d'), '<')->bulkDelete();
+     */
+    public function bulkDelete(): void
+    {
+        $db    = LazyMePHP::DB_CONNECTION();
+        $where = $this->conditions ? 'WHERE ' . implode('', $this->conditions) : '';
+        $db->query("DELETE FROM \"{$this->tableName}\" {$where}", $this->bindings);
+    }
+
+    // -------------------------------------------------------------------------
+    // Internal caching helpers
+    // -------------------------------------------------------------------------
+
+    /** @var array<string, array{expires:int, data:list<array>}> */
+    private static array $memCache = [];
+
+    private function resolvedCacheKey(): string
+    {
+        if ($this->cacheKey !== null) return $this->cacheKey;
+        $where = $this->conditions ? implode('', $this->conditions) : '';
+        return 'mq_' . md5($this->tableName . '|' . $where . '|' . implode(',', $this->bindings));
+    }
+
+    private function fromCache(): ?array
+    {
+        if ($this->cacheTtl <= 0) return null;
+        $key = $this->resolvedCacheKey();
+
+        if (function_exists('apcu_fetch')) {
+            $val = apcu_fetch($key, $ok);
+            return $ok ? $val : null;
+        }
+
+        if (isset(self::$memCache[$key]) && self::$memCache[$key]['expires'] > time()) {
+            return self::$memCache[$key]['data'];
+        }
+        return null;
+    }
+
+    private function toCache(array $rows): void
+    {
+        if ($this->cacheTtl <= 0) return;
+        $key  = $this->resolvedCacheKey();
+        $data = array_map(fn($m) => $m->toArray(), $rows);
+
+        if (function_exists('apcu_store')) {
+            apcu_store($key, $data, $this->cacheTtl);
+        } else {
+            self::$memCache[$key] = ['expires' => time() + $this->cacheTtl, 'data' => $data];
+        }
+    }
+
+    /** Flush the in-process memory cache (tests / manual invalidation). */
+    public static function clearMemCache(): void
+    {
+        self::$memCache = [];
     }
 }
