@@ -463,6 +463,9 @@ class LazyMePHP
    */
   public static function boot(\eftec\bladeone\BladeOne $blade): void
   {
+      // Emit / propagate X-Request-ID header on every response
+      \Core\Http\RequestId::emit();
+
       \Core\AutoRouter::registerAll($blade);
 
       $visibleTables = array_values(array_filter(
@@ -476,6 +479,18 @@ class LazyMePHP
 
       if (!empty($_ENV['AUTH_TABLE'] ?? '')) {
           \Core\Auth\AuthEndpoint::register();
+      }
+
+      // Health check — always enabled
+      \Core\Http\HealthEndpoint::register();
+
+      // OpenAPI spec — disable with OPENAPI_ENABLED=false
+      if (($_ENV['OPENAPI_ENABLED'] ?? 'true') !== 'false') {
+          \Pecee\SimpleRouter\SimpleRouter::get('/openapi.json', function (): void {
+              header('Content-Type: application/json');
+              header('Cache-Control: no-store');
+              echo json_encode(\Core\OpenAPI\Generator::generate(), JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+          });
       }
   }
 

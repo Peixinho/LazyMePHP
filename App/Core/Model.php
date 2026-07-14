@@ -445,6 +445,11 @@ class Model implements IDB
         return $this->primaryKey !== null ? ($this->data[$this->primaryKey] ?? null) : null;
     }
 
+    public function getPrimaryKeyColumn(): ?string
+    {
+        return $this->primaryKey;
+    }
+
     public function getTable(): string
     {
         return $this->tableName;
@@ -656,11 +661,28 @@ class ModelQuery
     private bool $hasCondition = false;
     /** @var list<string> relation names to eager-load */
     private array $with = [];
+    private bool $includeTrashed = false;
+    private bool $onlyTrashedFlag = false;
 
     public function __construct(string $tableName, ?string $modelClass = null)
     {
         $this->tableName  = $tableName;
         $this->modelClass = $modelClass ?? Model::class;
+    }
+
+    /** Include soft-deleted rows in results (does not add any extra filter). */
+    public function withTrashed(): static
+    {
+        $this->includeTrashed = true;
+        return $this;
+    }
+
+    /** Return only soft-deleted rows. */
+    public function onlyTrashed(): static
+    {
+        $this->includeTrashed  = true;
+        $this->onlyTrashedFlag = true;
+        return $this;
     }
 
     public function where(string $column, mixed $value, string $operator = '=', string $logic = 'AND'): static
@@ -755,8 +777,21 @@ class ModelQuery
     public function count(): int
     {
         $db     = LazyMePHP::DB_CONNECTION();
-        $where  = $this->conditions ? 'WHERE ' . implode('', $this->conditions) : '';
-        $result = $db->query("SELECT COUNT(*) AS cnt FROM \"{$this->tableName}\" {$where}", $this->bindings);
+        $conds  = $this->conditions;
+        $binds  = $this->bindings;
+        $hasCond = $this->hasCondition;
+
+        if (method_exists($this->modelClass, 'softDeleteColumn')) {
+            $col = ($this->modelClass)::softDeleteColumn();
+            if (!$this->includeTrashed) {
+                $conds[] = ($hasCond ? ' AND ' : '') . "\"{$col}\" IS NULL";
+            } elseif ($this->onlyTrashedFlag) {
+                $conds[] = ($hasCond ? ' AND ' : '') . "\"{$col}\" IS NOT NULL";
+            }
+        }
+
+        $where  = $conds ? 'WHERE ' . implode('', $conds) : '';
+        $result = $db->query("SELECT COUNT(*) AS cnt FROM \"{$this->tableName}\" {$where}", $binds);
         $row    = $result->fetchArray();
         return (int)($row['cnt'] ?? 0);
     }
@@ -770,15 +805,33 @@ class ModelQuery
      */
     public function get(): array
     {
-        $db     = LazyMePHP::DB_CONNECTION();
-        $where  = $this->conditions ? 'WHERE ' . implode('', $this->conditions) : '';
+        $db      = LazyMePHP::DB_CONNECTION();
+        $conds   = $this->conditions;
+        $binds   = $this->bindings;
+        $hasCond = $this->hasCondition;
+
+        // Auto-apply soft-delete filter when the model uses the SoftDeletes trait
+        if (method_exists($this->modelClass, 'softDeleteColumn')) {
+            $col = ($this->modelClass)::softDeleteColumn();
+            if (!$this->includeTrashed) {
+                $prefix   = $hasCond ? ' AND ' : '';
+                $conds[]  = "{$prefix}\"{$col}\" IS NULL";
+                $hasCond  = true;
+            } elseif ($this->onlyTrashedFlag) {
+                $prefix   = $hasCond ? ' AND ' : '';
+                $conds[]  = "{$prefix}\"{$col}\" IS NOT NULL";
+                $hasCond  = true;
+            }
+        }
+
+        $where  = $conds ? 'WHERE ' . implode('', $conds) : '';
         $group  = $this->groupClause ? "GROUP BY {$this->groupClause}" : '';
         $order  = $this->orderClause ? "ORDER BY {$this->orderClause}" : '';
         $limit  = $this->limitCount  ? $db->limit($this->limitCount, $this->limitOffset) : '';
 
         $result = $db->query(
             "SELECT * FROM \"{$this->tableName}\" {$where} {$group} {$order} {$limit}",
-            $this->bindings
+            $binds
         );
 
         $class = $this->modelClass;

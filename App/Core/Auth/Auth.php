@@ -116,6 +116,144 @@ class Auth
         return $pk ? ($user[$pk] ?? null) : ($user['sub'] ?? null);
     }
 
+    /**
+     * Verify credentials and return both access + refresh tokens on success, or false.
+     * Stores a hashed refresh token in __AUTH_TOKENS for later rotation/revocation.
+     *
+     * Returns:
+     *   ['access_token'=>..., 'token_type'=>'Bearer', 'expires_in'=>N,
+     *    'refresh_token'=>..., 'refresh_expires_in'=>N]
+     */
+    public static function login(
+        string $credential,
+        string $password,
+        ?string $ip = null,
+        ?string $ua = null,
+    ): array|false {
+        $table       = self::requireEnv('AUTH_TABLE');
+        $usernameCol = $_ENV['AUTH_USERNAME_COLUMN'] ?? 'email';
+        $passwordCol = $_ENV['AUTH_PASSWORD_COLUMN'] ?? 'password';
+
+        $user = Model::query($table)->where($usernameCol, $credential)->first();
+        if (!$user) return false;
+
+        $hash = $user->$passwordCol ?? null;
+        if (!$hash || !password_verify($password, (string)$hash)) return false;
+
+        $pk     = self::pkColumn($table);
+        $userId = $pk ? $user->$pk : null;
+
+        $jwt         = new JWT(self::secret(), 'HS256', self::ttl());
+        $accessToken = $jwt->encode(['sub' => $userId, 'username' => $credential]);
+
+        $refreshToken = self::createRefreshToken($userId, $ip, $ua);
+
+        return [
+            'access_token'      => $accessToken,
+            'token_type'        => 'Bearer',
+            'expires_in'        => self::ttl(),
+            'refresh_token'     => $refreshToken,
+            'refresh_expires_in'=> self::refreshTtl(),
+        ];
+    }
+
+    /**
+     * Generate and store a refresh token for the given user ID.
+     * Returns the raw (unhashed) token to give to the client.
+     */
+    public static function createRefreshToken(
+        mixed $userId,
+        ?string $ip = null,
+        ?string $ua = null,
+    ): string {
+        self::pruneExpiredTokens();
+
+        $raw       = bin2hex(random_bytes(32));
+        $hash      = hash('sha256', $raw);
+        $now       = date('Y-m-d H:i:s');
+        $expiresAt = date('Y-m-d H:i:s', time() + self::refreshTtl());
+
+        $db = \Core\LazyMePHP::DB_CONNECTION();
+        $db->query(
+            'INSERT INTO __AUTH_TOKENS (user_id, token_hash, expires_at, created_at, ip_address, user_agent)
+             VALUES (?, ?, ?, ?, ?, ?)',
+            [(string)$userId, $hash, $expiresAt, $now, $ip ?? '', $ua]
+        );
+
+        return $raw;
+    }
+
+    /**
+     * Validate a refresh token, rotate it (revoke old, issue new access + refresh tokens).
+     * Returns the same array shape as login(), or false when the token is invalid/expired/revoked.
+     */
+    public static function refresh(string $rawToken): array|false
+    {
+        $hash = hash('sha256', $rawToken);
+        $db   = \Core\LazyMePHP::DB_CONNECTION();
+        $now  = date('Y-m-d H:i:s');
+
+        $result = $db->query(
+            'SELECT * FROM __AUTH_TOKENS WHERE token_hash = ? AND revoked_at IS NULL AND expires_at > ?',
+            [$hash, $now]
+        );
+        $row = $result->fetchArray();
+        if (!$row) return false;
+
+        // Revoke the used token immediately (rotation)
+        $db->query(
+            'UPDATE __AUTH_TOKENS SET revoked_at = ? WHERE token_hash = ?',
+            [$now, $hash]
+        );
+
+        $userId = $row['user_id'];
+        $ip     = $row['ip_address'] ?? null;
+        $ua     = $row['user_agent'] ?? null;
+
+        $table       = $_ENV['AUTH_TABLE'] ?? '';
+        $usernameCol = $_ENV['AUTH_USERNAME_COLUMN'] ?? 'email';
+
+        $username = '';
+        if ($table) {
+            $user = new Model($table, $userId);
+            $username = (string)($user->$usernameCol ?? '');
+        }
+
+        $jwt         = new JWT(self::secret(), 'HS256', self::ttl());
+        $accessToken = $jwt->encode(['sub' => $userId, 'username' => $username]);
+
+        $newRefresh = self::createRefreshToken($userId, $ip, $ua);
+
+        return [
+            'access_token'      => $accessToken,
+            'token_type'        => 'Bearer',
+            'expires_in'        => self::ttl(),
+            'refresh_token'     => $newRefresh,
+            'refresh_expires_in'=> self::refreshTtl(),
+        ];
+    }
+
+    /** Revoke a single refresh token by its raw value. */
+    public static function revokeRefreshToken(string $rawToken): void
+    {
+        $hash = hash('sha256', $rawToken);
+        $db   = \Core\LazyMePHP::DB_CONNECTION();
+        $db->query(
+            'UPDATE __AUTH_TOKENS SET revoked_at = ? WHERE token_hash = ?',
+            [date('Y-m-d H:i:s'), $hash]
+        );
+    }
+
+    /** Revoke all refresh tokens for the given user ID. */
+    public static function revokeAllTokens(mixed $userId): void
+    {
+        $db = \Core\LazyMePHP::DB_CONNECTION();
+        $db->query(
+            'UPDATE __AUTH_TOKENS SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL',
+            [date('Y-m-d H:i:s'), (string)$userId]
+        );
+    }
+
     /** Hash a plain-text password for storage. */
     public static function hashPassword(string $password): string
     {
@@ -178,5 +316,23 @@ class Auth
             if ($meta['pk']) return $col;
         }
         return null;
+    }
+
+    private static function refreshTtl(): int
+    {
+        return (int)($_ENV['AUTH_REFRESH_TTL'] ?? 2592000); // 30 days
+    }
+
+    private static function pruneExpiredTokens(): void
+    {
+        try {
+            $db = \Core\LazyMePHP::DB_CONNECTION();
+            $db->query(
+                'DELETE FROM __AUTH_TOKENS WHERE expires_at < ?',
+                [date('Y-m-d H:i:s')]
+            );
+        } catch (\Throwable) {
+            // Table may not exist yet; ignore silently
+        }
     }
 }
