@@ -22,14 +22,6 @@ abstract class ISQL
     protected string $dbHost;
     protected string $dbName;
 
-    /**
-     * Constructor.
-     *
-     * @param string $dbName Database name
-     * @param string $dbUser Database username
-     * @param string $dbPassword Database password
-     * @param string $dbHost Database host
-     */
     public function __construct(string $dbName, string $dbUser, string $dbPassword, string $dbHost)
     {
         $this->dbName = $dbName;
@@ -38,44 +30,114 @@ abstract class ISQL
         $this->dbHost = $dbHost;
     }
 
-    /**
-     * Establishes a database connection.
-     *
-     * @throws DatabaseException If connection fails
-     */
     abstract protected function connect(): void;
 
-    /**
-     * Executes a database query and returns a result object.
-     *
-     * @param string $query SQL query string
-     * @param array<string|int, mixed> $params Query parameters (positional or named)
-     * @return IDBObject Query result object
-     * @throws DatabaseException If query execution fails
-     */
-    abstract public function query(string $query, array $params = []): IDBObject;
+    /** Create a driver-specific empty result object. */
+    abstract protected function createResult(string $query): IDBObject;
 
-    /**
-     * Returns the ID of the last inserted row.
-     *
-     * @return int Last inserted ID
-     * @throws DatabaseException If retrieval fails
-     */
+    /** Label used for slow-query performance logging. */
+    abstract protected function slowQueryLabel(): string;
+
     abstract public function getLastInsertedId(): int;
 
-    /**
-     * Generates a LIMIT clause for the database.
-     *
-     * @param int $end Number of rows to return
-     * @param int $start Starting offset
-     * @return string LIMIT clause
-     */
     abstract public function limit(int $end, int $start = 0): string;
 
-    /**
-     * Closes the database connection.
-     */
     abstract public function close(): void;
+
+    /**
+     * Executes a parameterised query and returns a result object.
+     *
+     * @param string $query SQL query string
+     * @param array<string|int, mixed> $params Positional (?) or named (:key) parameters
+     * @return IDBObject
+     * @throws DatabaseException
+     */
+    public function query(string $query, array $params = []): IDBObject
+    {
+        $this->connect();
+        $result = $this->createResult($query);
+        $startTime = microtime(true);
+
+        try {
+            $stmt = $this->connection->prepare($query);
+            if ($stmt === false) {
+                throw new DatabaseException("Failed to prepare query: $query");
+            }
+
+            $paramKeys = array_keys($params);
+            $isPositional = !empty($paramKeys) && is_int($paramKeys[0]);
+
+            if ($isPositional) {
+                $placeholderCount = substr_count($query, '?');
+                if (count($params) !== $placeholderCount) {
+                    throw new DatabaseException(
+                        "Parameter count mismatch: expected $placeholderCount positional placeholders (?), got " . count($params) . " parameters",
+                        0, null, $query, $params
+                    );
+                }
+            } else {
+                preg_match_all('/:([a-zA-Z0-9_]+)/', $query, $matches);
+                $placeholders = array_unique($matches[0]);
+                $expectedCount = count($placeholders);
+                $providedCount = count($params);
+                if ($providedCount > 0 && $expectedCount === 0) {
+                    throw new DatabaseException(
+                        "No named placeholders found in query, but $providedCount parameters provided",
+                        0, null, $query, $params
+                    );
+                }
+                if ($providedCount !== $expectedCount) {
+                    throw new DatabaseException(
+                        "Parameter count mismatch: expected $expectedCount named placeholders, got $providedCount parameters",
+                        0, null, $query, $params
+                    );
+                }
+                foreach ($paramKeys as $key) {
+                    if (!in_array($key, $placeholders, true)) {
+                        throw new DatabaseException("Parameter $key not found in query", 0, null, $query, $params);
+                    }
+                }
+            }
+
+            foreach ($params as $key => $value) {
+                $param = $isPositional ? ($key + 1) : $key;
+                $type = \PDO::PARAM_STR;
+                if (is_bool($value)) {
+                    $value = $value ? 1 : 0;
+                    $type = \PDO::PARAM_INT;
+                } elseif (is_int($value) || (is_string($value) && ctype_digit($value))) {
+                    $value = (int)$value;
+                    $type = \PDO::PARAM_INT;
+                } elseif (is_null($value)) {
+                    $type = \PDO::PARAM_NULL;
+                }
+                $stmt->bindValue($param, $value, $type);
+            }
+
+            $stmt->execute();
+            $result->setStatement($stmt);
+
+            $executionTime = microtime(true) - $startTime;
+            if (class_exists('Core\Debug\DebugToolbar')) {
+                \Core\Debug\DebugToolbar::getInstance()->addQuery($query, $executionTime, $params);
+            }
+            if (class_exists('Core\Helpers\PerformanceUtil') && $executionTime > 1.0) {
+                \Core\Helpers\PerformanceUtil::logSlowOperation($this->slowQueryLabel(), [
+                    'duration_ms' => $executionTime * 1000,
+                    'memory_bytes' => memory_get_usage(true),
+                    'memory_mb' => memory_get_usage(true) / 1024 / 1024,
+                ]);
+            }
+        } catch (\PDOException $e) {
+            $executionTime = microtime(true) - $startTime;
+            if (class_exists('Core\Debug\DebugToolbar')) {
+                \Core\Debug\DebugToolbar::getInstance()->addQuery($query, $executionTime, $params);
+            }
+            throw new DatabaseException("Query failed: {$e->getMessage()}", (int)$e->getCode(), $e, $query, $params);
+        }
+
+        return $result;
+    }
 }
 
 /**
@@ -86,25 +148,9 @@ abstract class IDBObject
     protected string $queryString;
     protected mixed $dbResult = null;
 
-    /**
-     * Fetches the next row as an object.
-     *
-     * @return object|null Row as stdClass or null if no more rows
-     */
+    abstract public function setStatement(\PDOStatement $statement): void;
     abstract public function fetchObject(): ?object;
-
-    /**
-     * Fetches the next row as an associative array.
-     *
-     * @return array|null Row as array or null if no more rows
-     */
     abstract public function fetchArray(): ?array;
-
-    /**
-     * Returns the number of rows affected or selected.
-     *
-     * @return int Row count
-     */
     abstract public function getRowCount(): int;
 }
 

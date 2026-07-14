@@ -448,6 +448,38 @@ class LazyMePHP
 
 
   /**
+   * Auto-wire the application from the DB schema.
+   *
+   * Registers CRUD web routes and the GraphQL endpoint for every table
+   * in the database (or schema cache). Tables whose controller subclass
+   * sets $hidden = true are excluded.
+   *
+   * Call once from App/Routes/Routes.php after any custom routes:
+   *
+   *   SimpleRouter::get('/', fn() => ...);   // custom route
+   *   LazyMePHP::boot($blade);               // auto-wires everything else
+   *
+   * @param \eftec\bladeone\BladeOne $blade  The shared Blade instance
+   */
+  public static function boot(\eftec\bladeone\BladeOne $blade): void
+  {
+      \Core\AutoRouter::registerAll($blade);
+
+      $visibleTables = array_values(array_filter(
+          \Core\Model::listTables(),
+          fn(string $t) => !\Core\CrudController::isHidden($t)
+      ));
+
+      \Pecee\SimpleRouter\SimpleRouter::post('/graphql', function () use ($visibleTables): void {
+          \Core\GraphQL\Endpoint::handle($visibleTables);
+      });
+
+      if (!empty($_ENV['AUTH_TABLE'] ?? '')) {
+          \Core\Auth\AuthEndpoint::register();
+      }
+  }
+
+  /**
    * Reset all static properties for testing purposes
    */
   public static function reset(): void

@@ -5,178 +5,137 @@ declare(strict_types=1);
 namespace Core\Helpers;
 
 use Core\LazyMePHP;
-use Core\Helpers\ErrorUtil;
 
 /**
- * Activity Logger for LazyMePHP Framework
- * Handles logging of user activities, data changes, and request information
+ * Audit logger — records INSERT, UPDATE, and DELETE operations to __LOG_ACTIVITY / __LOG_DATA.
+ *
+ * Only writes a database row when at least one data change was collected during the request.
+ * Plain GET requests (or any request with no model mutations) produce no log entry.
+ *
+ * Sensitive column names (password, token, secret, api_key, and AUTH_PASSWORD_COLUMN)
+ * are stripped from the log automatically.
  */
 class ActivityLogger
 {
-    /**
-     * Static array to store log data for the current request
-     */
-    private static array $_app_logdata = [];
+    private static array $logdata = [];
+
+    /** Columns whose values are never written to the audit log. */
+    private static function sensitiveColumns(): array
+    {
+        $cols = ['password', 'password_hash', 'token', 'secret', 'api_key', 'api_secret'];
+        $envCol = $_ENV['AUTH_PASSWORD_COLUMN'] ?? '';
+        if ($envCol !== '' && !in_array($envCol, $cols, true)) {
+            $cols[] = $envCol;
+        }
+        return $cols;
+    }
 
     /**
-     * Stores data to be logged for the current request if activity logging is enabled.
-     * This data is processed by the `logActivity` method at the end of the request.
+     * Collect a data-change entry for the current request.
+     * Called by LoggingHelper — do not call directly.
      *
-     * @param string $table The name of the database table related to the log entry.
-     * @param array $log An array containing the data changes. Typically `['field_name' => ['before_value', 'after_value']]`.
-     * @param ?string $pk The primary key value of the record being logged.
-     * @param ?string $method The method that initiated the change (e.g., 'INSERT', 'UPDATE', 'DELETE').
-     * @return void
+     * @param string  $table  Table name
+     * @param array   $log    ['field' => [before, after]]
+     * @param ?string $pk     Primary key value
+     * @param ?string $method 'INSERT' | 'UPDATE' | 'DELETE'
      */
     public static function logData(string $table, array $log, ?string $pk = null, ?string $method = null): void
     {
         if (!LazyMePHP::ACTIVITY_LOG()) return;
-        
-        // Skip INSERT operations - they will still be visible in debug toolbar but not logged persistently
-        if (strtoupper($method) === 'INSERT') {
+
+        $sensitive = self::sensitiveColumns();
+        $filtered  = array_filter($log, fn($col) => !in_array(strtolower($col), $sensitive, true), ARRAY_FILTER_USE_KEY);
+
+        if (empty($filtered)) return;
+
+        self::$logdata[$table][] = ['log' => $filtered, 'pk' => $pk, 'method' => $method];
+    }
+
+    /**
+     * Flush collected changes to the database.
+     * Call once at the end of each request (done by public/index.php and public/api/index.php).
+     * No-op when nothing was changed during the request.
+     */
+    public static function logActivity(): void
+    {
+        if (!LazyMePHP::ACTIVITY_LOG() || !LazyMePHP::DB_CONNECTION()) return;
+        if (empty(self::$logdata)) return; // only audit, not access-log
+
+        $db          = LazyMePHP::DB_CONNECTION();
+        $now         = date('Y-m-d H:i:s');
+        $method      = $_SERVER['REQUEST_METHOD']  ?? 'CLI';
+        $uri         = $_SERVER['REQUEST_URI']     ?? '';
+        $ip          = $_SERVER['REMOTE_ADDR']     ?? 'unknown';
+        $ua          = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        $status      = http_response_code() ?: 200;
+        $responseMs  = isset($_SERVER['REQUEST_TIME_FLOAT'])
+                         ? (int)round((microtime(true) - $_SERVER['REQUEST_TIME_FLOAT']) * 1000)
+                         : 0;
+        $traceId     = bin2hex(random_bytes(8));
+
+        // Prefer the authenticated user; fall back to the env-configured identity
+        $user = '';
+        if (class_exists(\Core\Auth\Auth::class)) {
+            try {
+                if (\Core\Auth\Auth::check()) {
+                    $user = (string)(\Core\Auth\Auth::id() ?? '');
+                }
+            } catch (\Throwable) {}
+        }
+        if ($user === '') {
+            $user = LazyMePHP::ACTIVITY_AUTH() ?? '';
+        }
+
+        $db->query(
+            'INSERT INTO "__LOG_ACTIVITY" ("date","user","method","status_code","response_time","ip_address","user_agent","request_uri","trace_id")
+             VALUES (?,?,?,?,?,?,?,?,?)',
+            [$now, $user, $method, $status, $responseMs, $ip, $ua, $uri, $traceId]
+        );
+
+        $activityId = $db->getLastInsertedId();
+        if (!$activityId) {
+            self::$logdata = [];
             return;
         }
-        
-        // Ensure the entry for the table exists.
-        if (!array_key_exists($table, self::$_app_logdata)) {
-            self::$_app_logdata[$table] = [];
+
+        // Batch all field changes into a single INSERT
+        $parts  = [];
+        $params = [];
+        foreach (self::$logdata as $table => $entries) {
+            foreach ($entries as $entry) {
+                foreach ($entry['log'] as $field => $values) {
+                    $parts[]  = '(?,?,?,?,?,?,?)';
+                    array_push(
+                        $params,
+                        $activityId,
+                        $table,
+                        (string)($entry['pk']     ?? ''),
+                        (string)($entry['method'] ?? ''),
+                        (string)$field,
+                        $values[0] !== null ? (string)$values[0] : null,
+                        $values[1] !== null ? (string)$values[1] : null,
+                    );
+                }
+            }
         }
-        // Add the log data to the array for this table.
-        self::$_app_logdata[$table][] = ["log" => $log, "pk" => $pk, "method" => $method];
+
+        if (!empty($parts)) {
+            $db->query(
+                'INSERT INTO "__LOG_DATA" ("id_log_activity","table","pk","method","field","dataBefore","dataAfter") VALUES ' . implode(',', $parts),
+                $params
+            );
+        }
+
+        self::$logdata = [];
     }
 
-    /**
-     * Logs activities performed during the request if activity logging is enabled.
-     * This method inserts records into `__LOG_ACTIVITY`, `__LOG_ACTIVITY_OPTIONS`,
-     * and `__LOG_DATA` tables based on data collected via `logData`.
-     *
-     * @return void
-     */
-    public static function logActivity(): void 
-    {
-        // Proceed only if activity logging is enabled and a database connection exists.
-        if (LazyMePHP::ACTIVITY_LOG() && LazyMePHP::DB_CONNECTION()) {
-            // --- Collect request information ---
-            $currentDateTime = date("Y-m-d H:i:s");
-            $requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'CLI';
-            $requestUri = $_SERVER['REQUEST_URI'] ?? '';
-            $ipAddress = $_SERVER['REMOTE_ADDR'] ?? $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['HTTP_CLIENT_IP'] ?? 'unknown';
-            $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
-            $statusCode = http_response_code() ?: 200;
-            $responseTime = microtime(true) - $_SERVER['REQUEST_TIME_FLOAT'] ?? 0;
-            $traceId = uniqid('req_', true);
-            
-            // --- Log main activity with enhanced information ---
-            $logActivityQuery = "INSERT INTO __LOG_ACTIVITY (
-                `date`, `user`, `method`, `status_code`, `response_time`, 
-                `ip_address`, `user_agent`, `request_uri`, `trace_id`
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            
-            LazyMePHP::DB_CONNECTION()->Query($logActivityQuery, [
-                $currentDateTime, 
-                LazyMePHP::ACTIVITY_AUTH(), 
-                $requestMethod,
-                $statusCode,
-                round($responseTime * 1000), // Convert to milliseconds
-                $ipAddress,
-                $userAgent,
-                $requestUri,
-                $traceId
-            ]);
-            
-            $logActivityId = LazyMePHP::DB_CONNECTION()->GetLastInsertedID('__LOG_ACTIVITY');
-
-            // If $logActivityId is not valid, we cannot proceed with logging details.
-            if (!$logActivityId) {
-                if (class_exists(ErrorUtil::class)) {
-                    ErrorUtil::trigger_error("Failed to retrieve last insert ID for __LOG_ACTIVITY.", E_USER_WARNING);
-                } else {
-                    trigger_error("Failed to retrieve last insert ID for __LOG_ACTIVITY.", E_USER_WARNING);
-                }
-                return;
-            }
-
-            // --- Log URL/Route parameters for the activity ---
-            $urlParts = [];
-            if (function_exists('url')) { // Check if helper function exists
-                $urlParts = explode('/', (string)url());
-            } elseif (isset($_SERVER['REQUEST_URI'])) {
-                $urlParts = explode('/', $_SERVER['REQUEST_URI']);
-            }
-            
-            if (!empty($urlParts)) {
-                $logOptionsQueryParts = [];
-                $logOptionsQueryData = [];
-                foreach ($urlParts as $key => $part) {
-                    if (!empty($part)) { // Log only non-empty parts
-                        $logOptionsQueryParts[] = "(?, ?, ?)";
-                        array_push($logOptionsQueryData, $logActivityId, $key, $part);
-                    }
-                }
-
-                if (!empty($logOptionsQueryParts)) {
-                    $logOptionsQuery = sprintf(
-                        "INSERT INTO __LOG_ACTIVITY_OPTIONS (`id_log_activity`, `subOption`, `value`) VALUES %s",
-                        implode(", ", $logOptionsQueryParts)
-                    );
-                    LazyMePHP::DB_CONNECTION()->Query($logOptionsQuery, $logOptionsQueryData);
-                }
-            }
-
-            // --- Log detailed data changes ---
-            if (!empty(self::$_app_logdata)) {
-                $logDataQueryParts = [];
-                $logDataQueryData = [];
-                foreach (self::$_app_logdata as $tableName => $entries) {
-                    foreach ($entries as $entry) {
-                        if (is_array($entry['log'])) {
-                            foreach ($entry['log'] as $fieldName => $values) {
-                                // Ensure values has at least two elements (before and after)
-                                $dataBefore = $values[0] ?? null;
-                                $dataAfter = $values[1] ?? null;
-                                
-                                $logDataQueryParts[] = "(?, ?, ?, ?, ?, ?, ?)";
-                                array_push(
-                                    $logDataQueryData,
-                                    $logActivityId,
-                                    $tableName,
-                                    (string)($entry['pk'] ?? ''), // Ensure PK is a string
-                                    (string)($entry['method'] ?? ''), // Ensure method is a string
-                                    (string)$fieldName, // Ensure field name is a string
-                                    $dataBefore,
-                                    $dataAfter
-                                );
-                            }
-                        }
-                    }
-                }
-
-                if (!empty($logDataQueryParts)) {
-                    $logDataQuery = sprintf(
-                        "INSERT INTO __LOG_DATA (`id_log_activity`, `table`, `pk`, `method`, `field`, `dataBefore`, `dataAfter`) VALUES %s",
-                        implode(", ", $logDataQueryParts)
-                    );
-                    LazyMePHP::DB_CONNECTION()->Query($logDataQuery, $logDataQueryData);
-                }
-            }
-            // Clear log data for the current request after processing.
-            self::$_app_logdata = [];
-        }
-    }
-
-    /**
-     * Reset all static properties for testing purposes
-     */
     public static function reset(): void
     {
-        self::$_app_logdata = [];
+        self::$logdata = [];
     }
 
-    /**
-     * Get the current log data for debugging/testing purposes
-     */
     public static function getLogData(): array
     {
-        return self::$_app_logdata;
+        return self::$logdata;
     }
-} 
+}

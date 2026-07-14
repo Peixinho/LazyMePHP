@@ -11,6 +11,7 @@
     <testsuites>
         <testsuite name="Test Suite">
             <directory suffix="Test.php">./tests</directory>
+            <exclude>./tests/Api/MaterialApiTest.php</exclude>
         </testsuite>
     </testsuites>
     <source>

@@ -1,8 +1,12 @@
 <?php
 declare(strict_types=1);
 
-// Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
+    $isProd = ($_ENV['APP_ENV'] ?? 'production') !== 'development';
+    session_set_cookie_params([
+        'lifetime' => 0, 'path' => '/', 'domain' => '',
+        'secure' => $isProd, 'httponly' => true, 'samesite' => 'Strict',
+    ]);
     session_start();
 }
 
@@ -21,60 +25,28 @@ if (!$hasUserSession) {
     exit;
 }
 
-file_put_contents(__DIR__ . '/../batman_api_debug.log', "BATMAN API EXECUTED\n", FILE_APPEND);
-
-// Set headers first to prevent "headers already sent" errors
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
+$allowedOrigin = $_ENV['APP_CORS_ORIGIN'] ?? '';
+$requestOrigin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if ($allowedOrigin !== '' && $requestOrigin === $allowedOrigin) {
+    header('Access-Control-Allow-Origin: ' . $allowedOrigin);
+    header('Access-Control-Allow-Credentials: true');
+    header('Access-Control-Allow-Methods: GET, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type');
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-// Try to connect to the main application's database
-$db = null;
-try {
-    // Load autoloader first
-    if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
-        require_once __DIR__ . '/../vendor/autoload.php';
-    }
-    
-    // Load environment variables if Dotenv is available
-    if (file_exists(__DIR__ . '/../.env') && class_exists('Dotenv\Dotenv')) {
-        $dotenv = \Dotenv\Dotenv::createImmutable(__DIR__ . '/../');
-        $dotenv->load();
-        
-        // Debug: Log available environment variables
-        file_put_contents(__DIR__ . '/../batman_api_debug.log', "Environment variables loaded. DB_NAME: " . ($_ENV['DB_NAME'] ?? 'NOT_SET') . "\n", FILE_APPEND);
-    } else {
-        file_put_contents(__DIR__ . '/../batman_api_debug.log', "Dotenv not available or .env file not found\n", FILE_APPEND);
-    }
-    
-    // Check if required environment variables are available
-    $requiredVars = ['DB_NAME', 'DB_USER', 'DB_PASSWORD', 'DB_HOST'];
-    $missingVars = [];
-    
-    foreach ($requiredVars as $var) {
-        if (!isset($_ENV[$var]) || empty($_ENV[$var])) {
-            $missingVars[] = $var;
-        }
-    }
-    
-    if (!empty($missingVars)) {
-        throw new Exception('Missing required environment variables: ' . implode(', ', $missingVars));
-    }
-    
-    // Initialize database connection using the same logic as main app
-    if (file_exists(__DIR__ . '/../App/Core/LazyMePHP.php')) {
-        require_once __DIR__ . '/../App/Core/LazyMePHP.php';
-        $db = \Core\LazyMePHP::DB_CONNECTION();
-    }
-} catch (Exception $e) {
-    // If database connection fails, we'll use mock data
-    file_put_contents(__DIR__ . '/../batman_api_debug.log', "Database connection failed: " . $e->getMessage() . "\n", FILE_APPEND);
+require_once __DIR__ . '/../vendor/autoload.php';
+if (file_exists(__DIR__ . '/../.env')) {
+    $dotenv = \Dotenv\Dotenv::createImmutable(__DIR__ . '/../');
+    $dotenv->load();
 }
+new \Core\LazyMePHP();
+use \Core\LazyMePHP;
+$db = LazyMePHP::DB_CONNECTION();
 
 try {
     $action = $_GET['action'] ?? 'overview';
@@ -188,128 +160,76 @@ function getOverviewData($db = null): array {
 
 function getLogsData($db = null): array {
     if ($db) {
-        $page = (int)($_GET['page'] ?? 1);
-        $limit = (int)($_GET['limit'] ?? 20);
+        $page   = (int)($_GET['page']  ?? 1);
+        $limit  = (int)($_GET['limit'] ?? 20);
         $offset = ($page - 1) * $limit;
-        
-        // Get recent logs
-        $logsQuery = "
-            SELECT 
-                la.id,
-                la.table_name,
-                la.method,
-                la.timestamp,
-                la.user_id,
-                la.ip_address,
-                la.user_agent,
+
+        $logsQuery = '
+            SELECT
+                la.id, la.method, la.date, la."user",
+                la.ip_address, la.user_agent, la.request_uri, la.trace_id,
                 COUNT(ld.id) as changes_count
             FROM __LOG_ACTIVITY la
-            LEFT JOIN __LOG_DATA ld ON la.id = ld.activity_id
+            LEFT JOIN __LOG_DATA ld ON la.id = ld.id_log_activity
             GROUP BY la.id
-            ORDER BY la.timestamp DESC
+            ORDER BY la.date DESC
             LIMIT ? OFFSET ?
-        ";
-        
+        ';
         $logs = $db->Query($logsQuery, [$limit, $offset])->FetchAll();
-        
-        // Get log statistics
-        $statsQuery = "
-            SELECT 
-                COUNT(*) as total_logs,
-                COUNT(DISTINCT table_name) as tables_affected,
-                COUNT(DISTINCT method) as methods_used,
-                MIN(timestamp) as first_log,
-                MAX(timestamp) as last_log
+
+        $stats = $db->Query('
+            SELECT COUNT(*) as total_logs,
+                   COUNT(DISTINCT method) as methods_used,
+                   MIN(date) as first_log,
+                   MAX(date) as last_log
             FROM __LOG_ACTIVITY
-        ";
-        
-        $stats = $db->Query($statsQuery)->FetchArray();
-        
-        // Get logs by method
-        $methodStatsQuery = "
-            SELECT 
-                method,
-                COUNT(*) as count
+        ')->FetchArray();
+
+        $methodStats = $db->Query('
+            SELECT method, COUNT(*) as count
             FROM __LOG_ACTIVITY
-            GROUP BY method
-            ORDER BY count DESC
-        ";
-        
-        $methodStats = $db->Query($methodStatsQuery)->FetchAll();
-        
-        return [
-            'logs' => $logs,
-            'statistics' => $stats,
-            'method_statistics' => $methodStats
-        ];
+            GROUP BY method ORDER BY count DESC
+        ')->FetchAll();
+
+        return ['logs' => $logs, 'statistics' => $stats, 'method_statistics' => $methodStats];
     }
-    
-    // Fallback to mock data
+
     return [
         'logs' => [],
-        'statistics' => [
-            'total_logs' => 0,
-            'tables_affected' => 0,
-            'methods_used' => 0,
-            'first_log' => null,
-            'last_log' => null
-        ],
-        'method_statistics' => []
+        'statistics' => ['total_logs' => 0, 'methods_used' => 0, 'first_log' => null, 'last_log' => null],
+        'method_statistics' => [],
     ];
 }
 
 function getErrorsData($db = null): array {
     if ($db) {
-        // Check if __LOG_ERRORS table exists
-        $tableExists = $db->Query("SHOW TABLES LIKE '__LOG_ERRORS'")->FetchArray();
-        
-        if ($tableExists) {
-            // Get recent errors
-            $errorsQuery = "
-                SELECT 
-                    id,
-                    error_message,
-                    error_type,
-                    file_name,
-                    line_number,
-                    timestamp,
-                    user_id,
-                    ip_address
+        try {
+            $errors = $db->Query('
+                SELECT id, error_id, error_message, error_code, http_status,
+                       severity, context, file_path, line_number,
+                       ip_address, request_uri, request_method, created_at
                 FROM __LOG_ERRORS
-                ORDER BY timestamp DESC
+                ORDER BY created_at DESC
                 LIMIT 50
-            ";
-            
-            $errors = $db->Query($errorsQuery)->FetchAll();
-            
-            // Get error statistics
-            $errorStatsQuery = "
-                SELECT 
-                    COUNT(*) as total_errors,
-                    COUNT(DISTINCT error_type) as error_types,
-                    MIN(timestamp) as first_error,
-                    MAX(timestamp) as last_error
+            ')->FetchAll();
+
+            $errorStats = $db->Query('
+                SELECT COUNT(*) as total_errors,
+                       COUNT(DISTINCT error_code) as error_types,
+                       MIN(created_at) as first_error,
+                       MAX(created_at) as last_error
                 FROM __LOG_ERRORS
-            ";
-            
-            $errorStats = $db->Query($errorStatsQuery)->FetchArray();
-            
-            return [
-                'errors' => $errors,
-                'statistics' => $errorStats
-            ];
+            ')->FetchArray();
+
+            return ['errors' => $errors, 'statistics' => $errorStats];
+        } catch (\Exception) {
+            // table may not exist yet
         }
     }
-    
-    // Fallback to mock data
+
     return [
         'errors' => [],
-        'statistics' => [
-            'total_errors' => 0,
-            'error_types' => 0,
-            'first_error' => null,
-            'last_error' => null
-        ]
+        'statistics' => ['total_errors' => 0, 'error_types' => 0, 'first_error' => null, 'last_error' => null],
     ];
 }
 
@@ -357,10 +277,10 @@ function getSystemData($db = null): array {
     if ($db) {
         try {
             $dbInfo = [
-                'status' => checkDatabaseStatus($db),
+                'status'  => checkDatabaseStatus($db),
                 'version' => getDatabaseVersion($db),
-                'type' => 'MySQL', // Assuming MySQL
-                'tables' => getTableCount($db)
+                'type'    => strtoupper(\Core\LazyMePHP::DB_TYPE() ?? 'Unknown'),
+                'tables'  => getTableCount($db),
             ];
         } catch (Exception $e) {
             $dbInfo['status'] = 'Error: ' . $e->getMessage();
@@ -386,103 +306,62 @@ function getSystemData($db = null): array {
 
 function getAnalyticsData($db = null): array {
     if ($db) {
-        // Get activity over time (last 7 days)
-        $activityQuery = "
-            SELECT 
-                DATE(timestamp) as date,
-                COUNT(*) as activity_count,
-                COUNT(DISTINCT table_name) as tables_affected
+        $sevenDaysAgo = date('Y-m-d', strtotime('-7 days'));
+
+        $methodStats = $db->Query('
+            SELECT method, COUNT(*) as count
             FROM __LOG_ACTIVITY
-            WHERE timestamp >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-            GROUP BY DATE(timestamp)
-            ORDER BY date DESC
-        ";
-        
-        $activity = $db->Query($activityQuery)->FetchAll();
-        
-        // Get most active tables
-        $tableActivityQuery = "
-            SELECT 
-                table_name,
-                COUNT(*) as activity_count,
-                COUNT(DISTINCT method) as methods_used
+            WHERE "date" >= ?
+            GROUP BY method ORDER BY count DESC
+        ', [$sevenDaysAgo])->FetchAll();
+
+        $statusStats = $db->Query('
+            SELECT status_code, COUNT(*) as count
             FROM __LOG_ACTIVITY
-            GROUP BY table_name
-            ORDER BY activity_count DESC
-            LIMIT 10
-        ";
-        
-        $tableActivity = $db->Query($tableActivityQuery)->FetchAll();
-        
+            WHERE "date" >= ?
+            GROUP BY status_code ORDER BY count DESC
+        ', [$sevenDaysAgo])->FetchAll();
+
+        $topUsers = $db->Query('
+            SELECT "user", COUNT(*) as count
+            FROM __LOG_ACTIVITY
+            WHERE "date" >= ? AND "user" != \'\'
+            GROUP BY "user" ORDER BY count DESC LIMIT 10
+        ', [$sevenDaysAgo])->FetchAll();
+
         return [
-            'activity_timeline' => $activity,
-            'table_activity' => $tableActivity
+            'method_stats'  => $methodStats,
+            'status_stats'  => $statusStats,
+            'top_users'     => $topUsers,
         ];
     }
-    
-    return [
-        'requests' => [
-            'total' => 0,
-            'by_method' => [],
-            'by_hour' => [],
-            'by_day' => []
-        ],
-        'performance' => [
-            'average_response_time' => 0,
-            'peak_memory_usage' => formatBytes(memory_get_peak_usage()),
-            'slowest_queries' => []
-        ],
-        'errors' => [
-            'total' => 0,
-            'by_type' => [],
-            'trends' => []
-        ]
-    ];
+
+    return ['method_stats' => [], 'status_stats' => [], 'top_users' => []];
 }
 
 function getActivityData($db = null): array {
     if ($db) {
-        // Get recent activities
-        $activityQuery = "
-            SELECT 
-                id,
-                table_name,
-                method,
-                timestamp,
-                user_id,
-                ip_address,
-                user_agent
+        $activities = $db->Query('
+            SELECT id, method, date, "user", ip_address, user_agent, request_uri, trace_id
             FROM __LOG_ACTIVITY
-            ORDER BY timestamp DESC
+            ORDER BY date DESC
             LIMIT 50
-        ";
-        
-        $activities = $db->Query($activityQuery)->FetchAll();
-        
-        // Get activity statistics
-        $statsQuery = "
-            SELECT 
-                COUNT(*) as total_activities,
-                COUNT(DISTINCT table_name) as tables_affected,
-                COUNT(DISTINCT method) as methods_used,
-                MIN(timestamp) as first_activity,
-                MAX(timestamp) as last_activity
+        ')->FetchAll();
+
+        $stats = $db->Query('
+            SELECT COUNT(*) as total_activities,
+                   COUNT(DISTINCT method) as methods_used,
+                   MIN(date) as first_activity,
+                   MAX(date) as last_activity
             FROM __LOG_ACTIVITY
-        ";
-        
-        $stats = $db->Query($statsQuery)->FetchArray();
-        
-        return [
-            'activities' => $activities,
-            'statistics' => $stats
-        ];
+        ')->FetchArray();
+
+        return ['activities' => $activities, 'statistics' => $stats];
     }
-    
+
     return [
-        'recent_activity' => [],
-        'user_activity' => [],
-        'table_activity' => [],
-        'method_activity' => []
+        'activities' => [],
+        'statistics' => ['total_activities' => 0, 'methods_used' => 0, 'first_activity' => null, 'last_activity' => null],
     ];
 }
 
@@ -493,26 +372,20 @@ function getTotalLogs($db): int {
 }
 
 function getTotalErrors($db): int {
-    $tableExists = $db->Query("SHOW TABLES LIKE '__LOG_ERRORS'")->FetchArray();
-    if (!$tableExists) return 0;
-    
-    $result = $db->Query("SELECT COUNT(*) as count FROM __LOG_ERRORS")->FetchArray();
-    return (int)($result['count'] ?? 0);
+    try {
+        $result = $db->Query("SELECT COUNT(*) as count FROM __LOG_ERRORS")->FetchArray();
+        return (int)($result['count'] ?? 0);
+    } catch (\Exception) {
+        return 0;
+    }
 }
 
 function getRecentActivity($db): array {
-    $query = "
-        SELECT 
-            table_name,
-            method,
-            timestamp,
-            user_id
+    return $db->Query('
+        SELECT method, date, "user"
         FROM __LOG_ACTIVITY
-        ORDER BY timestamp DESC
-        LIMIT 10
-    ";
-    
-    return $db->Query($query)->FetchAll();
+        ORDER BY date DESC LIMIT 10
+    ')->FetchAll();
 }
 
 function checkDatabaseStatus($db): string {
@@ -526,18 +399,32 @@ function checkDatabaseStatus($db): string {
 
 function getDatabaseVersion($db): string {
     try {
-        $result = $db->Query("SELECT VERSION() as version")->FetchArray();
-        return $result['version'] ?? 'Unknown';
-    } catch (Exception $e) {
+        $dbType = strtolower(\Core\LazyMePHP::DB_TYPE() ?? '');
+        if ($dbType === 'sqlite') {
+            $r = $db->Query("SELECT sqlite_version() as version")->FetchArray();
+        } elseif ($dbType === 'mssql' || $dbType === 'sqlsrv') {
+            $r = $db->Query("SELECT @@VERSION as version")->FetchArray();
+        } else {
+            $r = $db->Query("SELECT VERSION() as version")->FetchArray();
+        }
+        return $r['version'] ?? 'Unknown';
+    } catch (\Exception) {
         return 'Unknown';
     }
 }
 
 function getTableCount($db): int {
     try {
-        $result = $db->Query("SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE()")->FetchArray();
-        return (int)($result['count'] ?? 0);
-    } catch (Exception $e) {
+        $dbType = strtolower(\Core\LazyMePHP::DB_TYPE() ?? '');
+        if ($dbType === 'sqlite') {
+            $r = $db->Query("SELECT COUNT(*) as count FROM sqlite_master WHERE type='table'")->FetchArray();
+        } elseif ($dbType === 'mssql' || $dbType === 'sqlsrv') {
+            $r = $db->Query("SELECT COUNT(*) as count FROM information_schema.tables WHERE table_type='BASE TABLE'")->FetchArray();
+        } else {
+            $r = $db->Query("SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE()")->FetchArray();
+        }
+        return (int)($r['count'] ?? 0);
+    } catch (\Exception) {
         return 0;
     }
 }

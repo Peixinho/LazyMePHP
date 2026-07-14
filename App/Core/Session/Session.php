@@ -23,6 +23,15 @@ class Session
     public function __construct()
     {
         if (session_status() === PHP_SESSION_NONE) {
+            $isProd = ($_ENV['APP_ENV'] ?? 'production') !== 'development';
+            session_set_cookie_params([
+                'lifetime' => 0,
+                'path'     => '/',
+                'domain'   => '',
+                'secure'   => $isProd,
+                'httponly' => true,
+                'samesite' => 'Strict',
+            ]);
             session_start();
         }
     }

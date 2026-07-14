@@ -39,8 +39,8 @@ CREATE TABLE IF NOT EXISTS __LOG_DATA (
   pk VARCHAR(255) NULL,
   method VARCHAR(10) NULL,
   field VARCHAR(255) NOT NULL,
-  dataBefore VARCHAR(255) NULL,
-  dataAfter VARCHAR(255) NULL,
+  dataBefore TEXT NULL,
+  dataAfter TEXT NULL,
   KEY id_log_activity (id_log_activity),
   KEY idx_table (`table`),
   KEY idx_method (method),
@@ -249,8 +249,8 @@ CREATE TABLE __LOG_DATA (
   pk NVARCHAR(255) NULL,
   method NVARCHAR(10) NULL,
   field NVARCHAR(255) NOT NULL,
-  dataBefore NVARCHAR(255) NULL,
-  dataAfter NVARCHAR(255) NULL,
+  dataBefore NVARCHAR(MAX) NULL,
+  dataAfter NVARCHAR(MAX) NULL,
   FOREIGN KEY (id_log_activity) REFERENCES __LOG_ACTIVITY(id) ON DELETE CASCADE
 );
 

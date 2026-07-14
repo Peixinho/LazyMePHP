@@ -282,44 +282,13 @@ class BuildActions
     }
     
     /**
-     * Build classes for selected tables
+     * Models are now driven by Core\Model (schema introspection at runtime).
+     * No code generation step is needed.
      */
     public function buildModels(): void
     {
-        require_once(__DIR__.'/Models/BuildTableModels.php');
-        
-        $tables = $this->tableManager->getTables();
-        $descriptors = $this->tableManager->getTableDescriptors();
-        
-        $selectedModels = Helper\select("🎯 Select Tables to Build Models", $tables, null, true, $descriptors);
-        
-        if (!$selectedModels) {
-            return;
-        }
-        
-        $this->displaySelectedTables($selectedModels, "Models");
-        
-        if (!$this->confirmAction("🚀 Do you want to proceed with building models?")) {
-            return;
-        }
-        
-        $tableList = array_column($selectedModels, 'name');
-        
-        echo "\n🚀 Generating models...\n";
-        $progressBar = new ProgressBar("Building Models", count($tableList));
-        
-        // Build classes with progress tracking
-        $builder = new Tools\Models\BuildTableModels(BuildConfig::MODELS_OUTPUT_DIR, $tableList, $descriptors);
-        
-        // Simulate progress for each table
-        foreach ($tableList as $table) {
-            usleep(100000); // Small delay to show progress
-            $progressBar->update();
-        }
-        
-        $progressBar->finish();
-        
-        echo "✅ Models built successfully!\n";
+        echo "\n💡 Models are now powered by Core\\Model — no code generation needed.\n";
+        echo "   Use  new \\Core\\Model('table_name')  or subclass Core\\Model directly.\n\n";
         \Tools\Helper\read();
     }
     

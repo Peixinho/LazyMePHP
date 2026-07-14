@@ -1,0 +1,655 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * LazyMePHP Model
+ * @copyright This file is part of LazyMePHP developed by Duarte Peixinho
+ * @author Duarte Peixinho
+ */
+
+namespace Core;
+
+use Core\DB\IDB;
+use Core\DB\DatabaseException;
+use Core\LazyMePHP;
+
+/**
+ * Dynamic ORM model — full CRUD against any table, no code generation needed.
+ *
+ * Use directly by passing the table name, or subclass for typed access:
+ *
+ *   // Direct usage
+ *   $user = new Model('users');
+ *   $user->name = 'Alice';
+ *   $user->save();
+ *
+ *   $user = new Model('users', 1);    // load by primary key
+ *   $user->name = 'Updated';
+ *   $user->save();
+ *
+ *   $user->delete();
+ *
+ *   // Fluent query builder
+ *   $users = Model::query('users')
+ *       ->where('active', 1)
+ *       ->orderBy('name')
+ *       ->get();
+ *
+ *   // Subclass (gives you a named type and shorter call sites)
+ *   class User extends Model {
+ *       protected static string $table = 'users';
+ *   }
+ *   $user = new User(1);
+ *   $users = User::query()->where('active', 1)->get();
+ */
+class Model implements IDB
+{
+    // -------------------------------------------------------------------------
+    // Subclass contract
+    // -------------------------------------------------------------------------
+
+    /** Override in subclasses to skip passing the table name each time. */
+    protected static string $table = '';
+
+    // -------------------------------------------------------------------------
+    // Internal state
+    // -------------------------------------------------------------------------
+
+    private string $tableName;
+    private ?string $primaryKey = null;
+    private bool $exists = false;
+
+    /** @var array<string, array{type:string, nullable:bool, pk:bool, default:mixed}> */
+    private array $schema = [];
+
+    /** @var array<string, mixed> */
+    private array $data = [];
+
+    /** @var array<string, array{mixed, mixed}> change log for activity logging */
+    private array $changeLog = [];
+
+    /** @var array<string, array<string, array{type:string, nullable:bool, pk:bool, default:mixed}>> */
+    private static array $schemaCache = [];
+
+    // -------------------------------------------------------------------------
+    // Construction
+    // -------------------------------------------------------------------------
+
+    /**
+     * @param string|null $table  Table name (optional if subclass sets $table)
+     * @param mixed       $id     PK value to load, array for bulk hydration, or null for new record
+     */
+    public function __construct(?string $table = null, mixed $id = null)
+    {
+        $this->tableName = $table ?? static::$table;
+        if ($this->tableName === '') {
+            throw new \InvalidArgumentException('Table name required: pass it as constructor argument or set $table in subclass.');
+        }
+
+        $this->loadSchema();
+
+        if (is_array($id)) {
+            $this->hydrateFromArray($id);
+        } elseif ($id !== null) {
+            $this->loadByPrimaryKey($id);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Static factories
+    // -------------------------------------------------------------------------
+
+    /**
+     * Return a query builder for the given table.
+     * Subclasses can call `static::query()` without a table name.
+     */
+    public static function query(?string $table = null): ModelQuery
+    {
+        $t = $table ?? static::$table;
+        if ($t === '') {
+            throw new \InvalidArgumentException('Table name required.');
+        }
+        return new ModelQuery($t);
+    }
+
+    /**
+     * Load a single record by primary key, or null if not found.
+     */
+    public static function find(string $table, mixed $id): ?static
+    {
+        $model = new static($table, $id);
+        return $model->exists ? $model : null;
+    }
+
+    // -------------------------------------------------------------------------
+    // Schema introspection
+    // -------------------------------------------------------------------------
+
+    private static ?string $schemaCacheDirOverride = null;
+
+    private static function schemaCacheDir(): string
+    {
+        return self::$schemaCacheDirOverride ?? __DIR__ . '/../Cache/schema';
+    }
+
+    /** Override the cache directory — intended for tests only. Pass null to restore the default. */
+    public static function setSchemaCacheDir(?string $dir): void
+    {
+        self::$schemaCacheDirOverride = $dir;
+    }
+
+    private function loadSchema(): void
+    {
+        if (isset(self::$schemaCache[$this->tableName])) {
+            $this->schema = self::$schemaCache[$this->tableName];
+            $this->primaryKey = $this->findPrimaryKey();
+            return;
+        }
+
+        // Check file cache (OPcache-friendly, written by `schema:cache` CLI command)
+        $cacheFile = self::schemaCacheDir() . '/' . $this->tableName . '.php';
+        if (is_file($cacheFile)) {
+            $schema = require $cacheFile;
+            if (is_array($schema) && !empty($schema)) {
+                self::$schemaCache[$this->tableName] = $schema;
+                $this->schema = $schema;
+                $this->primaryKey = $this->findPrimaryKey();
+                return;
+            }
+        }
+
+        $db = LazyMePHP::DB_CONNECTION();
+        $dbType = strtolower(LazyMePHP::DB_TYPE() ?? 'mysql');
+
+        switch ($dbType) {
+            case 'sqlite':
+                $result = $db->query("PRAGMA table_info(\"{$this->tableName}\")");
+                while ($row = $result->fetchArray()) {
+                    $this->schema[$row['name']] = [
+                        'type'     => strtolower((string)$row['type']),
+                        'nullable' => (int)$row['notnull'] === 0,
+                        'pk'       => (int)$row['pk'] === 1,
+                        'default'  => $row['dflt_value'],
+                    ];
+                }
+                break;
+
+            case 'mysql':
+                $result = $db->query(
+                    "SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_KEY, COLUMN_DEFAULT
+                     FROM INFORMATION_SCHEMA.COLUMNS
+                     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
+                     ORDER BY ORDINAL_POSITION",
+                    [LazyMePHP::DB_NAME(), $this->tableName]
+                );
+                while ($row = $result->fetchArray()) {
+                    $this->schema[$row['COLUMN_NAME']] = [
+                        'type'     => strtolower((string)$row['DATA_TYPE']),
+                        'nullable' => $row['IS_NULLABLE'] === 'YES',
+                        'pk'       => $row['COLUMN_KEY'] === 'PRI',
+                        'default'  => $row['COLUMN_DEFAULT'],
+                    ];
+                }
+                break;
+
+            case 'mssql':
+                $result = $db->query(
+                    "SELECT c.COLUMN_NAME, c.DATA_TYPE, c.IS_NULLABLE, c.COLUMN_DEFAULT,
+                            CASE WHEN pk.COLUMN_NAME IS NOT NULL THEN 1 ELSE 0 END AS IS_PK
+                     FROM INFORMATION_SCHEMA.COLUMNS c
+                     LEFT JOIN (
+                         SELECT ku.COLUMN_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+                         JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE ku
+                           ON tc.CONSTRAINT_NAME = ku.CONSTRAINT_NAME
+                         WHERE tc.CONSTRAINT_TYPE = 'PRIMARY KEY' AND tc.TABLE_NAME = ?
+                     ) pk ON c.COLUMN_NAME = pk.COLUMN_NAME
+                     WHERE c.TABLE_NAME = ? ORDER BY ORDINAL_POSITION",
+                    [$this->tableName, $this->tableName]
+                );
+                while ($row = $result->fetchArray()) {
+                    $this->schema[$row['COLUMN_NAME']] = [
+                        'type'     => strtolower((string)$row['DATA_TYPE']),
+                        'nullable' => $row['IS_NULLABLE'] === 'YES',
+                        'pk'       => (int)$row['IS_PK'] === 1,
+                        'default'  => $row['COLUMN_DEFAULT'],
+                    ];
+                }
+                break;
+
+            default:
+                throw new \RuntimeException("Unsupported DB type: $dbType");
+        }
+
+        self::$schemaCache[$this->tableName] = $this->schema;
+        $this->primaryKey = $this->findPrimaryKey();
+    }
+
+    private function findPrimaryKey(): ?string
+    {
+        foreach ($this->schema as $col => $meta) {
+            if ($meta['pk']) return $col;
+        }
+        return null;
+    }
+
+    /** Expose schema for use by the query builder and Select class. */
+    public static function schemaFor(string $table): array
+    {
+        $dummy = new self($table);
+        return $dummy->schema;
+    }
+
+    /** Flush the in-process schema cache (useful in tests). */
+    public static function clearSchemaCache(): void
+    {
+        self::$schemaCache = [];
+    }
+
+    /**
+     * List all table names.
+     * Reads file names from the schema cache dir when populated (via schema:cache CLI).
+     * Falls back to a live DB query when the cache dir is empty or absent.
+     */
+    public static function listTables(): array
+    {
+        $dir = self::schemaCacheDir();
+        if (is_dir($dir)) {
+            $files = glob($dir . '/*.php') ?: [];
+            if (!empty($files)) {
+                return array_values(array_map(fn($f) => basename($f, '.php'), $files));
+            }
+        }
+        return self::listTablesFromDb();
+    }
+
+    private static function listTablesFromDb(): array
+    {
+        $db     = LazyMePHP::DB_CONNECTION();
+        $dbType = strtolower(LazyMePHP::DB_TYPE() ?? 'mysql');
+
+        $sql = match($dbType) {
+            'sqlite' => "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '#__%' ESCAPE '#' ORDER BY name",
+            'mysql'  => "SELECT TABLE_NAME AS name FROM information_schema.TABLES WHERE TABLE_SCHEMA = '" . LazyMePHP::DB_NAME() . "' AND TABLE_NAME NOT LIKE '\\_\\_%'",
+            'mssql'  => "SELECT TABLE_NAME AS name FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME NOT LIKE '\\_\\_%'",
+            default  => throw new \RuntimeException("Unsupported DB type: $dbType"),
+        };
+
+        $result = $db->query($sql);
+        $tables = [];
+        while ($row = $result->fetchArray()) {
+            $name = $row['name'] ?? $row['TABLE_NAME'] ?? '';
+            if ($name !== '') $tables[] = $name;
+        }
+        return $tables;
+    }
+
+    /**
+     * Write a table's schema to a PHP file so future requests skip the DB query.
+     * Called by `./LazyMePHP schema:cache`.
+     */
+    public static function warmSchemaCache(string $table): void
+    {
+        $schema = self::schemaFor($table);
+        $dir    = self::schemaCacheDir();
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+        $file   = $dir . '/' . $table . '.php';
+        $export = var_export($schema, true);
+        file_put_contents($file, "<?php\n// Generated by LazyMePHP schema:cache — regenerate after schema changes.\nreturn $export;\n");
+        if (function_exists('opcache_invalidate')) {
+            opcache_invalidate($file, true);
+        }
+    }
+
+    /**
+     * Remove schema cache files.
+     * Pass a table name to clear one table, or null to clear all.
+     * Called by `./LazyMePHP schema:clear`.
+     */
+    public static function clearFileSchemaCache(?string $table = null): void
+    {
+        $dir = self::schemaCacheDir();
+        if (!is_dir($dir)) return;
+
+        $files = $table !== null
+            ? [$dir . '/' . $table . '.php']
+            : (glob($dir . '/*.php') ?: []);
+
+        foreach ($files as $file) {
+            if (is_file($file)) {
+                unlink($file);
+                if (function_exists('opcache_invalidate')) {
+                    opcache_invalidate($file, true);
+                }
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Hydration
+    // -------------------------------------------------------------------------
+
+    private function loadByPrimaryKey(mixed $value): void
+    {
+        if ($this->primaryKey === null) return;
+
+        $db = LazyMePHP::DB_CONNECTION();
+        $result = $db->query(
+            "SELECT * FROM \"{$this->tableName}\" WHERE \"{$this->primaryKey}\" = ?",
+            [$value]
+        );
+        $row = $result->fetchArray();
+        if ($row !== null) {
+            $this->data  = $row;
+            $this->exists = true;
+        }
+    }
+
+    private function hydrateFromArray(array $data): void
+    {
+        foreach ($data as $key => $value) {
+            if (array_key_exists($key, $this->schema)) {
+                $this->data[$key] = $value;
+            }
+        }
+        $this->exists = true;
+    }
+
+    // -------------------------------------------------------------------------
+    // Magic property access
+    // -------------------------------------------------------------------------
+
+    public function __get(string $name): mixed
+    {
+        return $this->data[$name] ?? null;
+    }
+
+    public function __set(string $name, mixed $value): void
+    {
+        if (!array_key_exists($name, $this->schema)) return;
+
+        if (LazyMePHP::ACTIVITY_LOG() && array_key_exists($name, $this->data) && $this->data[$name] !== $value) {
+            $this->changeLog[$name] = [$this->data[$name], $value];
+        }
+        $this->data[$name] = $value;
+    }
+
+    public function __isset(string $name): bool
+    {
+        return isset($this->data[$name]);
+    }
+
+    /**
+     * Proxy GetX / SetX calls so Blade views generated against the old model
+     * classes continue to work without modification.
+     */
+    public function __call(string $name, array $args): mixed
+    {
+        if (str_starts_with($name, 'Get')) {
+            $field = lcfirst(substr($name, 3));
+            return $this->data[$field] ?? null;
+        }
+        if (str_starts_with($name, 'Set') && count($args) === 1) {
+            $field = lcfirst(substr($name, 3));
+            $this->$field = $args[0];
+            return $this;
+        }
+        throw new \BadMethodCallException("Call to undefined method " . static::class . "::$name()");
+    }
+
+    // -------------------------------------------------------------------------
+    // Accessors
+    // -------------------------------------------------------------------------
+
+    public function getPrimaryKey(): mixed
+    {
+        return $this->primaryKey !== null ? ($this->data[$this->primaryKey] ?? null) : null;
+    }
+
+    public function getTable(): string
+    {
+        return $this->tableName;
+    }
+
+    public function getColumns(): array
+    {
+        return array_keys($this->schema);
+    }
+
+    public function toArray(): array
+    {
+        return $this->data;
+    }
+
+    /**
+     * Return only the listed columns (field mask).
+     *
+     * @param list<string> $columns
+     */
+    public function only(array $columns): array
+    {
+        return array_intersect_key($this->data, array_flip($columns));
+    }
+
+    // -------------------------------------------------------------------------
+    // IDB — CRUD
+    // -------------------------------------------------------------------------
+
+    public function Save(): mixed
+    {
+        $db  = LazyMePHP::DB_CONNECTION();
+        $row = array_filter($this->data, fn($k) => $k !== $this->primaryKey, ARRAY_FILTER_USE_KEY);
+
+        if ($this->exists) {
+            $set    = implode(', ', array_map(fn($k) => "\"$k\" = :$k", array_keys($row)));
+            $params = array_combine(array_map(fn($k) => ":$k", array_keys($row)), array_values($row));
+            $params[":{$this->primaryKey}"] = $this->data[$this->primaryKey];
+            $ret    = $db->query("UPDATE \"{$this->tableName}\" SET $set WHERE \"{$this->primaryKey}\" = :{$this->primaryKey}", $params);
+            $method = 'U';
+        } else {
+            $cols       = implode(', ', array_map(fn($k) => "\"$k\"", array_keys($row)));
+            $holders    = implode(', ', array_map(fn($k) => ":$k", array_keys($row)));
+            $params     = array_combine(array_map(fn($k) => ":$k", array_keys($row)), array_values($row));
+            $ret        = $db->query("INSERT INTO \"{$this->tableName}\" ($cols) VALUES ($holders)", $params);
+            if ($this->primaryKey !== null) {
+                $this->data[$this->primaryKey] = $db->getLastInsertedId();
+            }
+            $this->exists = true;
+            $method = 'I';
+        }
+
+        if (LazyMePHP::ACTIVITY_LOG()) {
+            if ($method === 'I') {
+                // changeLog is empty for new models — build from the inserted row directly
+                $insertLog = [];
+                foreach ($row as $field => $value) {
+                    $insertLog[$field] = [null, $value];
+                }
+                \Core\Helpers\LoggingHelper::logInsert($this->tableName, $insertLog, (string)$this->getPrimaryKey());
+            } elseif (!empty($this->changeLog)) {
+                \Core\Helpers\LoggingHelper::logUpdate($this->tableName, $this->changeLog, (string)$this->primaryKey, (string)$this->getPrimaryKey());
+            }
+            $this->changeLog = [];
+        }
+
+        return $ret;
+    }
+
+    public function Delete(): bool
+    {
+        if ($this->primaryKey === null || !isset($this->data[$this->primaryKey])) {
+            return false;
+        }
+
+        if (LazyMePHP::ACTIVITY_LOG()) {
+            \Core\Helpers\LoggingHelper::logDelete($this->tableName, (string)$this->primaryKey, (string)$this->getPrimaryKey());
+        }
+
+        LazyMePHP::DB_CONNECTION()->query(
+            "DELETE FROM \"{$this->tableName}\" WHERE \"{$this->primaryKey}\" = ?",
+            [$this->data[$this->primaryKey]]
+        );
+        $this->exists = false;
+        return true;
+    }
+
+    /**
+     * @param array<string, list<string>>|null $mask  Keys: table name; values: allowed columns
+     */
+    public function Serialize(?array $mask = null): array
+    {
+        if ($mask !== null && array_key_exists($this->tableName, $mask)) {
+            return $this->only($mask[$this->tableName]);
+        }
+        return $this->data;
+    }
+}
+
+// =============================================================================
+// ModelQuery — fluent query builder
+// =============================================================================
+
+/**
+ * Fluent query builder returned by Model::query().
+ *
+ * All methods are chainable; call get() or first() to execute.
+ *
+ *   $users = Model::query('users')
+ *       ->where('active', 1)
+ *       ->where('age', 18, '>=')
+ *       ->orWhere('admin', 1)
+ *       ->orderBy('name')
+ *       ->limit(20)
+ *       ->get();
+ */
+class ModelQuery
+{
+    private string $tableName;
+    /** @var list<string> */
+    private array $conditions = [];
+    /** @var list<mixed> */
+    private array $bindings = [];
+    private string $orderClause = '';
+    private string $groupClause = '';
+    private int $limitCount = 0;
+    private int $limitOffset = 0;
+    private bool $hasCondition = false;
+
+    public function __construct(string $tableName)
+    {
+        $this->tableName = $tableName;
+    }
+
+    public function where(string $column, mixed $value, string $operator = '=', string $logic = 'AND'): static
+    {
+        $connector = $this->hasCondition ? " $logic " : '';
+        $this->conditions[] = "{$connector}\"{$column}\" {$operator} ?";
+        $this->bindings[]   = $value;
+        $this->hasCondition = true;
+        return $this;
+    }
+
+    public function orWhere(string $column, mixed $value, string $operator = '='): static
+    {
+        return $this->where($column, $value, $operator, 'OR');
+    }
+
+    public function whereLike(string $column, string $value, string $logic = 'AND'): static
+    {
+        return $this->where($column, "%{$value}%", 'LIKE', $logic);
+    }
+
+    public function whereNull(string $column, string $logic = 'AND'): static
+    {
+        $connector = $this->hasCondition ? " $logic " : '';
+        $this->conditions[] = "{$connector}\"{$column}\" IS NULL";
+        $this->hasCondition = true;
+        return $this;
+    }
+
+    public function whereNotNull(string $column, string $logic = 'AND'): static
+    {
+        $connector = $this->hasCondition ? " $logic " : '';
+        $this->conditions[] = "{$connector}\"{$column}\" IS NOT NULL";
+        $this->hasCondition = true;
+        return $this;
+    }
+
+    public function orderBy(string $column, string $direction = 'ASC'): static
+    {
+        $d = strtoupper($direction) === 'DESC' ? 'DESC' : 'ASC';
+        $this->orderClause .= ($this->orderClause ? ', ' : '') . "\"{$column}\" {$d}";
+        return $this;
+    }
+
+    public function groupBy(string $column): static
+    {
+        $this->groupClause .= ($this->groupClause ? ', ' : '') . "\"{$column}\"";
+        return $this;
+    }
+
+    public function limit(int $count, int $offset = 0): static
+    {
+        $this->limitCount  = $count;
+        $this->limitOffset = $offset;
+        return $this;
+    }
+
+    public function count(): int
+    {
+        $db     = LazyMePHP::DB_CONNECTION();
+        $where  = $this->conditions ? 'WHERE ' . implode('', $this->conditions) : '';
+        $result = $db->query("SELECT COUNT(*) AS cnt FROM \"{$this->tableName}\" {$where}", $this->bindings);
+        $row    = $result->fetchArray();
+        return (int)($row['cnt'] ?? 0);
+    }
+
+    /**
+     * @return list<Model>
+     */
+    public function get(): array
+    {
+        $db     = LazyMePHP::DB_CONNECTION();
+        $where  = $this->conditions ? 'WHERE ' . implode('', $this->conditions) : '';
+        $group  = $this->groupClause ? "GROUP BY {$this->groupClause}" : '';
+        $order  = $this->orderClause ? "ORDER BY {$this->orderClause}" : '';
+        $limit  = $this->limitCount  ? $db->limit($this->limitCount, $this->limitOffset) : '';
+
+        $result = $db->query(
+            "SELECT * FROM \"{$this->tableName}\" {$where} {$group} {$order} {$limit}",
+            $this->bindings
+        );
+
+        $rows = [];
+        while ($row = $result->fetchArray()) {
+            $rows[] = new Model($this->tableName, $row);
+        }
+        return $rows;
+    }
+
+    /**
+     * Return only the first matching record, or null.
+     */
+    public function first(): ?Model
+    {
+        $rows = $this->limit(1)->get();
+        return $rows[0] ?? null;
+    }
+
+    /**
+     * Return each row as a plain associative array instead of a Model.
+     *
+     * @param list<string>|null $columns  Columns to include (null = all)
+     * @return list<array<string,mixed>>
+     */
+    public function toArray(?array $columns = null): array
+    {
+        $models = $this->get();
+        return array_map(
+            fn(Model $m) => $columns !== null ? $m->only($columns) : $m->toArray(),
+            $models
+        );
+    }
+}

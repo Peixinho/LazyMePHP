@@ -33,7 +33,7 @@ class JWTAuth
    */
   public function __construct(string|array $secret, string $algo = 'HS256', int $maxAge = 3600, int $leeway = 10)
   {
-    $this->secret = is_array($secret) ? $secret : $secret;
+    $this->secret = $secret;
     $this->algo = $algo;
     $this->maxAge = $maxAge;
     $this->leeway = $leeway;

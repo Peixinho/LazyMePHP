@@ -16,93 +16,44 @@ use Core\Helpers\NotificationHelper;
 
 class CsrfMiddleware implements IMiddleware
 {
-    public function __construct()
-    {
-        error_log("CSRF Middleware class instantiated");
-    }
-
-    /**
-     * Handle CSRF protection
-     *
-     * @param Request $request
-     * @return void
-     */
     public function handle(Request $request): void
     {
-        // Debug: Always log that middleware is being called
-        error_log("=== CSRF MIDDLEWARE CALLED ===");
-        error_log("Method: " . $request->getMethod());
-        error_log("Path: " . $request->getUrl()->getPath());
-        
-        // Skip CSRF for GET requests
         if ($request->getMethod() === 'GET') {
-            error_log("Skipping CSRF for GET request");
             return;
         }
 
-        // Skip CSRF for API endpoints (they use different auth)
         $path = $request->getUrl()->getPath();
         if (strpos($path, '/api/') === 0) {
-            error_log("Skipping CSRF for API endpoint");
             return;
         }
 
-        // Debug: Log that middleware is being executed
-        error_log("CSRF Middleware executing for: " . $request->getMethod() . " " . $path);
-
-        // Get token from request
         $token = $this->getTokenFromRequest($request);
-        
-        // Debug: Log token status
-        error_log("CSRF Token from request: " . ($token ? "Present" : "Missing"));
-        
+
         if (!$token) {
-            error_log("CSRF Error: Token missing");
-            // Set CSRF error notification in session
             NotificationHelper::error('Security token is missing. Please refresh the page and try again.');
-            
-            // Redirect back to referer or home
-            $referer = $request->getHeader('Referer') ?: '/';
-            header("Location: {$referer}");
+            header('Location: ' . self::safeRedirect($request->getHeader('Referer')));
             exit;
         }
 
-        // Verify token
         if (!CsrfProtection::verifyToken($token)) {
-            error_log("CSRF Error: Token invalid");
-            // Set CSRF error notification in session
             NotificationHelper::error('Security token is invalid. Please refresh the page and try again.');
-            
-            // Redirect back to referer or home
-            $referer = $request->getHeader('Referer') ?: '/';
-            header("Location: {$referer}");
+            header('Location: ' . self::safeRedirect($request->getHeader('Referer')));
             exit;
         }
-
-        error_log("CSRF Token validation successful");
     }
 
-    /**
-     * Get CSRF token from request
-     *
-     * @param Request $request
-     * @return string|null
-     */
     private function getTokenFromRequest(Request $request): ?string
     {
-        // Check POST data first
         $token = $request->getInputHandler()->value('csrf_token');
         if ($token) {
             return $token;
         }
 
-        // Check headers
         $token = $request->getHeader('X-CSRF-TOKEN');
         if ($token) {
             return $token;
         }
 
-        // Check Authorization header with CSRF prefix
         $authHeader = $request->getHeader('Authorization');
         if ($authHeader && strpos($authHeader, 'CSRF ') === 0) {
             return substr($authHeader, 5);
@@ -110,4 +61,17 @@ class CsrfMiddleware implements IMiddleware
 
         return null;
     }
-} 
+
+    /** Return a safe same-origin path from an arbitrary URL, falling back to '/'. */
+    private static function safeRedirect(?string $url): string
+    {
+        if (!$url) return '/';
+        $parsed = parse_url($url);
+        $path   = $parsed['path'] ?? '/';
+        // Rebuild as a root-relative path — strip any host/scheme an attacker injected
+        if (!str_starts_with($path, '/')) $path = '/';
+        $query    = isset($parsed['query'])    ? '?' . $parsed['query']    : '';
+        $fragment = isset($parsed['fragment']) ? '#' . $parsed['fragment'] : '';
+        return $path . $query . $fragment;
+    }
+}
