@@ -31,6 +31,13 @@ class BladeFactory
                 return '<?php echo \'<meta name="csrf-token" content="\' . \Core\Security\CsrfProtection::renderInput() . \'">\'; ?>';
             });
 
+            // @pagination($meta) or @pagination($meta, '/base-url')
+            // Renders page navigation from ModelQuery::paginate() metadata.
+            // Returns empty string when there is only one page.
+            self::$blade->directive('pagination', function(string $expression) {
+                return '<?php echo \Core\Http\PaginationRenderer::render(' . $expression . '); ?>';
+            });
+
             // Share global settings here if you want
             self::$blade->share('settings', [
                 'appName' => $_ENV['APP_NAME'] ?? 'LazyMePHP',

@@ -83,7 +83,7 @@
         <div class="welcome-card">
             <h3>Routing</h3>
             <p>Define your application's URLs in the <code>App/Routes/</code> directory. The default routes are located in <code>Routes.php</code>.</p>
-            <a href="/docs/crud-ui" target="_blank">Learn about Routing &rarr;</a>
+            <a href="/docs/routing" target="_blank">Learn about Routing &rarr;</a>
         </div>
         <div class="welcome-card">
             <h3>Models & Database</h3>

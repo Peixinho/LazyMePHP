@@ -5,6 +5,7 @@ const sidebars = {
   docs: [
     'intro',
     'configuration',
+    'routing',
     {
       type: 'category',
       label: 'ORM',
