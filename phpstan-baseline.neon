@@ -61,12 +61,6 @@ parameters:
 			path: App/Core/Helpers/FileUploadHelper.php
 
 		-
-			message: '#^PHPDoc tag @return with type object\|null is not subtype of native type Core\\DB\\ISQL\|null\.$#'
-			identifier: return.phpDocType
-			count: 1
-			path: App/Core/LazyMePHP.php
-
-		-
 			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
 			identifier: notIdentical.alwaysTrue
 			count: 1

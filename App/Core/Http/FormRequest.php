@@ -102,6 +102,12 @@ abstract class FormRequest
         return array_merge($_GET, $_POST);
     }
 
+    /** Override to provide custom error messages: ['field.rule' => 'My message'] */
+    public function customMessages(): array
+    {
+        return [];
+    }
+
     private function runRules(): void
     {
         foreach ($this->rules() as $field => $ruleString) {
@@ -113,7 +119,7 @@ abstract class FormRequest
 
                 if ($ruleName === 'required') {
                     if ($value === null || $value === '') {
-                        $this->addError($field, "The {$field} field is required.");
+                        $this->addError($field, $this->resolveMessage('required', $field, $param));
                         break;
                     }
                     continue;
@@ -129,6 +135,59 @@ abstract class FormRequest
         }
     }
 
+    /**
+     * Resolve a validation message, checking (in order):
+     *  1. customMessages() override for 'field.rule'
+     *  2. customMessages() override for 'rule'
+     *  3. Translation key 'validation.rule_variant'
+     *  4. Hardcoded English fallback
+     */
+    private function resolveMessage(string $rule, string $field, ?string $param = null, string $variant = ''): string
+    {
+        $custom = $this->customMessages();
+
+        // Field-specific override: e.g. 'name.required'
+        if (isset($custom["{$field}.{$rule}"])) {
+            return $custom["{$field}.{$rule}"];
+        }
+        // Rule-wide override: e.g. 'required'
+        if (isset($custom[$rule])) {
+            return str_replace([':field', ':param'], [$field, (string)$param], $custom[$rule]);
+        }
+
+        // Translation lookup
+        $tKey     = 'validation.' . ($variant !== '' ? "{$rule}_{$variant}" : $rule);
+        $tMessage = __($tKey, ['field' => $field, 'param' => (string)$param]);
+
+        // If the translator returned the key itself it means no translation was found
+        if ($tMessage !== $tKey) return $tMessage;
+
+        // Hardcoded English fallbacks (always present even without lang files)
+        return match ($rule) {
+            'required'   => "The {$field} field is required.",
+            'email'      => "The {$field} must be a valid email address.",
+            'url'        => "The {$field} must be a valid URL.",
+            'integer'    => "The {$field} must be an integer.",
+            'numeric'    => "The {$field} must be a number.",
+            'boolean'    => "The {$field} must be true or false.",
+            'alpha'      => "The {$field} may only contain letters.",
+            'alpha_num'  => "The {$field} may only contain letters and numbers.",
+            'confirmed'  => "The {$field} confirmation does not match.",
+            'regex'      => "The {$field} format is invalid.",
+            'in'         => "The selected {$field} is invalid.",
+            'not_in'     => "The selected {$field} is invalid.",
+            'min'        => $variant === 'numeric'
+                              ? "The {$field} must be at least {$param}."
+                              : "The {$field} must be at least {$param} characters.",
+            'max'        => $variant === 'numeric'
+                              ? "The {$field} must not be greater than {$param}."
+                              : "The {$field} must not be more than {$param} characters.",
+            'min_digits' => "The {$field} must have at least {$param} digits.",
+            'max_digits' => "The {$field} must not have more than {$param} digits.",
+            default      => "The {$field} is invalid.",
+        };
+    }
+
     private function parseRule(string $rule): array
     {
         if (!str_contains($rule, ':')) return [$rule, null];
@@ -140,31 +199,31 @@ abstract class FormRequest
     {
         return match ($name) {
             'email'      => filter_var($value, FILTER_VALIDATE_EMAIL) ? null
-                              : "The {$field} must be a valid email address.",
+                              : $this->resolveMessage('email', $field, $param),
             'url'        => filter_var($value, FILTER_VALIDATE_URL) ? null
-                              : "The {$field} must be a valid URL.",
+                              : $this->resolveMessage('url', $field, $param),
             'integer'    => (is_numeric($value) && floor((float)$value) == (float)$value) ? null
-                              : "The {$field} must be an integer.",
+                              : $this->resolveMessage('integer', $field, $param),
             'numeric'    => is_numeric($value) ? null
-                              : "The {$field} must be a number.",
+                              : $this->resolveMessage('numeric', $field, $param),
             'boolean'    => in_array($value, [true, false, 1, 0, '1', '0', 'true', 'false'], true) ? null
-                              : "The {$field} must be true or false.",
+                              : $this->resolveMessage('boolean', $field, $param),
             'alpha'      => ctype_alpha((string)$value) ? null
-                              : "The {$field} may only contain letters.",
+                              : $this->resolveMessage('alpha', $field, $param),
             'alpha_num'  => ctype_alnum((string)$value) ? null
-                              : "The {$field} may only contain letters and numbers.",
+                              : $this->resolveMessage('alpha_num', $field, $param),
             'min'        => $this->applyMin($field, $value, (int)$param),
             'max'        => $this->applyMax($field, $value, (int)$param),
             'in'         => in_array($value, array_map('trim', explode(',', $param ?? '')), true) ? null
-                              : "The {$field} must be one of: {$param}.",
+                              : $this->resolveMessage('in', $field, $param),
             'not_in'     => !in_array($value, array_map('trim', explode(',', $param ?? '')), true) ? null
-                              : "The {$field} must not be one of: {$param}.",
+                              : $this->resolveMessage('not_in', $field, $param),
             'confirmed'  => $this->applyConfirmed($field, $value),
             'regex'      => $this->applyRegex($field, $value, $param),
             'min_digits' => (is_numeric($value) && strlen((string)(int)$value) >= (int)$param) ? null
-                              : "The {$field} must have at least {$param} digits.",
+                              : $this->resolveMessage('min_digits', $field, $param),
             'max_digits' => (is_numeric($value) && strlen((string)(int)$value) <= (int)$param) ? null
-                              : "The {$field} must not have more than {$param} digits.",
+                              : $this->resolveMessage('max_digits', $field, $param),
             default      => null,
         };
     }
@@ -172,38 +231,35 @@ abstract class FormRequest
     private function applyRegex(string $field, mixed $value, ?string $pattern): ?string
     {
         if ($pattern === null || $pattern === '') {
-            return "The {$field} regex pattern is missing.";
+            return $this->resolveMessage('regex_missing', $field);
         }
         $result = @preg_match($pattern, (string)$value);
         if ($result === false) {
-            return "The {$field} has an invalid regex pattern.";
+            return $this->resolveMessage('regex_invalid', $field);
         }
-        return $result === 1 ? null : "The {$field} format is invalid.";
+        return $result === 1 ? null : $this->resolveMessage('regex', $field, $pattern);
     }
 
     private function applyConfirmed(string $field, mixed $value): ?string
     {
         $confirmation = $this->input["{$field}_confirmation"] ?? null;
-        return $value === $confirmation ? null
-            : "The {$field} confirmation does not match.";
+        return $value === $confirmation ? null : $this->resolveMessage('confirmed', $field);
     }
 
     private function applyMin(string $field, mixed $value, int $param): ?string
     {
         if (is_numeric($value)) {
-            return (float)$value >= $param ? null : "The {$field} must be at least {$param}.";
+            return (float)$value >= $param ? null : $this->resolveMessage('min', $field, (string)$param, 'numeric');
         }
-        return strlen((string)$value) >= $param ? null
-            : "The {$field} must be at least {$param} characters.";
+        return strlen((string)$value) >= $param ? null : $this->resolveMessage('min', $field, (string)$param, 'string');
     }
 
     private function applyMax(string $field, mixed $value, int $param): ?string
     {
         if (is_numeric($value)) {
-            return (float)$value <= $param ? null : "The {$field} must not be greater than {$param}.";
+            return (float)$value <= $param ? null : $this->resolveMessage('max', $field, (string)$param, 'numeric');
         }
-        return strlen((string)$value) <= $param ? null
-            : "The {$field} must not be more than {$param} characters.";
+        return strlen((string)$value) <= $param ? null : $this->resolveMessage('max', $field, (string)$param, 'string');
     }
 
     private function addError(string $field, string $message): void

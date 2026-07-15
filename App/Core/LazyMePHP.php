@@ -163,6 +163,12 @@ class LazyMePHP
    *
    * @return ?object The database connection object (MYSQL, MSSQL, or SQLITE instance), or null on failure.
    */
+  /** Override the DB connection — useful for tests (e.g. SQLite :memory:). */
+  static function setDBConnection(?\Core\DB\ISQL $connection): void
+  {
+    self::$_db_connection = $connection;
+  }
+
   static function DB_CONNECTION(): ?\Core\DB\ISQL
   {
     if (!self::$_db_connection) {

@@ -25,6 +25,23 @@ namespace Core\Container;
  */
 class Container
 {
+    private static ?self $globalInstance = null;
+
+    /** Return the shared global container (used by the app() helper). */
+    public static function getInstance(): self
+    {
+        if (self::$globalInstance === null) {
+            self::$globalInstance = new self();
+        }
+        return self::$globalInstance;
+    }
+
+    /** Replace the global instance (useful for testing). */
+    public static function setInstance(?self $container): void
+    {
+        self::$globalInstance = $container;
+    }
+
     /** @var array<string, array{concrete: \Closure|string|null, singleton: bool}> */
     private array $bindings = [];
 

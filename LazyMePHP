@@ -93,6 +93,8 @@ class LazyMeCLI {
         'queue:flush'      => 'Delete all failed jobs  [--queue=default]',
         'route:list'       => 'Print all registered routes',
         'optimize'         => 'Cache schema + optimize autoloader for production',
+        'down'             => 'Put the app in maintenance mode  [--message="..."] [--allow=IP]',
+        'up'               => 'Take the app out of maintenance mode',
     ];
 
     public function run(array $argv): void {
@@ -112,13 +114,17 @@ class LazyMeCLI {
         $triesArg      = 3;
         $stopWhenEmpty = false;
         $tableArg      = null;
+        $maintenanceMessage = null;
+        $maintenanceAllow   = [];
         foreach ($argv as $arg) {
-            if (preg_match('/^--step=(\d+)$/',  $arg, $m)) { $step      = (int)$m[1]; }
-            if (preg_match('/^--class=(.+)$/',   $arg, $m)) { $classArg  = $m[1]; }
-            if (preg_match('/^--queue=(.+)$/',   $arg, $m)) { $queueArg  = $m[1]; }
-            if (preg_match('/^--sleep=(\d+)$/',  $arg, $m)) { $sleepArg  = (int)$m[1]; }
-            if (preg_match('/^--tries=(\d+)$/',  $arg, $m)) { $triesArg  = (int)$m[1]; }
-            if (preg_match('/^--table=(.+)$/',   $arg, $m)) { $tableArg  = $m[1]; }
+            if (preg_match('/^--step=(\d+)$/',    $arg, $m)) { $step               = (int)$m[1]; }
+            if (preg_match('/^--class=(.+)$/',     $arg, $m)) { $classArg           = $m[1]; }
+            if (preg_match('/^--queue=(.+)$/',     $arg, $m)) { $queueArg           = $m[1]; }
+            if (preg_match('/^--sleep=(\d+)$/',    $arg, $m)) { $sleepArg           = (int)$m[1]; }
+            if (preg_match('/^--tries=(\d+)$/',    $arg, $m)) { $triesArg           = (int)$m[1]; }
+            if (preg_match('/^--table=(.+)$/',     $arg, $m)) { $tableArg           = $m[1]; }
+            if (preg_match('/^--message=(.+)$/',   $arg, $m)) { $maintenanceMessage = $m[1]; }
+            if (preg_match('/^--allow=(.+)$/',     $arg, $m)) { $maintenanceAllow[] = $m[1]; }
             if ($arg === '--stop-when-empty') { $stopWhenEmpty = true; }
         }
 
@@ -289,6 +295,12 @@ class LazyMeCLI {
                 break;
             case 'optimize':
                 $this->optimize();
+                break;
+            case 'down':
+                $this->maintenanceDown($maintenanceMessage, $maintenanceAllow);
+                break;
+            case 'up':
+                $this->maintenanceUp();
                 break;
             case 'schedule:run':
                 $this->scheduleRun();
@@ -682,6 +694,32 @@ class LazyMeCLI {
         @exec('composer dump-autoload --optimize --quiet 2>&1', $out, $code);
         foreach ($out as $line) echo "  $line\n";
         echo $code === 0 ? "Done.\n" : "Composer optimize failed (exit $code).\n";
+    }
+
+    private function maintenanceFile(): string {
+        return __DIR__ . '/.maintenance';
+    }
+
+    private function maintenanceDown(?string $message, array $allow): void {
+        $config = [];
+        if ($message !== null) $config['message'] = $message;
+        if (!empty($allow))    $config['allow']   = $allow;
+
+        file_put_contents($this->maintenanceFile(), json_encode($config, JSON_PRETTY_PRINT));
+        echo "Application is now in maintenance mode.\n";
+        if ($message) echo "  Message : {$message}\n";
+        if (!empty($allow)) echo "  Allowed : " . implode(', ', $allow) . "\n";
+        echo "Run 'php LazyMePHP up' to take the application back online.\n";
+    }
+
+    private function maintenanceUp(): void {
+        $file = $this->maintenanceFile();
+        if (!file_exists($file)) {
+            echo "Application is already live (no .maintenance file found).\n";
+            return;
+        }
+        unlink($file);
+        echo "Application is now live.\n";
     }
 
     private function schemaClear(?string $tableName): void {
