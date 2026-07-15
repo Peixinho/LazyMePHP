@@ -143,6 +143,77 @@ $count = Model::query('users')->where('active', 1)->count();
 $row = Model::query('users')->where('email', $email)->first();
 ```
 
+Other `where` variants:
+
+```php
+->whereLike('name', '%alice%')
+->whereNull('deleted_at')
+->whereNotNull('verified_at')
+->whereIn('status', ['active', 'trial'])
+->whereRaw('"score" > ? OR "admin" = 1', [50])   // raw SQL, AND by default
+->whereRaw('"role" = ?', ['editor'], 'OR')         // change connector
+```
+
+### Joins
+
+```php
+$rows = Model::query('orders')
+    ->join('customers', 'orders.customer_id', 'customers.id')
+    ->leftJoin('coupons', 'orders.coupon_id', 'coupons.id')
+    ->select('orders.*', 'customers.name AS customer_name', 'coupons.code AS coupon')
+    ->where('orders.status', 'open')
+    ->orderBy('orders.created_at', 'DESC')
+    ->get();
+
+// Columns from joined tables and aliases come through as model properties:
+echo $rows[0]->customer_name;
+echo $rows[0]->coupon;       // null when left-join partner is missing
+```
+
+Available join methods: `join()` (INNER), `leftJoin()`, `rightJoin()`.
+
+### Column selection and aggregates
+
+```php
+// Restrict columns
+Model::query('users')->select('id', 'name', 'email')->get();
+
+// Aggregate expressions
+$rows = Model::query('orders')
+    ->select('customer_id', 'SUM(total) AS revenue', 'COUNT(*) AS cnt')
+    ->groupBy('customer_id')
+    ->having('revenue', 1000, '>=')
+    ->orderBy('revenue', 'DESC')
+    ->get();
+
+echo $rows[0]->revenue;
+echo $rows[0]->cnt;
+```
+
+`having(column, value, operator)` defaults to `=`. Runs after `GROUP BY`.
+
+### Raw queries and `Model::hydrate()`
+
+For SQL that `ModelQuery` cannot express — CTEs, `UNION`, window functions, subqueries in `FROM`:
+
+```php
+$result = LazyMePHP::DB_CONNECTION()->query('
+    WITH ranked AS (
+        SELECT *, RANK() OVER (PARTITION BY dept_id ORDER BY salary DESC) AS rnk
+        FROM "employees"
+    )
+    SELECT * FROM ranked WHERE rnk = 1
+', []);
+
+$rows = [];
+while ($row = $result->fetchArray()) $rows[] = $row;
+
+$models = Model::hydrate('employees', $rows);
+// schema columns + computed aliases (rnk) all accessible as properties
+echo $models[0]->name;
+echo $models[0]->rnk;
+```
+
 ### Pagination
 
 ```php
