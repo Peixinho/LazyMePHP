@@ -153,6 +153,75 @@ abstract class Command
         return $value;
     }
 
+    // -------------------------------------------------------------------------
+    // Output helpers
+    // -------------------------------------------------------------------------
+
+    /**
+     * Render a table to stdout.
+     *
+     *   $this->table(['ID', 'Name', 'Email'], [
+     *       [1, 'Alice', 'alice@example.com'],
+     *       [2, 'Bob',   'bob@example.com'],
+     *   ]);
+     */
+    protected function table(array $headers, array $rows): void
+    {
+        $all     = array_merge([$headers], $rows);
+        $widths  = [];
+
+        foreach (array_keys($headers) as $col) {
+            $widths[$col] = mb_strlen((string)$headers[$col], 'UTF-8');
+        }
+
+        foreach ($rows as $row) {
+            $row = array_values($row);
+            foreach ($row as $col => $cell) {
+                $len = mb_strlen((string)$cell, 'UTF-8');
+                if (!isset($widths[$col]) || $len > $widths[$col]) {
+                    $widths[$col] = $len;
+                }
+            }
+        }
+
+        $separator = '+' . implode('+', array_map(fn($w) => str_repeat('-', $w + 2), $widths)) . '+';
+
+        $renderRow = function (array $cells) use ($widths): string {
+            $cells = array_values($cells);
+            $parts = [];
+            foreach ($widths as $col => $width) {
+                $cell  = (string)($cells[$col] ?? '');
+                $parts[] = ' ' . $cell . str_repeat(' ', $width - mb_strlen($cell, 'UTF-8')) . ' ';
+            }
+            return '|' . implode('|', $parts) . '|';
+        };
+
+        echo $separator . "\n";
+        echo $renderRow($headers) . "\n";
+        echo $separator . "\n";
+        foreach ($rows as $row) {
+            echo $renderRow($row) . "\n";
+        }
+        echo $separator . "\n";
+    }
+
+    /**
+     * Create a progress bar.
+     *
+     *   $bar = $this->progressBar(count($items), 'Processing');
+     *   foreach ($items as $item) {
+     *       process($item);
+     *       $bar->advance();
+     *   }
+     *   $bar->finish();
+     */
+    protected function progressBar(int $total, string $label = ''): \Core\Console\ProgressBar
+    {
+        return new \Core\Console\ProgressBar($total, $label);
+    }
+
+    // -------------------------------------------------------------------------
+
     private function readLine(): string
     {
         if (function_exists('readline')) {

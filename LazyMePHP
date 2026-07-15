@@ -84,6 +84,7 @@ class LazyMeCLI {
         'make:mail'        => 'Scaffold a new Mailable class  [name]',
         'make:test'        => 'Scaffold a new Pest test  [name]',
         'make:command'     => 'Scaffold a new console command  [name]',
+        'make:middleware'   => 'Scaffold a new middleware class  [name]',
         'make:kernel'      => 'Scaffold App/Console/Kernel.php (task scheduler entry point)',
         'schedule:run'     => 'Run scheduled tasks that are due now',
         'queue:work'       => 'Start the queue worker  [--queue=default --sleep=3 --tries=3 --stop-when-empty]',
@@ -268,6 +269,13 @@ class LazyMeCLI {
                     exit(1);
                 }
                 $this->makeCommand($tableName);
+                break;
+            case 'make:middleware':
+                if (!$tableName) {
+                    echo "Usage: php lazymephp make:middleware <Name>\n";
+                    exit(1);
+                }
+                $this->makeMiddleware($tableName);
                 break;
             case 'make:kernel':
                 $this->makeKernel();
@@ -554,6 +562,40 @@ class LazyMeCLI {
         if (file_exists($file)) { echo "FormRequest already exists: $file\n"; exit(1); }
         file_put_contents($file, "<?php\n\ndeclare(strict_types=1);\n\nuse Core\\Http\\FormRequest;\n\nclass {$name} extends FormRequest\n{\n    public function rules(): array\n    {\n        return [\n            // 'name' => 'required|min:2|max:255',\n            // 'email' => 'required|email',\n        ];\n    }\n\n    public function authorize(): bool\n    {\n        return true;\n    }\n}\n");
         echo "Created: $file\n";
+    }
+
+    private function makeMiddleware(string $name): void {
+        $dir  = __DIR__ . '/App/Http/Middleware';
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+        $file = "$dir/{$name}.php";
+        if (file_exists($file)) { echo "Middleware already exists: $file\n"; exit(1); }
+        file_put_contents($file, <<<PHP
+<?php
+
+declare(strict_types=1);
+
+use Core\Http\Request;
+
+class {$name}
+{
+    public function handle(Request \$request, callable \$next): mixed
+    {
+        // Do work before the next handler runs:
+        // if (!Auth::check()) {
+        //     abort(401);
+        // }
+
+        \$response = \$next(\$request);
+
+        // Optionally inspect / modify \$response here.
+
+        return \$response;
+    }
+}
+PHP);
+        echo "Created: $file\n";
+        echo "Register it in your pipeline:\n";
+        echo "  Pipeline::send(\$request)->through([{$name}::class])->then(\$handler);\n";
     }
 
     private function makeKernel(): void {

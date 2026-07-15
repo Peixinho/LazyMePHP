@@ -98,6 +98,30 @@ if (!function_exists('url')) {
     }
 }
 
+if (!function_exists('route')) {
+    /**
+     * Generate a URL by named route.
+     *
+     * Requires the route to have been registered with ->setName():
+     *
+     *   SimpleRouter::get('/users/{id}', fn($id) => ...)->setName('users.show');
+     *
+     *   route('users.show', ['id' => 42])  // "/users/42"
+     *   route('users.index')               // "/users"
+     *
+     * @param array<string, mixed>|null $params  Route parameter substitutions
+     * @param array<string, mixed>|null $query   Query-string parameters appended as ?key=value
+     */
+    function route(string $name, ?array $params = null, ?array $query = null): string
+    {
+        if (!class_exists(\Pecee\SimpleRouter\SimpleRouter::class)) {
+            return '/';
+        }
+        $url = \Pecee\SimpleRouter\SimpleRouter::getUrl($name, $params, $query);
+        return (string)$url;
+    }
+}
+
 // -------------------------------------------------------------------------
 // Date / time helper
 // -------------------------------------------------------------------------
