@@ -401,6 +401,41 @@ class ModelQuery
     }
 
     /**
+     * Return true if any row matches the current conditions.
+     *
+     *   if (Model::query('users')->where('email', $email)->exists()) { ... }
+     */
+    public function exists(): bool
+    {
+        return $this->count() > 0;
+    }
+
+    /**
+     * Return a flat array of values from a single column.
+     *
+     *   $emails = Model::query('users')->where('active', 1)->pluck('email');
+     *   // ['alice@example.com', 'bob@example.com']
+     *
+     * @return list<mixed>
+     */
+    public function pluck(string $column): array
+    {
+        $rows = $this->select("\"{$column}\"")-> get();
+        return array_map(fn(Model $m) => $m->$column, $rows);
+    }
+
+    /**
+     * Return a single column value from the first matching row, or null.
+     *
+     *   $name = Model::query('users')->where('id', 5)->value('name');
+     */
+    public function value(string $column): mixed
+    {
+        $row = $this->select("\"{$column}\"")->first();
+        return $row?->$column;
+    }
+
+    /**
      * Return only the first matching record, or null.
      */
     public function first(): ?Model
@@ -641,6 +676,7 @@ class ModelQuery
         $params = array_merge(array_values($data), $this->bindings);
 
         $db->query("UPDATE \"{$this->tableName}\" SET {$set} {$where}", $params);
+        self::invalidateTable($this->tableName);
     }
 
     /**
@@ -655,6 +691,7 @@ class ModelQuery
         $db    = LazyMePHP::DB_CONNECTION();
         $where = $this->conditions ? 'WHERE ' . implode('', $this->conditions) : '';
         $db->query("DELETE FROM \"{$this->tableName}\" {$where}", $this->bindings);
+        self::invalidateTable($this->tableName);
     }
 
     // -------------------------------------------------------------------------
@@ -666,6 +703,7 @@ class ModelQuery
         if ($this->cacheKey !== null) return $this->cacheKey;
         $parts = [
             $this->tableName,
+            self::tableVersion($this->tableName), // invalidated on every write
             implode('', $this->conditions),
             implode(',', $this->bindings),
             implode(',', $this->selectColumns),
@@ -691,7 +729,28 @@ class ModelQuery
         \Core\Cache\Cache::set($this->resolvedCacheKey(), $data, $this->cacheTtl);
     }
 
-    /** Flush the query cache (delegates to the configured cache driver). */
+    /**
+     * Read the monotonic version counter for a table.
+     * The key lives in cache; if absent (first use or after flush) it returns 0.
+     */
+    private static function tableVersion(string $table): int
+    {
+        return (int) \Core\Cache\Cache::get("tv:{$table}");
+    }
+
+    /**
+     * Bump the version counter for a table, busting all cached queries for it.
+     * Called automatically by update() and bulkDelete(); also accessible statically
+     * so Model::Save() and Model::Delete() can invalidate from outside this class.
+     */
+    public static function invalidateTable(string $table): void
+    {
+        $key     = "tv:{$table}";
+        $current = (int) \Core\Cache\Cache::get($key);
+        \Core\Cache\Cache::set($key, $current + 1, 86400);
+    }
+
+    /** Flush the entire query cache (delegates to the configured cache driver). */
     public static function clearMemCache(): void
     {
         \Core\Cache\Cache::flush();

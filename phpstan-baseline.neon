@@ -1,34 +1,10 @@
 parameters:
 	ignoreErrors:
 		-
-			message: '#^Method Core\\Auth\\RBAC\:\:rolesFor\(\) should return list\<string\> but returns list\<int\<0, max\>\>\.$#'
-			identifier: return.type
+			message: '#^Parameter \#1 \$array \(list\<string\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
 			count: 1
 			path: App/Core/Auth/RBAC.php
-
-		-
-			message: '#^Only iterables can be unpacked, string given in argument \#2\.$#'
-			identifier: argument.unpackNonIterable
-			count: 1
-			path: App/Core/Auth/RBAC.php
-
-		-
-			message: '#^Method Core\\CrudController\:\:forTable\(\) should return static\(Core\\CrudController\) but returns Core\\GenericCrudController\.$#'
-			identifier: return.type
-			count: 1
-			path: App/Core/CrudController.php
-
-		-
-			message: '#^Method Core\\CrudController\:\:forTable\(\) should return static\(Core\\CrudController\) but returns object\.$#'
-			identifier: return.type
-			count: 1
-			path: App/Core/CrudController.php
-
-		-
-			message: '#^Call to an undefined method Core\\DB\\IDBObject\:\:fetchAll\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: App/Core/DB/ListDB.php
 
 		-
 			message: '#^Comparison operation "\>" between int\<1, max\> and 0 is always true\.$#'
@@ -53,12 +29,6 @@ parameters:
 			identifier: property.onlyWritten
 			count: 1
 			path: App/Core/Debug/DebugToolbar.php
-
-		-
-			message: '#^Call to an undefined method Core\\DB\\IDBObject\:\:GetCount\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: App/Core/ErrorHandler.php
 
 		-
 			message: '#^Instanceof between Throwable and Pecee\\SimpleRouter\\Exceptions\\ClassNotFoundHttpException will always evaluate to false\.$#'
@@ -113,18 +83,6 @@ parameters:
 			identifier: method.unused
 			count: 1
 			path: App/Core/Queue/RedisDriver.php
-
-		-
-			message: '#^Call to an undefined method Core\\DB\\IDBObject\:\:GetCount\(\)\.$#'
-			identifier: method.notFound
-			count: 2
-			path: App/Core/Security/RateLimiter.php
-
-		-
-			message: '#^Call to an undefined method Core\\DB\\IDBObject\:\:fetchAll\(\)\.$#'
-			identifier: method.notFound
-			count: 2
-			path: App/Core/Security/RateLimiter.php
 
 		-
 			message: '#^Deprecated in PHP 8\.4\: Parameter \#2 \$identifier \(string\) is implicitly nullable via default value null\.$#'

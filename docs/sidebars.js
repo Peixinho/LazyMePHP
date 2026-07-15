@@ -51,6 +51,8 @@ const sidebars = {
       ],
     },
     'cache',
+    'mail',
+    'notifications',
     'queue',
     'storage',
     'tenancy',

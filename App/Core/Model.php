@@ -831,6 +831,8 @@ class Model implements IDB
         ModelEvents::fire($this->tableName, $method === 'I' ? 'created' : 'updated', $this);
         ModelEvents::fire($this->tableName, 'saved', $this);
 
+        ModelQuery::invalidateTable($this->tableName);
+
         return $ret;
     }
 
@@ -853,6 +855,7 @@ class Model implements IDB
         $this->exists = false;
 
         ModelEvents::fire($this->tableName, 'deleted', $this);
+        ModelQuery::invalidateTable($this->tableName);
         return true;
     }
 

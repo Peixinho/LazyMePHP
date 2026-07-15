@@ -27,7 +27,7 @@ use Core\LazyMePHP;
  */
 class RBAC
 {
-    /** @var array<string, list<string>> roles → permissions cache, keyed by user_id */
+    /** @var array<string, array<string, list<string>>> user_id → role_name → permissions */
     private static array $cache = [];
 
     // -------------------------------------------------------------------------
@@ -143,7 +143,7 @@ class RBAC
     public static function rolesFor(mixed $userId): array
     {
         self::loadFor($userId);
-        return array_keys(self::$cache[(string)$userId] ?? []);
+        return array_values(array_map('strval', array_keys(self::$cache[(string)$userId] ?? [])));
     }
 
     /** @return list<string> all permissions for the given user ID (across all roles) */

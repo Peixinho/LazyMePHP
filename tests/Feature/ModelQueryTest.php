@@ -312,3 +312,67 @@ describe('ModelQuery::chunk()', function () {
         expect($count)->toBe(2);
     });
 });
+
+describe('ModelQuery::exists()', function () {
+    it('returns true when rows match', function () {
+        expect(Model::query('users')->where('name', 'Alice')->exists())->toBeTrue();
+    });
+
+    it('returns false when no rows match', function () {
+        expect(Model::query('users')->where('name', 'Nobody')->exists())->toBeFalse();
+    });
+});
+
+describe('ModelQuery::pluck()', function () {
+    it('returns a flat array of column values', function () {
+        $names = Model::query('users')->orderBy('name')->pluck('name');
+        expect($names)->toBe(['Alice', 'Bob', 'Carol', 'Dave']);
+    });
+
+    it('respects where conditions', function () {
+        $names = Model::query('users')->where('dept_id', 1)->orderBy('name')->pluck('name');
+        expect($names)->toBe(['Alice', 'Bob']);
+    });
+});
+
+describe('ModelQuery::value()', function () {
+    it('returns the column value from the first row', function () {
+        $email = Model::query('users')->orderBy('name')->value('email');
+        expect($email)->toBe('alice@example.com');
+    });
+
+    it('returns null when no rows match', function () {
+        $val = Model::query('users')->where('name', 'Nobody')->value('email');
+        expect($val)->toBeNull();
+    });
+});
+
+describe('ModelQuery cache invalidation', function () {
+    it('busts remember() cache after update()', function () {
+        \Core\Cache\Cache::swap(new \Core\Cache\ArrayStore());
+
+        $before = Model::query('users')->where('name', 'Alice')->remember(60)->get();
+        expect($before[0]->email)->toBe('alice@example.com');
+
+        Model::query('users')->where('name', 'Alice')->update(['email' => 'new@example.com']);
+
+        $after = Model::query('users')->where('name', 'Alice')->remember(60)->get();
+        expect($after[0]->email)->toBe('new@example.com');
+
+        \Core\Cache\Cache::reset();
+    });
+
+    it('busts remember() cache after bulkDelete()', function () {
+        \Core\Cache\Cache::swap(new \Core\Cache\ArrayStore());
+
+        $before = Model::query('users')->remember(60)->count();
+        expect($before)->toBe(4);
+
+        Model::query('users')->where('name', 'Dave')->bulkDelete();
+
+        $after = Model::query('users')->remember(60)->count();
+        expect($after)->toBe(3);
+
+        \Core\Cache\Cache::reset();
+    });
+});

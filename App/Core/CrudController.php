@@ -85,7 +85,7 @@ abstract class CrudController
      * Return a controller for $table, using a custom subclass from the
      * Controllers\ namespace if one exists, otherwise GenericCrudController.
      */
-    public static function forTable(string $table, Request $request): static
+    public static function forTable(string $table, Request $request): self
     {
         $customClass = "Controllers\\$table";
         if (class_exists($customClass)) {

@@ -174,7 +174,9 @@ abstract class IDBObject
     abstract public function setStatement(\PDOStatement $statement): void;
     abstract public function fetchObject(): ?object;
     abstract public function fetchArray(): ?array;
+    abstract public function fetchAll(): array;
     abstract public function getRowCount(): int;
+    abstract public function GetCount(): int;
 }
 
 /**
