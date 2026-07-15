@@ -43,4 +43,14 @@ abstract class Relationship
      * @param list<Model> $models
      */
     abstract public function eagerLoad(array $models, string $name): void;
+
+    /**
+     * Return a correlated SQL subquery that counts related rows for a given parent table.
+     * Used by ModelQuery::withCount() to add "{relation}_count" columns inline.
+     */
+    abstract public function countSubquery(string $parentTable): string;
+
+    public function getRelatedTable(): string { return $this->relatedTable; }
+    public function getForeignKey(): string   { return $this->foreignKey; }
+    public function getLocalKey(): string     { return $this->localKey; }
 }

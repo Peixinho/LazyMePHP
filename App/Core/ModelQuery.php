@@ -36,6 +36,8 @@ class ModelQuery
     private bool $hasCondition = false;
     /** @var list<string> relation names to eager-load */
     private array $with = [];
+    /** @var list<string> relation names to count via subquery */
+    private array $withCount = [];
     private bool $includeTrashed = false;
     private bool $onlyTrashedFlag = false;
     private int $cacheTtl = 0;
@@ -286,6 +288,19 @@ class ModelQuery
         return $this;
     }
 
+    /**
+     * Add a correlated COUNT subquery for each named relation.
+     * The result is available as `$model->relation_count` (int).
+     *
+     *   User::query()->withCount('posts', 'comments')->get();
+     *   // $user->posts_count, $user->comments_count
+     */
+    public function withCount(string ...$relations): static
+    {
+        $this->withCount = array_merge($this->withCount, $relations);
+        return $this;
+    }
+
     public function orderBy(string $column, string $direction = 'ASC'): static
     {
         $d = strtoupper($direction) === 'DESC' ? 'DESC' : 'ASC';
@@ -370,7 +385,23 @@ class ModelQuery
             }
         }
 
-        $select = $this->selectColumns ? implode(', ', $this->selectColumns) : "\"{$this->tableName}\".*";
+        // Build withCount subqueries — correlated SELECT COUNT(*) per relation
+        $countAliases   = [];
+        $countSubqueries = [];
+        if (!empty($this->withCount)) {
+            $dummy = new $this->modelClass($this->tableName, null);
+            foreach ($this->withCount as $relation) {
+                if (!method_exists($dummy, $relation)) continue;
+                $rel = $dummy->$relation();
+                if (!($rel instanceof \Core\Relationships\Relationship)) continue;
+                $alias             = $relation . '_count';
+                $countAliases[]    = $alias;
+                $countSubqueries[] = $rel->countSubquery($this->tableName) . " AS \"{$alias}\"";
+            }
+        }
+
+        $base   = $this->selectColumns ? implode(', ', $this->selectColumns) : "\"{$this->tableName}\".*";
+        $select = empty($countSubqueries) ? $base : $base . ', ' . implode(', ', $countSubqueries);
         $joins  = $this->joins ? ' ' . implode(' ', $this->joins) : '';
         $where  = $conds ? 'WHERE ' . implode('', $conds) : '';
         $group  = $this->groupClause ? "GROUP BY {$this->groupClause}" : '';
@@ -388,7 +419,17 @@ class ModelQuery
         $class = $this->modelClass;
         $rows  = [];
         while ($row = $result->fetchArray()) {
-            $rows[] = new $class($this->tableName, $row);
+            // Strip count aliases before constructing the model (they are not schema columns)
+            $counts = [];
+            foreach ($countAliases as $alias) {
+                $counts[$alias] = (int)($row[$alias] ?? 0);
+                unset($row[$alias]);
+            }
+            $model = new $class($this->tableName, $row);
+            foreach ($counts as $alias => $val) {
+                $model->setRelation($alias, $val);
+            }
+            $rows[] = $model;
         }
 
         // Eager-load relationships — one batch query per relation, no N+1

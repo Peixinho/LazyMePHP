@@ -102,6 +102,14 @@ class BelongsToMany extends Relationship
         }
     }
 
+    public function countSubquery(string $parentTable): string
+    {
+        return "(SELECT COUNT(*) FROM \"{$this->pivotTable}\" WHERE \"{$this->pivotTable}\".\"{$this->foreignKey}\" = \"{$parentTable}\".\"{$this->localKey}\")";
+    }
+
+    public function getPivotTable(): string        { return $this->pivotTable; }
+    public function getRelatedForeignKey(): string { return $this->relatedForeignKey; }
+
     private function relatedPk(): string
     {
         if ($this->relatedKey !== null) return $this->relatedKey;

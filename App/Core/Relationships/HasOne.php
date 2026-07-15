@@ -49,6 +49,11 @@ class HasOne extends Relationship
         }
     }
 
+    public function countSubquery(string $parentTable): string
+    {
+        return "(SELECT COUNT(*) FROM \"{$this->relatedTable}\" WHERE \"{$this->relatedTable}\".\"{$this->foreignKey}\" = \"{$parentTable}\".\"{$this->localKey}\")";
+    }
+
     private function parentKeys(array $models, string $key): array
     {
         return array_values(array_unique(

@@ -83,6 +83,8 @@ class LazyMeCLI {
         'make:request'     => 'Scaffold a new FormRequest  [name]',
         'make:mail'        => 'Scaffold a new Mailable class  [name]',
         'make:test'        => 'Scaffold a new Pest test  [name]',
+        'make:command'     => 'Scaffold a new console command  [name]',
+        'schedule:run'     => 'Run scheduled tasks that are due now',
         'queue:work'       => 'Start the queue worker  [--queue=default --sleep=3 --tries=3 --stop-when-empty]',
         'queue:size'       => 'Show number of pending jobs  [--queue=default]',
         'queue:failed'     => 'List failed jobs  [--queue=default]',
@@ -246,6 +248,13 @@ class LazyMeCLI {
                 }
                 $this->makeTest($tableName);
                 break;
+            case 'make:command':
+                if (!$tableName) {
+                    echo "Usage: php lazymephp make:command <Name>\n";
+                    exit(1);
+                }
+                $this->makeCommand($tableName);
+                break;
             case 'queue:work':
                 (new \Core\Queue\Worker())->run($queueArg, $sleepArg, $triesArg, $stopWhenEmpty);
                 break;
@@ -270,11 +279,61 @@ class LazyMeCLI {
             case 'optimize':
                 $this->optimize();
                 break;
+            case 'schedule:run':
+                $this->scheduleRun();
+                break;
             default:
+                // Check user-defined commands in App/Console/Commands/
+                if ($this->runUserCommand($command, array_slice($argv, 2))) {
+                    break;
+                }
                 echo "Unknown command: $command\n";
                 $this->showHelp();
                 exit(1);
         }
+    }
+
+    private function scheduleRun(): void {
+        $kernelFile = __DIR__ . '/App/Console/Kernel.php';
+        if (!file_exists($kernelFile)) {
+            echo "No App/Console/Kernel.php found. Nothing to run.\n";
+            return;
+        }
+        require_once $kernelFile;
+        $kernel   = new \App\Console\Kernel();
+        $schedule = new \Core\Console\Schedule();
+        $kernel->schedule($schedule);
+        $now  = new \DateTimeImmutable();
+        $ran  = 0;
+        foreach ($schedule->tasks() as $task) {
+            if (!$task->isDue($now)) continue;
+            $desc = $task->getDescription() ?: $task->getCronExpression();
+            echo "Running: {$desc}\n";
+            try {
+                $task->run();
+                $ran++;
+            } catch (\Throwable $e) {
+                echo "  ERROR: {$e->getMessage()}\n";
+            }
+        }
+        echo $ran > 0 ? "{$ran} task(s) ran.\n" : "No tasks due.\n";
+    }
+
+    private function runUserCommand(string $name, array $args): bool {
+        $dir = __DIR__ . '/App/Console/Commands';
+        if (!is_dir($dir)) return false;
+        foreach (glob($dir . '/*.php') ?: [] as $file) {
+            require_once $file;
+        }
+        foreach (get_declared_classes() as $class) {
+            if (!is_subclass_of($class, \Core\Console\Command::class)) continue;
+            $cmd = new $class();
+            if ($cmd->getName() !== $name) continue;
+            $cmd->setArgs($args);
+            $cmd->handle();
+            return true;
+        }
+        return false;
     }
 
     private function showHelp(): void {
@@ -434,6 +493,17 @@ class LazyMeCLI {
         if (file_exists($file)) { echo "FormRequest already exists: $file\n"; exit(1); }
         file_put_contents($file, "<?php\n\ndeclare(strict_types=1);\n\nuse Core\\Http\\FormRequest;\n\nclass {$name} extends FormRequest\n{\n    public function rules(): array\n    {\n        return [\n            // 'name' => 'required|min:2|max:255',\n            // 'email' => 'required|email',\n        ];\n    }\n\n    public function authorize(): bool\n    {\n        return true;\n    }\n}\n");
         echo "Created: $file\n";
+    }
+
+    private function makeCommand(string $name): void {
+        $dir  = __DIR__ . '/App/Console/Commands';
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+        $file = "$dir/{$name}.php";
+        if (file_exists($file)) { echo "Command already exists: $file\n"; exit(1); }
+        $cmdName = strtolower(preg_replace('/([a-z])([A-Z])/', '$1:$2', $name) ?? $name);
+        file_put_contents($file, "<?php\n\ndeclare(strict_types=1);\n\nuse Core\\Console\\Command;\n\nclass {$name} extends Command\n{\n    protected string \$name        = '{$cmdName}';\n    protected string \$description = 'Description of {$name}';\n\n    public function handle(): void\n    {\n        \$this->info('Running {$name}...');\n        // Add your logic here\n    }\n}\n");
+        echo "Created: $file\n";
+        echo "Run with: php LazyMePHP {$cmdName}\n";
     }
 
     private function makeTest(string $name): void {
