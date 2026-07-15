@@ -10,6 +10,20 @@ declare(strict_types=1);
 
 namespace API;
 
+use Core\Auth\AuthEndpoint;
+use Core\ErrorHandler;
+use Core\Exceptions\ApiException;
+use Core\LazyMePHP;
+use Pecee\SimpleRouter\SimpleRouter;
+
+require_once __DIR__ . '/../../vendor/autoload.php';
+
+if (file_exists(__DIR__ . '/../../.env')) {
+    \Dotenv\Dotenv::createImmutable(__DIR__ . '/../../')->load();
+}
+
+new LazyMePHP();
+
 // CORS — only allow explicitly configured origins; wildcard is not permitted.
 $allowedOrigin = $_ENV['APP_CORS_ORIGIN'] ?? '';
 $requestOrigin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -21,70 +35,53 @@ if ($allowedOrigin !== '' && $requestOrigin === $allowedOrigin) {
     header('Access-Control-Max-Age: 86400');
 }
 
-// Handle preflight OPTIONS requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
     exit;
 }
 
-// Start session if not already started (cookie flags are set in Core\Session\Session)
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-use Core\LazyMePHP;
-use Core\Http\ApiExitException;
-use Core\ErrorHandler;
-use Core\Exceptions\ApiException;
+$GLOBALS['API_FOREIGN_DATA'] = (isset($_GET['foreignData']) && $_GET['foreignData'] === 'true');
 
-/*
- * Router
- */
-require_once __DIR__."/../../vendor/autoload.php";
+header('Content-Type: application/json; charset=utf-8');
 
-/*
- * Load Environment Variables
- */
-if (file_exists(__DIR__.'/../../.env')) {
-    $dotenv = \Dotenv\Dotenv::createImmutable(__DIR__.'/../../');
-    $dotenv->load();
-}
-
-/*
- *
- * Initialize LazyMePHP
- *
- */
-new LazyMePHP();
-
-/*
- * Check of our request needs foreing data
- */
-$GLOBALS['API_FOREIGN_DATA'] = (isset($_GET['foreignData']) && $_GET['foreignData'] == 'true') ? true : false;
-
-/* Load all api routes */
-foreach(glob(__DIR__."/../../App/Api/" . "/*.php") as $r)
-  require_once $r;
-
-/*
- * Output result
- */
-header('Content-type: application/json');
-
-// Start performance monitoring for API requests
-if (class_exists('Core\Helpers\PerformanceUtil')) {
+if (class_exists(\Core\Helpers\PerformanceUtil::class)) {
     \Core\Helpers\PerformanceUtil::startTimer('api_request');
 }
 
-\Pecee\SimpleRouter\SimpleRouter::get('/api/not-found', function() {
+/*
+ * JWT auth on the API front door (JSON only — no Blade layout):
+ *   POST /api/auth/login
+ *   POST /api/auth/refresh
+ *   POST /api/auth/logout
+ *   GET  /api/auth/me
+ *   ...plus forgot/reset/verify when configured
+ *
+ * Web UI can keep using /auth/* via public/index.php + LazyMePHP::boot().
+ */
+if (!empty($_ENV['AUTH_TABLE'] ?? '')) {
+    SimpleRouter::group(['prefix' => '/api'], static function (): void {
+        AuthEndpoint::register();
+    });
+}
+
+/* Custom API route files in App/Api/ */
+foreach (glob(__DIR__ . '/../../App/Api/*.php') ?: [] as $r) {
+    require_once $r;
+}
+
+SimpleRouter::get('/api/not-found', static function (): void {
     ErrorHandler::handleNotFoundError('API endpoint');
 });
 
-\Pecee\SimpleRouter\SimpleRouter::get('/api/forbidden', function() {
+SimpleRouter::get('/api/forbidden', static function (): void {
     ErrorHandler::handleForbiddenError('Access to this API endpoint is forbidden');
 });
 
-\Pecee\SimpleRouter\SimpleRouter::get('/api', function() {
+SimpleRouter::get('/api', static function (): void {
     ErrorHandler::handleApiError(
         'API endpoint not specified',
         'ENDPOINT_NOT_FOUND',
@@ -92,12 +89,11 @@ if (class_exists('Core\Helpers\PerformanceUtil')) {
     );
 });
 
-\Pecee\SimpleRouter\SimpleRouter::error(function(\Pecee\Http\Request $request, \Exception $exception) {
-    // Log the error with request context
+SimpleRouter::error(static function (\Pecee\Http\Request $request, \Exception $exception): void {
     $requestUri = $request->getUrl()->getPath();
-    $method = $request->getMethod();
-    $context = "API Request: $method $requestUri";
-    
+    $method     = $request->getMethod();
+    $context    = "API Request: $method $requestUri";
+
     if ($exception instanceof ApiException) {
         ErrorHandler::handleApiError(
             $exception->getMessage(),
@@ -114,24 +110,19 @@ if (class_exists('Core\Helpers\PerformanceUtil')) {
             $exception
         );
     }
-    exit; // Exit gracefully instead of throwing ApiExitException
+    exit;
 });
 
-\Pecee\SimpleRouter\SimpleRouter::start();
+SimpleRouter::start();
 
-// End performance monitoring and log if slow
-if (class_exists('Core\Helpers\PerformanceUtil')) {
+if (class_exists(\Core\Helpers\PerformanceUtil::class)) {
     $metrics = \Core\Helpers\PerformanceUtil::endTimer('api_request');
-    if ($metrics && $metrics['duration_ms'] > 1000) {
-        \Core\Helpers\PerformanceUtil::logSlowOperation(
-            'api_request',
-            $metrics
-        );
+    if ($metrics && ($metrics['duration_ms'] ?? 0) > 1000) {
+        \Core\Helpers\PerformanceUtil::logSlowOperation('api_request', $metrics);
     }
 }
 
-/*
- * Runs logging activity
- */
 \Core\Helpers\ActivityLogger::logActivity();
-LazyMePHP::DB_CONNECTION()->Close();
+if (LazyMePHP::DB_CONNECTION()) {
+    LazyMePHP::DB_CONNECTION()->Close();
+}

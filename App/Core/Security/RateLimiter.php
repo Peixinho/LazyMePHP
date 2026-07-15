@@ -20,7 +20,7 @@ class RateLimiter
     /**
      * Check if request is allowed based on rate limits
      */
-    public static function isAllowed(string $action, string $identifier = null, int $maxAttempts = 5, int $windowSeconds = 300): bool
+    public static function isAllowed(string $action, ?string $identifier = null, int $maxAttempts = 5, int $windowSeconds = 300): bool
     {
         $identifier = $identifier ?? self::getClientIdentifier();
         
@@ -43,7 +43,7 @@ class RateLimiter
     /**
      * Get remaining attempts for an action
      */
-    public static function getRemainingAttempts(string $action, string $identifier = null, int $maxAttempts = 5, int $windowSeconds = 300): int
+    public static function getRemainingAttempts(string $action, ?string $identifier = null, int $maxAttempts = 5, int $windowSeconds = 300): int
     {
         $identifier = $identifier ?? self::getClientIdentifier();
         $attempts = self::getAttempts($action, $identifier, $windowSeconds);
@@ -53,7 +53,7 @@ class RateLimiter
     /**
      * Get time until rate limit resets
      */
-    public static function getResetTime(string $action, string $identifier = null, int $windowSeconds = 300): int
+    public static function getResetTime(string $action, ?string $identifier = null, int $windowSeconds = 300): int
     {
         $identifier = $identifier ?? self::getClientIdentifier();
         
@@ -79,7 +79,7 @@ class RateLimiter
     /**
      * Reset rate limit for an action
      */
-    public static function reset(string $action, string $identifier = null): bool
+    public static function reset(string $action, ?string $identifier = null): bool
     {
         $identifier = $identifier ?? self::getClientIdentifier();
         
@@ -184,7 +184,7 @@ class RateLimiter
     /**
      * Get rate limit info for debugging
      */
-    public static function getInfo(string $action, string $identifier = null): array
+    public static function getInfo(string $action, ?string $identifier = null): array
     {
         $identifier = $identifier ?? self::getClientIdentifier();
         

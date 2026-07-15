@@ -61,6 +61,10 @@ class BroadcastChannel
      * Rate limiting:
      *   BROADCAST_MAX_CONNECTIONS=10  limits concurrent SSE listeners by IP (APCu only).
      *   BROADCAST_RATE_WINDOW=60      seconds for the connection rate window.
+     *
+     * Duration:
+     *   $maxSeconds = 0 means unlimited, except under PHP's built-in server (cli-server)
+     *   where it defaults to BROADCAST_DEV_MAX_SECONDS (20) so one SSE can't freeze php -S.
      */
     public function listen(
         int $pollIntervalMs = 1000,
@@ -72,16 +76,28 @@ class BroadcastChannel
 
         $this->ensureTable();
 
+        // Long-lived stream — disable PHP's request time limit
+        @set_time_limit(0);
+        ignore_user_abort(true);
+
         // SSE headers
         header('Content-Type: text/event-stream');
         header('Cache-Control: no-cache');
         header('Connection: keep-alive');
         header('X-Accel-Buffering: no');
-        if (ob_get_level()) ob_end_flush();
+        while (ob_get_level() > 0) {
+            ob_end_flush();
+        }
 
         $lastId  = isset($_SERVER['HTTP_LAST_EVENT_ID']) ? (int)$_SERVER['HTTP_LAST_EVENT_ID'] : 0;
         $started = time();
         $sleep   = max(100, $pollIntervalMs);
+
+        // php -S is single-threaded: uncapped SSE blocks every other request.
+        // Production SAPIs (fpm, apache, …) keep the original unlimited default.
+        if ($maxSeconds <= 0 && PHP_SAPI === 'cli-server') {
+            $maxSeconds = (int)($_ENV['BROADCAST_DEV_MAX_SECONDS'] ?? 20);
+        }
 
         while (true) {
             if (connection_aborted()) break;
@@ -105,6 +121,8 @@ class BroadcastChannel
 
             $this->pruneOldMessages();
         }
+
+        exit;
     }
 
     // -------------------------------------------------------------------------

@@ -16,10 +16,11 @@ use Pecee\SimpleRouter\SimpleRouter;
  * Registers the stateless auth routes.
  * Called automatically by LazyMePHP::boot() when AUTH_TABLE is set in .env.
  *
- *   POST /auth/login    {"email":"...", "password":"..."}   → {access_token, refresh_token, ...}
- *   POST /auth/refresh  {"refresh_token":"..."}             → {access_token, refresh_token, ...}
- *   POST /auth/logout   {"refresh_token":"..."}             → {message}
- *   GET  /auth/me       Authorization: Bearer <token>       → {user}
+ * Web entry (public/index.php):
+ *   POST /auth/login, POST /auth/refresh, POST /auth/logout, GET /auth/me, …
+ *
+ * API entry (public/api/index.php) — registered under a `/api` group:
+ *   POST /api/auth/login, GET /api/auth/me, …
  */
 class AuthEndpoint
 {
@@ -35,17 +36,16 @@ class AuthEndpoint
             if ($credential === '' || $password === '') {
                 http_response_code(422);
                 echo json_encode(['error' => 'email and password are required']);
-                return;
+                exit;
             }
 
-            // Rate-limit by IP: max 10 attempts per 5 minutes
             $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
             $ua = $_SERVER['HTTP_USER_AGENT'] ?? null;
             try {
                 if (!\Core\Security\RateLimiter::isAllowed('auth:login', $ip, 10, 300)) {
                     http_response_code(429);
                     echo json_encode(['error' => 'Too many login attempts. Please wait 5 minutes.']);
-                    return;
+                    exit;
                 }
             } catch (\Throwable) {
                 // Rate-limit table may not exist — allow the attempt
@@ -56,7 +56,7 @@ class AuthEndpoint
             if ($result === false) {
                 http_response_code(401);
                 echo json_encode(['error' => 'Invalid credentials']);
-                return;
+                exit;
             }
 
             echo json_encode([
@@ -66,18 +66,18 @@ class AuthEndpoint
                 'refresh_token'      => $result['refresh_token'],
                 'refresh_expires_in' => $result['refresh_expires_in'],
             ]);
+            exit;
         });
 
         SimpleRouter::post('/auth/refresh', function (): void {
             header('Content-Type: application/json');
 
-            // Rate-limit refresh attempts by IP: max 20 per 5 minutes
             $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
             try {
                 if (!\Core\Security\RateLimiter::isAllowed('auth:refresh', $ip, 20, 300)) {
                     http_response_code(429);
                     echo json_encode(['error' => 'Too many refresh attempts. Please wait 5 minutes.']);
-                    return;
+                    exit;
                 }
             } catch (\Throwable) {
                 // Rate-limit table may not exist — allow the attempt
@@ -89,7 +89,7 @@ class AuthEndpoint
             if ($refreshToken === '') {
                 http_response_code(422);
                 echo json_encode(['error' => 'refresh_token is required']);
-                return;
+                exit;
             }
 
             $result = Auth::refresh($refreshToken);
@@ -97,7 +97,7 @@ class AuthEndpoint
             if ($result === false) {
                 http_response_code(401);
                 echo json_encode(['error' => 'Invalid or expired refresh token']);
-                return;
+                exit;
             }
 
             echo json_encode([
@@ -107,6 +107,7 @@ class AuthEndpoint
                 'refresh_token'      => $result['refresh_token'],
                 'refresh_expires_in' => $result['refresh_expires_in'],
             ]);
+            exit;
         });
 
         SimpleRouter::post('/auth/logout', function (): void {
@@ -124,6 +125,7 @@ class AuthEndpoint
             }
 
             echo json_encode(['message' => 'Logged out successfully']);
+            exit;
         });
 
         SimpleRouter::get('/auth/me', function (): void {
@@ -132,18 +134,17 @@ class AuthEndpoint
             if (!$user) {
                 http_response_code(401);
                 echo json_encode(['error' => 'Unauthorized']);
-                return;
+                exit;
             }
             echo json_encode(['user' => $user]);
+            exit;
         })->addMiddleware(JwtMiddleware::class);
 
-        // POST /auth/forgot-password  {"email":"..."}
         SimpleRouter::post('/auth/forgot-password', function (): void {
             header('Content-Type: application/json');
             $body  = json_decode((string)file_get_contents('php://input'), true) ?? [];
             $email = trim((string)($body['email'] ?? ''));
 
-            // Always 200 to avoid user enumeration
             if ($email !== '') {
                 try {
                     $table  = $_ENV['AUTH_TABLE']           ?? 'users';
@@ -161,9 +162,9 @@ class AuthEndpoint
                 } catch (\Throwable) {}
             }
             echo json_encode(['message' => 'If that email exists, a reset link has been sent.']);
+            exit;
         });
 
-        // POST /auth/reset-password  {"token":"...","password":"..."}
         SimpleRouter::post('/auth/reset-password', function (): void {
             header('Content-Type: application/json');
             $body     = json_decode((string)file_get_contents('php://input'), true) ?? [];
@@ -173,17 +174,17 @@ class AuthEndpoint
             if ($token === '' || $password === '') {
                 http_response_code(422);
                 echo json_encode(['error' => 'token and password are required.']);
-                return;
+                exit;
             }
             if (!Auth::consumePasswordResetToken($token, $password)) {
                 http_response_code(422);
                 echo json_encode(['error' => 'Invalid or expired reset token.']);
-                return;
+                exit;
             }
             echo json_encode(['message' => 'Password updated successfully.']);
+            exit;
         });
 
-        // POST /auth/verify-email  {"token":"..."}
         SimpleRouter::post('/auth/verify-email', function (): void {
             header('Content-Type: application/json');
             $body  = json_decode((string)file_get_contents('php://input'), true) ?? [];
@@ -192,15 +193,16 @@ class AuthEndpoint
             if ($token === '') {
                 http_response_code(422);
                 echo json_encode(['error' => 'token is required.']);
-                return;
+                exit;
             }
             $userId = Auth::verifyEmail($token);
             if ($userId === null) {
                 http_response_code(422);
                 echo json_encode(['error' => 'Invalid or expired verification token.']);
-                return;
+                exit;
             }
             echo json_encode(['message' => 'Email verified successfully.']);
+            exit;
         });
     }
 }

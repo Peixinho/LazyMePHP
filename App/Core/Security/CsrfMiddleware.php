@@ -18,12 +18,13 @@ class CsrfMiddleware implements IMiddleware
 {
     public function handle(Request $request): void
     {
-        if ($request->getMethod() === 'GET') {
+        // Pecee returns lowercase methods ('get', 'post', …) — compare case-insensitively
+        if (strtoupper($request->getMethod() ?? '') === 'GET') {
             return;
         }
 
         $path = $request->getUrl()->getPath();
-        if (strpos($path, '/api/') === 0) {
+        if (str_starts_with($path, '/api/')) {
             return;
         }
 

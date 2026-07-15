@@ -59,33 +59,49 @@ set_exception_handler(function(\Throwable $exception) {
 if (Core\LazyMePHP::DEBUG_MODE()) {
     \Core\Debug\DebugHelper::initialize();
     
-    // Register shutdown function to inject debug toolbar
+    // Register shutdown function to inject debug toolbar (HTML pages only)
     register_shutdown_function(function() {
         try {
-            if (\Core\LazyMePHP::DEBUG_MODE()) {
-                $debugToolbar = \Core\Debug\DebugToolbar::getInstance();
-                $toolbarHtml = $debugToolbar->render();
-                
-                if (!empty($toolbarHtml)) {
-                    // Try to inject into HTML response
-                    $output = ob_get_contents();
-                    if ($output !== false) {
-                        // Look for closing </body> tag
-                        $pos = strripos($output, '</body>');
-                        if ($pos !== false) {
-                            $newOutput = substr($output, 0, $pos) . $toolbarHtml . substr($output, $pos);
-                            ob_clean();
-                            echo $newOutput;
-                        } else {
-                            // No </body> tag found, append at the end
-                            echo $toolbarHtml;
-                        }
-                    } else {
-                        // No output buffer, just echo the toolbar
-                        echo $toolbarHtml;
-                    }
+            if (!\Core\LazyMePHP::DEBUG_MODE()) {
+                return;
+            }
+
+            // Never pollute JSON / SSE / plain-text API responses
+            foreach (headers_list() as $header) {
+                if (stripos($header, 'Content-Type:') !== 0) {
+                    continue;
+                }
+                $type = strtolower(trim(substr($header, strlen('Content-Type:'))));
+                if (str_contains($type, 'application/json')
+                    || str_contains($type, 'text/event-stream')
+                    || str_contains($type, 'text/plain')
+                ) {
+                    return;
                 }
             }
+
+            $debugToolbar = \Core\Debug\DebugToolbar::getInstance();
+            $toolbarHtml = $debugToolbar->render();
+
+            if (empty($toolbarHtml)) {
+                return;
+            }
+
+            // Prefer injecting before </body> when an output buffer still holds the page.
+            // public/index.php does ob_get_clean() then echoes the layout with no buffer,
+            // so fall back to appending (same as before) for normal HTML responses.
+            $output = ob_get_contents();
+            if ($output !== false && $output !== '') {
+                $pos = strripos($output, '</body>');
+                if ($pos !== false) {
+                    $newOutput = substr($output, 0, $pos) . $toolbarHtml . substr($output, $pos);
+                    ob_clean();
+                    echo $newOutput;
+                    return;
+                }
+            }
+
+            echo $toolbarHtml;
         } catch (\Throwable $e) {
             // If debug toolbar fails, at least try to show a simple error indicator
             if (Core\LazyMePHP::DEBUG_MODE()) {
