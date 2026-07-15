@@ -293,118 +293,29 @@ class BuildActions
     }
     
     /**
-     * Build forms for selected tables
+     * Forms and controllers are now driven by generic Blade templates and Core\Model.
+     * No code generation step is needed.
      */
     public function buildForms(): void
     {
-        require_once(__DIR__.'/Forms/BuildControllers.php');
-        require_once(__DIR__.'/Forms/BuildRoutes.php');
-        require_once(__DIR__.'/Forms/BuildViews.php');
-        require_once(__DIR__.'/Database');
-        
-        $tables = $this->tableManager->getNonViewTables();
-        $descriptors = $this->tableManager->getTableDescriptors();
-        
-        Helper\clear();
-        $selectedForms = Helper\select("🎯 Select Tables to Build Forms", $tables, null, true, $descriptors);
-        
-        if (!$selectedForms) {
-            return;
-        }
-        
-        $this->displaySelectedTables($selectedForms, "Forms");
-        
-        $replaceRoutes = Helper\promptYesNo("🔄 Replace existing RouteForms.php?");
-        $buildViews = Helper\promptYesNo("👁️  Build corresponding Views?");
-        
-        if (!$this->confirmAction("🚀 Do you want to proceed with building forms?")) {
-            return;
-        }
-        
-        $tableList = array_column($selectedForms, 'name');
-        
-        echo "\n🚀 Generating forms...\n";
-        $progressBar = new ProgressBar("Building Forms", count($tableList));
-        
-        // Build forms for each selected table
-        foreach ($tableList as $tableName) {
-            // Create database table object
-            $db = new Tools\Database\_DB_TABLE($tableName);
-            $db->GetFieldsFromDB();
-            
-            // Build controllers
-            new Tools\Forms\BuildControllers(
-                BuildConfig::CONTROLLERS_OUTPUT_DIR,
-                BuildConfig::MODELS_OUTPUT_DIR,
-                $db
-            );
-            
-            // Build routes if requested
-            if ($replaceRoutes == 'Y') {
-                new Tools\Forms\BuildRoutes(
-                    BuildConfig::ROUTES_OUTPUT_DIR,
-                    $db
-                );
-            }
-            
-            // Build views if requested
-            if ($buildViews == 'Y') {
-                new Tools\Forms\BuildViews(
-                    BuildConfig::VIEWS_OUTPUT_DIR,
-                    $db
-                );
-            }
-            
-            $progressBar->update();
-        }
-        
-        $progressBar->finish();
-        
-        echo "✅ Forms built successfully!\n";
+        echo "\n💡 Forms are now powered by generic Blade templates in App/Views/_Crud/ — no code generation needed.\n";
+        echo "   To customise for a specific table, create:\n";
+        echo "     App/Controllers/<TableName>Controller.php  (extend Core\\Controller)\n";
+        echo "     App/Views/<TableName>/index.blade.php      (list view)\n";
+        echo "     App/Views/<TableName>/edit.blade.php       (create / edit view)\n";
+        echo "   Register your routes in App/Routes/Routes.php.\n\n";
         \Tools\Helper\read();
     }
     
     /**
-     * Build API for selected tables
+     * REST APIs are now built with Core\Model and Core\Controller — no code generation needed.
      */
     public function buildAPI(): void
     {
-        require_once(__DIR__.'/API/BuildTableAPI.php');
-        
-        $tables = $this->tableManager->getNonViewTables();
-        $descriptors = $this->tableManager->getTableDescriptors();
-        
-        $selectedAPI = Helper\select("🎯 Select Tables to Build API", $tables, null, true, $descriptors);
-        
-        if (!$selectedAPI) {
-            return;
-        }
-        
-        $this->displaySelectedTables($selectedAPI, "API");
-        
-        $replaceAPI = $this->promptReplaceAPI();
-        
-        if (!$this->confirmAction("🚀 Do you want to proceed with building API?")) {
-            return;
-        }
-        
-        $tableList = array_column($selectedAPI, 'name');
-        
-        echo "\n🚀 Generating API...\n";
-        $progressBar = new ProgressBar("Building API", count($tableList));
-        
-        // Build API with progress tracking
-        $builder = new Tools\API\BuildTableAPI(BuildConfig::API_OUTPUT_DIR, $replaceAPI, $tableList);
-        
-        // Simulate progress for each table
-        foreach ($tableList as $table) {
-            usleep(100000); // Small delay to show progress
-            $progressBar->update();
-        }
-        
-        $progressBar->finish();
-        
-        echo "✅ API built successfully!\n";
+        echo "\n💡 REST APIs are now built directly with Core\\Model and Core\\Controller — no code generation needed.\n";
+        echo "   Create an API controller in App/Api/ that extends Core\\Controller,\n";
+        echo "   call \\Core\\Model::find() / ->save() / ->delete() in your actions,\n";
+        echo "   and register routes in App/Routes/Routes.php.\n\n";
         \Tools\Helper\read();
     }
     
@@ -463,19 +374,7 @@ class BuildActions
         return $proceed;
     }
     
-    /**
-     * Prompt for API replacement
-     */
-    private function promptReplaceAPI(): bool
-    {
-        $replaceA = false;
-        while (strtoupper($replaceA) != "Y" && strtoupper($replaceA) != 'N') {
-            echo "\n🔄 Replace existing RouteAPI.php? (Y/N): ";
-            $replaceA = trim(fgets(STDIN));
-            if (!$replaceA) $replaceA = 'Y';
-        }
-        return $replaceA == 'Y';
-    }
+
 }
 
 /**

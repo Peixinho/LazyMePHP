@@ -277,40 +277,13 @@ class LazyMeCLI {
     }
 
     private function makeView(?string $tableName): void {
-        if (!$tableName) {
-            echo "Error: Table name is required for make:view command.\n";
-            echo "Usage: php LazyMePHP make:view [table_name]\n";
-            exit(1);
+        echo "\n\u{1F4A1} Views are powered by generic Blade templates in App/Views/_Crud/ — no code generation needed.\n";
+        if ($tableName) {
+            echo "   To override for '{$tableName}', create:\n";
+            echo "     App/Views/{$tableName}/index.blade.php  (list)\n";
+            echo "     App/Views/{$tableName}/edit.blade.php   (create / edit)\n";
+            echo "   All schema variables (\$schema, \$record, \$pk, \$table, etc.) are passed automatically.\n\n";
         }
-
-        echo "Generating view for table: $tableName\n";
-        
-        // Get all available tables
-        $allTables = \Tools\Database\_DB_TABLE::GetAllTablesAndViews();
-        
-        if (!in_array($tableName, $allTables)) {
-            echo "Error: Table '$tableName' not found in database.\n";
-            echo "Available tables:\n";
-            foreach ($allTables as $table) {
-                echo "  - $table\n";
-            }
-            exit(1);
-        }
-
-        // Create database object for the table
-        $db = new \Tools\Database\_DB_TABLE($tableName);
-        $db->GetFieldsFromDB();
-        
-        if ($db->IsView()) {
-            echo "Error: Cannot generate views for database views.\n";
-            exit(1);
-        }
-
-        // Use the new BuildViews class
-        $viewsPath = __DIR__ . '/App/Views';
-        new \Tools\Forms\BuildViews($viewsPath, $db);
-        
-        echo "View generated successfully!\n";
     }
 
     private function makeController(?string $tableName): void {
@@ -326,26 +299,10 @@ class LazyMeCLI {
     }
 
     private function makeAll(?string $tableName): void {
-        if (!$tableName) {
-            echo "Error: Table name is required for make:all command.\n";
-            echo "Usage: php LazyMePHP make:all [table_name]\n";
-            exit(1);
-        }
-
-        echo "Generating views, controller, routes, and API for table: $tableName\n";
-
-        $allTables = \Tools\Database\_DB_TABLE::GetAllTablesAndViews();
-        if (!in_array($tableName, $allTables)) {
-            echo "Error: Table '$tableName' not found in database.\n";
-            exit(1);
-        }
-
         $this->makeView($tableName);
         $this->makeController($tableName);
         $this->makeRoute($tableName);
         $this->makeApi($tableName);
-
-        echo "All files generated successfully!\n";
     }
 
     private function makeApi(?string $tableName): void {
@@ -367,7 +324,7 @@ class LazyMeCLI {
             return;
         }
 
-        $tables = \Tools\Database\_DB_TABLE::GetAllTablesAndViews();
+        $tables = \Core\Model::listTables();
         echo "Caching schema for " . count($tables) . " table(s)...\n";
         foreach ($tables as $table) {
             \Core\Model::warmSchemaCache($table);

@@ -561,10 +561,12 @@ class Model implements IDB
 
     private function hydrateFromArray(array $data): void
     {
+        // Store ALL columns from the DB result — this preserves computed columns
+        // (COUNT, SUM, aliases from JOINs, etc.) that are not in the table schema.
+        // The schema check in __set() still guards user assignments; this path bypasses
+        // that guard intentionally because the source is a trusted DB result.
         foreach ($data as $key => $value) {
-            if (array_key_exists($key, $this->schema)) {
-                $this->data[$key] = $value;
-            }
+            $this->data[$key] = $value;
         }
         // Only mark as existing when the primary key is present and non-null
         // (array hydration from DB results always includes the PK; factory-generated
@@ -875,6 +877,14 @@ class ModelQuery
     private array $conditions = [];
     /** @var list<mixed> */
     private array $bindings = [];
+    /** @var list<string> join fragments */
+    private array $joins = [];
+    /** @var list<string> column expressions for SELECT (empty = *) */
+    private array $selectColumns = [];
+    /** @var list<string> HAVING fragments */
+    private array $havingClauses = [];
+    /** @var list<mixed> */
+    private array $havingBindings = [];
     private string $orderClause = '';
     private string $groupClause = '';
     private int $limitCount = 0;
@@ -887,6 +897,7 @@ class ModelQuery
     private int $cacheTtl = 0;
     private ?string $cacheKey = null;
     private bool $skipGlobalScopes = false;
+    private bool $globalScopesApplied = false;
 
     public function __construct(string $tableName, ?string $modelClass = null)
     {
@@ -898,6 +909,96 @@ class ModelQuery
     public function bypassGlobalScopes(): static
     {
         $this->skipGlobalScopes = true;
+        return $this;
+    }
+
+    /** Apply global scopes exactly once (idempotent). */
+    private function applyGlobalScopes(): void
+    {
+        if ($this->skipGlobalScopes || $this->globalScopesApplied) return;
+        $this->globalScopesApplied = true;
+        if (method_exists($this->modelClass, 'getGlobalScopes')) {
+            foreach (($this->modelClass)::getGlobalScopes() as $scope) {
+                $scope($this);
+            }
+        }
+    }
+
+    /**
+     * Restrict the columns returned by SELECT.
+     *
+     *   User::query()->select('id', 'name', 'email')->get();
+     *   User::query()->select('COUNT(*) as cnt')->get();
+     */
+    public function select(string ...$columns): static
+    {
+        $this->selectColumns = array_merge($this->selectColumns, $columns);
+        return $this;
+    }
+
+    /**
+     * Add a JOIN clause.
+     *
+     *   Post::query()
+     *       ->join('users', 'posts.user_id', 'users.id')
+     *       ->select('posts.*', 'users.name as author')
+     *       ->get();
+     */
+    public function join(string $table, string $localKey, string $foreignKey, string $type = 'INNER'): static
+    {
+        $this->joins[] = strtoupper($type) . " JOIN \"{$table}\" ON {$this->quoteKey($localKey)} = {$this->quoteKey($foreignKey)}";
+        return $this;
+    }
+
+    public function leftJoin(string $table, string $localKey, string $foreignKey): static
+    {
+        return $this->join($table, $localKey, $foreignKey, 'LEFT');
+    }
+
+    public function rightJoin(string $table, string $localKey, string $foreignKey): static
+    {
+        return $this->join($table, $localKey, $foreignKey, 'RIGHT');
+    }
+
+    /** Quote a key that may be `table.column` or just `column`. */
+    private function quoteKey(string $key): string
+    {
+        if (str_contains($key, '.')) {
+            [$t, $c] = explode('.', $key, 2);
+            return "\"{$t}\".\"{$c}\"";
+        }
+        return "\"{$key}\"";
+    }
+
+    /**
+     * Add a HAVING condition (use after groupBy()).
+     *
+     *   Model::query('orders')
+     *       ->select('user_id', 'COUNT(*) as cnt')
+     *       ->groupBy('user_id')
+     *       ->having('cnt', 5, '>=')
+     *       ->get();
+     */
+    public function having(string $column, mixed $value, string $operator = '='): static
+    {
+        $prefix               = $this->havingClauses ? ' AND ' : '';
+        $this->havingClauses[] = "{$prefix}\"{$column}\" {$operator} ?";
+        $this->havingBindings[] = $value;
+        return $this;
+    }
+
+    /**
+     * Add a raw WHERE fragment (caller is responsible for safety).
+     *
+     *   ->whereRaw('"score" > "baseline" * 1.5')
+     *   ->whereRaw('"tag" IN (?, ?)', ['php', 'framework'])
+     */
+    public function whereRaw(string $sql, array $bindings = [], string $logic = 'AND'): static
+    {
+        $connector = $this->hasCondition ? " {$logic} " : '';
+        $this->conditions[] = $connector . $sql;
+        array_push($this->bindings, ...$bindings);
+        $this->hasCondition = true;
         return $this;
     }
 
@@ -1052,16 +1153,11 @@ class ModelQuery
 
     public function count(): int
     {
-        // Apply global scopes (unless bypassed)
-        if (!$this->skipGlobalScopes && method_exists($this->modelClass, 'getGlobalScopes')) {
-            foreach (($this->modelClass)::getGlobalScopes() as $scope) {
-                $scope($this);
-            }
-        }
+        $this->applyGlobalScopes();
 
-        $db     = LazyMePHP::DB_CONNECTION();
-        $conds  = $this->conditions;
-        $binds  = $this->bindings;
+        $db      = LazyMePHP::DB_CONNECTION();
+        $conds   = $this->conditions;
+        $binds   = $this->bindings;
         $hasCond = $this->hasCondition;
 
         if (method_exists($this->modelClass, 'softDeleteColumn')) {
@@ -1073,8 +1169,9 @@ class ModelQuery
             }
         }
 
+        $joins  = $this->joins ? ' ' . implode(' ', $this->joins) : '';
         $where  = $conds ? 'WHERE ' . implode('', $conds) : '';
-        $result = $db->query("SELECT COUNT(*) AS cnt FROM \"{$this->tableName}\" {$where}", $binds);
+        $result = $db->query("SELECT COUNT(*) AS cnt FROM \"{$this->tableName}\"{$joins} {$where}", $binds);
         $row    = $result->fetchArray();
         return (int)($row['cnt'] ?? 0);
     }
@@ -1088,12 +1185,7 @@ class ModelQuery
      */
     public function get(): array
     {
-        // Apply global scopes (unless bypassed)
-        if (!$this->skipGlobalScopes && method_exists($this->modelClass, 'getGlobalScopes')) {
-            foreach (($this->modelClass)::getGlobalScopes() as $scope) {
-                $scope($this);
-            }
-        }
+        $this->applyGlobalScopes();
 
         // Return from cache when available
         if ($this->cacheTtl > 0) {
@@ -1123,14 +1215,19 @@ class ModelQuery
             }
         }
 
+        $select = $this->selectColumns ? implode(', ', $this->selectColumns) : "\"{$this->tableName}\".*";
+        $joins  = $this->joins ? ' ' . implode(' ', $this->joins) : '';
         $where  = $conds ? 'WHERE ' . implode('', $conds) : '';
         $group  = $this->groupClause ? "GROUP BY {$this->groupClause}" : '';
+        $having = $this->havingClauses ? 'HAVING ' . implode('', $this->havingClauses) : '';
         $order  = $this->orderClause ? "ORDER BY {$this->orderClause}" : '';
         $limit  = $this->limitCount  ? $db->limit($this->limitCount, $this->limitOffset) : '';
 
+        $allBindings = array_merge($binds, $this->havingBindings);
+
         $result = $db->query(
-            "SELECT * FROM \"{$this->tableName}\" {$where} {$group} {$order} {$limit}",
-            $binds
+            "SELECT {$select} FROM \"{$this->tableName}\"{$joins} {$where} {$group} {$having} {$order} {$limit}",
+            $allBindings
         );
 
         $class = $this->modelClass;
@@ -1221,20 +1318,17 @@ class ModelQuery
      *
      *   Model::query('posts')->where('user_id', 5)->update(['status' => 'draft']);
      */
-    public function update(array $data): int
+    public function update(array $data): void
     {
-        if (empty($data)) return 0;
+        if (empty($data)) return;
+        $this->applyGlobalScopes();
 
-        $db     = LazyMePHP::DB_CONNECTION();
-        $conds  = $this->conditions;
-        $binds  = $this->bindings;
-
-        $set     = implode(', ', array_map(fn($k) => "\"$k\" = ?", array_keys($data)));
-        $where   = $conds ? 'WHERE ' . implode('', $conds) : '';
-        $params  = array_merge(array_values($data), $binds);
+        $db    = LazyMePHP::DB_CONNECTION();
+        $set   = implode(', ', array_map(fn($k) => "\"$k\" = ?", array_keys($data)));
+        $where = $this->conditions ? 'WHERE ' . implode('', $this->conditions) : '';
+        $params = array_merge(array_values($data), $this->bindings);
 
         $db->query("UPDATE \"{$this->tableName}\" SET {$set} {$where}", $params);
-        return 1; // PDO rowCount not exposed in all drivers; return 1 as a success signal
     }
 
     /**
@@ -1245,6 +1339,7 @@ class ModelQuery
      */
     public function bulkDelete(): void
     {
+        $this->applyGlobalScopes();
         $db    = LazyMePHP::DB_CONNECTION();
         $where = $this->conditions ? 'WHERE ' . implode('', $this->conditions) : '';
         $db->query("DELETE FROM \"{$this->tableName}\" {$where}", $this->bindings);
@@ -1254,35 +1349,39 @@ class ModelQuery
     // Internal caching helpers
     // -------------------------------------------------------------------------
 
-    /** @var array<string, array{expires:int, data:list<array>}> */
-    private static array $memCache = [];
-
     private function resolvedCacheKey(): string
     {
         if ($this->cacheKey !== null) return $this->cacheKey;
-        $where = $this->conditions ? implode('', $this->conditions) : '';
-        return 'mq_' . md5($this->tableName . '|' . $where . '|' . implode(',', $this->bindings));
+        $parts = [
+            $this->tableName,
+            implode('', $this->conditions),
+            implode(',', $this->bindings),
+            implode(',', $this->selectColumns),
+            implode(' ', $this->joins),
+            $this->groupClause,
+            implode('', $this->havingClauses),
+            $this->orderClause,
+            $this->limitCount . ':' . $this->limitOffset,
+        ];
+        return 'mq_' . md5(implode('|', $parts));
     }
 
     private function fromCache(): ?array
     {
         if ($this->cacheTtl <= 0) return null;
-        $key = $this->resolvedCacheKey();
-        return \Core\Cache\Cache::get($key);
+        return \Core\Cache\Cache::get($this->resolvedCacheKey());
     }
 
     private function toCache(array $rows): void
     {
         if ($this->cacheTtl <= 0) return;
-        $key  = $this->resolvedCacheKey();
         $data = array_map(fn($m) => $m->toArray(), $rows);
-        \Core\Cache\Cache::set($key, $data, $this->cacheTtl);
+        \Core\Cache\Cache::set($this->resolvedCacheKey(), $data, $this->cacheTtl);
     }
 
     /** Flush the query cache (delegates to the configured cache driver). */
     public static function clearMemCache(): void
     {
-        self::$memCache = [];
         \Core\Cache\Cache::flush();
     }
 }
