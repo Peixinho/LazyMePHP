@@ -47,6 +47,7 @@ const sidebars = {
       label: 'Database',
       items: [
         'database/migrations',
+        'database/multiple-connections',
         'database/schema-cache',
       ],
     },

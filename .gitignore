@@ -54,7 +54,8 @@ php_errors.log
 
 # =============================================================================
 # CACHE AND TEMPORARY FILES
-App/Cache/schema/*.php
+App/Cache/
+database/database.sqlite
 # =============================================================================
 *.tmp
 *.cache

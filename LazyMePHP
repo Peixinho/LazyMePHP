@@ -80,6 +80,7 @@ class LazyMeCLI {
         'make:model'       => 'Scaffold a new Model subclass  [name]',
         'make:job'         => 'Scaffold a new queue job  [name]',
         'make:request'     => 'Scaffold a new FormRequest  [name]',
+        'make:mail'        => 'Scaffold a new Mailable class  [name]',
         'queue:work'       => 'Start the queue worker  [--queue=default --sleep=3 --tries=3 --stop-when-empty]',
         'queue:size'       => 'Show number of pending jobs  [--queue=default]',
     ];
@@ -218,6 +219,13 @@ class LazyMeCLI {
                     exit(1);
                 }
                 $this->makeRequest($tableName);
+                break;
+            case 'make:mail':
+                if (!$tableName) {
+                    echo "Usage: php lazymephp make:mail <Name>\n";
+                    exit(1);
+                }
+                $this->makeMail($tableName);
                 break;
             case 'queue:work':
                 (new \Core\Queue\Worker())->run($queueArg, $sleepArg, $triesArg, $stopWhenEmpty);
@@ -386,6 +394,15 @@ class LazyMeCLI {
         $file = "$dir/{$name}.php";
         if (file_exists($file)) { echo "FormRequest already exists: $file\n"; exit(1); }
         file_put_contents($file, "<?php\n\ndeclare(strict_types=1);\n\nuse Core\\Http\\FormRequest;\n\nclass {$name} extends FormRequest\n{\n    public function rules(): array\n    {\n        return [\n            // 'name' => 'required|min:2|max:255',\n            // 'email' => 'required|email',\n        ];\n    }\n\n    public function authorize(): bool\n    {\n        return true;\n    }\n}\n");
+        echo "Created: $file\n";
+    }
+
+    private function makeMail(string $name): void {
+        $dir  = __DIR__ . '/App/Mail';
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+        $file = "$dir/{$name}.php";
+        if (file_exists($file)) { echo "Mailable already exists: $file\n"; exit(1); }
+        file_put_contents($file, "<?php\n\ndeclare(strict_types=1);\n\nnamespace App\\Mail;\n\nuse Core\\Mail\\Mail;\nuse Core\\Mail\\Mailable;\n\nclass {$name} extends Mailable\n{\n    public function __construct(\n        // Add constructor parameters for your mail data\n    ) {}\n\n    public function build(Mail \$mail): void\n    {\n        \$mail\n            ->subject('Your subject here')\n            ->html('<p>Your HTML body here.</p>')\n            ->text('Your plain-text body here.');\n    }\n}\n");
         echo "Created: $file\n";
     }
 
