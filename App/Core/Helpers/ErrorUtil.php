@@ -46,10 +46,10 @@ class ErrorUtil
     /**
      * Enhanced error handler with better logging and context
      */
-    public static function ErrorHandler(int $errno, string $errstr, string $errfile, int $errline): void
+    public static function ErrorHandler(int $errno, string $errstr, string $errfile, int $errline): bool
     {
         if (!(error_reporting() & $errno)) {
-            return;
+            return false;
         }
         $errorId = self::generateErrorId();
 
@@ -138,10 +138,9 @@ class ErrorUtil
             }
             echo $errorPage;
             die();
-        } else {
-            // For non-fatal errors, just log them but don't break the application
-            // No display for non-fatal errors to avoid confusion
         }
+
+        return true;
     }
 
     /**

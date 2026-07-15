@@ -116,18 +116,16 @@ describe('Error Handling System', function () {
     });
 
     it('should handle non-fatal errors without breaking application', function () {
-        // Test that non-fatal errors don't kill the application
         $result = null;
-        
-        // This should not cause the application to die
+        set_error_handler(['\Core\Helpers\ErrorUtil', 'ErrorHandler']);
         try {
-            // Trigger a non-fatal error
             trigger_error("Test non-fatal error", E_USER_WARNING);
             $result = "Application continued";
         } catch (Exception $e) {
             $result = "Exception caught: " . $e->getMessage();
+        } finally {
+            restore_error_handler();
         }
-        
         expect($result)->toBe("Application continued");
     });
 

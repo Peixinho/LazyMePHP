@@ -16,11 +16,11 @@ use Pecee\Http\Request;
  *   ], function () use ($blade) { ... });
  *
  * Content-Security-Policy is intentionally omitted from the default set because
- * a wrong CSP silently breaks the application. Add your own via the static
- * $extraHeaders array or by subclassing before the route group is registered:
+ * a wrong CSP silently breaks the application. Add your own via $extraHeaders:
  *
  *   SecurityHeadersMiddleware::$extraHeaders['Content-Security-Policy'] =
- *       "default-src 'self'; script-src 'self' 'nonce-{$nonce}'";
+ *       "default-src 'self'; script-src 'self'; style-src 'self'; " .
+ *       "img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self';";
  */
 class SecurityHeadersMiddleware implements \Pecee\SimpleRouter\Handlers\IMiddleware
 {
