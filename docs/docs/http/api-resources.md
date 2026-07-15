@@ -10,10 +10,7 @@ sidebar_position: 3
 
 ## Creating a resource
 
-```bash
-php LazyMePHP make:resource UserResource
-# scaffolds App/Resources/UserResource.php
-```
+Create a class in `App/Resources/` (or anywhere on the autoload path) that extends `ApiResource` and implement `toArray()`:
 
 ```php
 use Core\Http\ApiResource;
@@ -87,18 +84,41 @@ UserResource::collection($users)
 }
 ```
 
-## In pagination responses
+## Paginated responses
 
-Pair with `paginate()`:
+`fromPaginator()` accepts the array returned by `ModelQuery::paginate()` and attaches all pagination metadata automatically:
 
 ```php
-$page = User::query()->where('active', 1)->paginate(15, $currentPage);
+$page = Model::query('users')->where('active', 1)->paginate(15, $currentPage);
 
-UserResource::collection($page['data'])
-    ->withMeta([
-        'total'        => $page['total'],
-        'current_page' => $page['current_page'],
-        'last_page'    => $page['last_page'],
-    ])
+UserResource::fromPaginator($page)->respond();
+```
+
+Response shape:
+
+```json
+{
+    "data": [
+        { "id": 1, "name": "Alice", "member_since": "2024" },
+        { "id": 2, "name": "Bob",   "member_since": "2023" }
+    ],
+    "meta": {
+        "total":        120,
+        "per_page":      15,
+        "current_page":   1,
+        "last_page":      8,
+        "from":           1,
+        "to":            15
+    }
+}
+```
+
+You can still add extra keys on top with `withMeta()`:
+
+```php
+UserResource::fromPaginator($page)
+    ->withMeta(['total' => $page['total'], 'links' => $links])
     ->respond();
 ```
+
+Note: `withMeta()` replaces the entire meta block. Call `fromPaginator()` first, then chain `withMeta()` only when you need to override pagination meta entirely.
