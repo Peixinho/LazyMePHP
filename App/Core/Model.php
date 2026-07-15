@@ -97,6 +97,21 @@ class Model implements IDB
     /** @var array<string, mixed> eagerly or lazily loaded relations */
     private array $relations = [];
 
+    /**
+     * Attribute casts — override in subclasses.
+     *
+     *   protected array $casts = [
+     *       'metadata'   => 'array',      // JSON decode on read, encode on write
+     *       'is_active'  => 'bool',
+     *       'score'      => 'float',
+     *       'created_at' => 'datetime',   // returns DateTimeImmutable
+     *       'role'       => MyEnum::class, // BackedEnum::from($value)
+     *   ];
+     *
+     * @var array<string, string>
+     */
+    protected array $casts = [];
+
     /** @var array<string, array<string, array{type:string, nullable:bool, pk:bool, default:mixed}>> */
     private static array $schemaCache = [];
 
@@ -659,9 +674,9 @@ class Model implements IDB
         if (array_key_exists($name, $this->relations)) {
             return $this->relations[$name];
         }
-        // Raw data column
+        // Raw data column (with optional cast)
         if (array_key_exists($name, $this->data)) {
-            return $this->data[$name];
+            return $this->applyCast($name, $this->data[$name]);
         }
         // Lazy-load: call the relationship method if it exists and returns a Relationship
         if (method_exists($this, $name)) {
@@ -682,7 +697,36 @@ class Model implements IDB
         if (LazyMePHP::ACTIVITY_LOG() && array_key_exists($name, $this->data) && $this->data[$name] !== $value) {
             $this->changeLog[$name] = [$this->data[$name], $value];
         }
+        // Encode arrays/objects to JSON when cast is 'array'|'json'
+        $cast = $this->casts[$name] ?? null;
+        if ($cast !== null && in_array($cast, ['array', 'json'], true) && (is_array($value) || is_object($value))) {
+            $value = json_encode($value);
+        }
         $this->data[$name] = $value;
+    }
+
+    /** Apply the declared cast for $name to $value. */
+    private function applyCast(string $name, mixed $value): mixed
+    {
+        $cast = $this->casts[$name] ?? null;
+        if ($cast === null || $value === null) return $value;
+
+        return match ($cast) {
+            'int', 'integer'    => (int)$value,
+            'float', 'double'   => (float)$value,
+            'bool', 'boolean'   => (bool)$value,
+            'string'            => (string)$value,
+            'array', 'json'     => is_string($value)
+                                    ? ((array)(json_decode($value, true) ?? []))
+                                    : (array)$value,
+            'datetime', 'date'  => new \DateTimeImmutable((string)$value),
+            'timestamp'         => new \DateTimeImmutable('@' . (int)$value),
+            default             => (
+                enum_exists($cast) && is_subclass_of($cast, \BackedEnum::class)
+                    ? $cast::from($value)
+                    : $value
+            ),
+        };
     }
 
     public function __isset(string $name): bool

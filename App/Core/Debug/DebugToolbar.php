@@ -119,6 +119,13 @@ class DebugToolbar
      */
     public function getDebugData(): array
     {
+        $spans = class_exists(\Core\Debug\Profiler::class)
+            ? array_map([\Core\Debug\Profiler::class, 'spanToMs'], \Core\Debug\Profiler::spans())
+            : [];
+        $totalMs = class_exists(\Core\Debug\Profiler::class)
+            ? \Core\Debug\Profiler::totalMs()
+            : $this->getExecutionTime() * 1000;
+
         return [
             'queries' => $this->queries,
             'errors' => \Core\Helpers\ErrorUtil::getCurrentRequestErrors(),
@@ -126,7 +133,9 @@ class DebugToolbar
             'memory' => $this->getMemoryUsage(),
             'request' => $this->requestInfo,
             'php_version' => PHP_VERSION,
-            'lazymephp_version' => '1.0.0' // You can make this dynamic
+            'lazymephp_version' => '1.0.0',
+            'profiler_spans' => $spans,
+            'profiler_total_ms' => $totalMs,
         ];
     }
     
@@ -204,12 +213,13 @@ class DebugToolbar
     private function generateTabs(array $data, int $errorCount): string
     {
         $queryCount = count($data['queries']);
-        $defaultTab = $errorCount > 0 ? 'errors' : 'queries';
+        $defaultTab = $errorCount > 0 ? 'errors' : 'timeline';
         $tabs = [
-            'queries' => ['label' => "Queries ({$queryCount})", 'icon' => 'ð���ï¸�'],
-            'errors' => ['label' => "Errors ({$errorCount})", 'icon' => 'â� ï¸�'],
-            'request' => ['label' => 'Request', 'icon' => 'ð��¡'],
-            'performance' => ['label' => 'Performance', 'icon' => 'â�¡']
+            'timeline'    => ['label' => 'Timeline',               'icon' => '&#9889;'],
+            'queries'     => ['label' => "Queries ({$queryCount})", 'icon' => '&#128451;'],
+            'errors'      => ['label' => "Errors ({$errorCount})",  'icon' => '&#9888;'],
+            'request'     => ['label' => 'Request',                'icon' => '&#128161;'],
+            'performance' => ['label' => 'Performance',            'icon' => '&#128202;'],
         ];
         
         $tabContent = '';
@@ -236,12 +246,165 @@ class DebugToolbar
     private function generateTabContent(string $tabId, array $data): string
     {
         return match ($tabId) {
-            'queries' => $this->generateQueriesTab($data['queries']),
-            'errors' => $this->generateErrorsTab($data['errors']),
-            'request' => $this->generateRequestTab($data['request']),
+            'timeline'    => $this->generateTimelineTab($data),
+            'queries'     => $this->generateQueriesTab($data['queries']),
+            'errors'      => $this->generateErrorsTab($data['errors']),
+            'request'     => $this->generateRequestTab($data['request']),
             'performance' => $this->generatePerformanceTab($data),
-            default => ''
+            default       => '',
         };
+    }
+
+    // -------------------------------------------------------------------------
+    // Visual profiling timeline
+    // -------------------------------------------------------------------------
+
+    private function generateTimelineTab(array $data): string
+    {
+        $totalMs = $data['profiler_total_ms'] ?? ($data['execution_time'] * 1000);
+        $spans   = $data['profiler_spans'] ?? [];
+        $queries = $data['queries'] ?? [];
+
+        // Synthesise DB spans from DebugToolbar query log if Profiler has no spans
+        if (empty($spans) && !empty($queries)) {
+            $reqStart = microtime(true) - $data['execution_time'];
+            $offset   = 10.0; // estimate: first query at 10ms
+            foreach ($queries as $q) {
+                $durMs    = $q['time'] * 1000;
+                $ts       = $q['timestamp'] ?? 0;
+                $startMs  = $ts > 0 ? ($ts - $reqStart) * 1000 : $offset;
+                $spans[]  = [
+                    'category'   => 'db',
+                    'label'      => substr($q['sql'], 0, 80),
+                    'startMs'    => $startMs,
+                    'endMs'      => $startMs + $durMs,
+                    'durationMs' => $durMs,
+                    'depth'      => 0,
+                ];
+                $offset += $durMs + 5;
+            }
+        }
+
+        // Sort by startMs
+        usort($spans, fn($a, $b) => ($a['startMs'] ?? 0) <=> ($b['startMs'] ?? 0));
+
+        $totalDisplay = number_format($totalMs, 1);
+        $queryTotal   = array_sum(array_map(fn($q) => $q['time'] * 1000, $queries));
+        $appMs        = $totalMs - $queryTotal;
+
+        $timelineHtml = $this->renderTimeline($spans, $totalMs);
+        $legendHtml   = $this->renderLegend($spans);
+        $summaryHtml  = $this->renderProfilerSummary($spans, $totalMs, $queries);
+
+        return <<<HTML
+        <div class="lm-timeline-wrap">
+            <div class="lm-timeline-summary">{$summaryHtml}</div>
+            <div class="lm-timeline-container">
+                <div class="lm-timeline-scale">
+                    <span>0ms</span>
+                    <span>{$totalDisplay}ms</span>
+                </div>
+                {$timelineHtml}
+            </div>
+            <div class="lm-legend">{$legendHtml}</div>
+            <div class="lm-span-list">{$this->renderSpanList($spans)}</div>
+        </div>
+        HTML;
+    }
+
+    private function renderTimeline(array $spans, float $totalMs): string
+    {
+        if ($totalMs <= 0) $totalMs = 1;
+
+        // Bucket spans by depth
+        $rows = [];
+        foreach ($spans as $span) {
+            $depth         = (int)($span['depth'] ?? 0);
+            $rows[$depth][] = $span;
+        }
+        ksort($rows);
+
+        // Always have at least one row (app background)
+        $html = '<div class="lm-timeline-track">';
+
+        // Background "app" bar
+        $html .= '<div class="lm-timeline-row lm-timeline-row--bg">';
+        $html .= '<span class="lm-span lm-span--app" style="left:0%;width:100%" title="Total request: ' . number_format($totalMs, 1) . 'ms"></span>';
+        $html .= '</div>';
+
+        // One row per depth
+        foreach ($rows as $depth => $depthSpans) {
+            $html .= '<div class="lm-timeline-row">';
+            foreach ($depthSpans as $span) {
+                $startPct = ($totalMs > 0) ? min(100, ($span['startMs'] / $totalMs) * 100) : 0;
+                $widthPct = ($totalMs > 0) ? min(100 - $startPct, ($span['durationMs'] / $totalMs) * 100) : 0;
+                $widthPct = max(0.3, $widthPct); // minimum visible width
+                $cat      = htmlspecialchars($span['category'] ?? 'app', ENT_QUOTES);
+                $label    = htmlspecialchars(substr($span['label'] ?? $cat, 0, 60), ENT_QUOTES);
+                $dur      = number_format($span['durationMs'] ?? 0, 2);
+                $title    = "{$cat}: {$label} ({$dur}ms)";
+                $html    .= sprintf(
+                    '<span class="lm-span lm-span--%s" style="left:%.3f%%;width:%.3f%%" title="%s" data-label="%s" data-dur="%sms"></span>',
+                    $cat, $startPct, $widthPct, $title, $label, $dur
+                );
+            }
+            $html .= '</div>';
+        }
+
+        $html .= '</div>';
+        return $html;
+    }
+
+    private function renderLegend(array $spans): string
+    {
+        $cats = array_unique(array_column($spans, 'category'));
+        sort($cats);
+        $items = '';
+        foreach (['boot', 'app', 'db', 'cache', 'render', 'http', 'queue', 'auth', 'event'] as $cat) {
+            if (in_array($cat, $cats, true) || $cat === 'app') {
+                $items .= "<span class=\"lm-legend-item lm-legend-item--{$cat}\"><span class=\"lm-legend-dot\"></span>{$cat}</span>";
+            }
+        }
+        return $items;
+    }
+
+    private function renderProfilerSummary(array $spans, float $totalMs, array $queries): string
+    {
+        $dbMs   = array_sum(array_map(fn($q) => $q['time'] * 1000, $queries));
+        $spanMs = array_sum(array_map(fn($s) => $s['durationMs'] ?? 0, $spans));
+        $mem    = $this->getMemoryUsage();
+
+        $items = [
+            ['label' => 'Total',   'value' => number_format($totalMs, 1) . 'ms',   'cls' => 'app'],
+            ['label' => 'DB',      'value' => number_format($dbMs, 1) . 'ms',      'cls' => 'db'],
+            ['label' => 'App',     'value' => number_format(max(0, $totalMs - $dbMs), 1) . 'ms', 'cls' => 'render'],
+            ['label' => 'Queries', 'value' => count($queries),                      'cls' => 'db'],
+            ['label' => 'Memory',  'value' => $mem['peak'],                         'cls' => 'cache'],
+            ['label' => 'PHP',     'value' => PHP_VERSION,                          'cls' => 'boot'],
+        ];
+
+        $html = '';
+        foreach ($items as $item) {
+            $html .= "<div class=\"lm-summary-item lm-summary-item--{$item['cls']}\"><span class=\"lm-summary-label\">{$item['label']}</span><span class=\"lm-summary-value\">{$item['value']}</span></div>";
+        }
+        return $html;
+    }
+
+    private function renderSpanList(array $spans): string
+    {
+        if (empty($spans)) {
+            return '<div class="lm-span-list-empty">No profiler spans recorded. Call <code>Profiler::start(\'category\', \'label\')</code> to instrument your code.</div>';
+        }
+        $html = '<table class="lm-span-table"><thead><tr><th>Category</th><th>Label</th><th>Duration</th><th>Start</th></tr></thead><tbody>';
+        foreach ($spans as $span) {
+            $cat   = htmlspecialchars($span['category'] ?? 'app', ENT_QUOTES);
+            $label = htmlspecialchars(substr($span['label'] ?? '', 0, 100), ENT_QUOTES);
+            $dur   = number_format($span['durationMs'] ?? 0, 2);
+            $start = number_format($span['startMs'] ?? 0, 2);
+            $html .= "<tr><td><span class=\"lm-badge lm-badge--{$cat}\">{$cat}</span></td><td class=\"lm-span-label\">{$label}</td><td class=\"lm-dur\">{$dur}ms</td><td class=\"lm-start\">{$start}ms</td></tr>";
+        }
+        $html .= '</tbody></table>';
+        return $html;
     }
     
     /**
@@ -398,6 +561,125 @@ class DebugToolbar
                 display: none !important;
             }
         }
+
+        /* ── Profiling Timeline ───────────────────────────────────────── */
+        :root {
+            --lm-boot:   #6b7280;
+            --lm-app:    #14b8a6;
+            --lm-db:     #3b82f6;
+            --lm-cache:  #f59e0b;
+            --lm-render: #10b981;
+            --lm-http:   #8b5cf6;
+            --lm-queue:  #f97316;
+            --lm-auth:   #ec4899;
+            --lm-event:  #ef4444;
+        }
+        .lm-timeline-wrap { padding: 12px 16px; color: #e2e8f0; }
+        .lm-timeline-summary {
+            display: flex; gap: 12px; flex-wrap: wrap;
+            margin-bottom: 14px; padding-bottom: 10px;
+            border-bottom: 1px solid #334155;
+        }
+        .lm-summary-item {
+            display: flex; flex-direction: column; align-items: center;
+            padding: 6px 12px; border-radius: 6px; min-width: 70px;
+            background: #1e293b;
+        }
+        .lm-summary-label { font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: .05em; }
+        .lm-summary-value { font-size: 14px; font-weight: 700; margin-top: 2px; }
+        .lm-summary-item--app   .lm-summary-value { color: var(--lm-app); }
+        .lm-summary-item--db    .lm-summary-value { color: var(--lm-db); }
+        .lm-summary-item--cache .lm-summary-value { color: var(--lm-cache); }
+        .lm-summary-item--render .lm-summary-value { color: var(--lm-render); }
+        .lm-summary-item--boot  .lm-summary-value { color: var(--lm-boot); }
+
+        .lm-timeline-container {
+            background: #0f172a; border-radius: 8px;
+            padding: 10px 14px; margin-bottom: 10px;
+            border: 1px solid #1e293b;
+        }
+        .lm-timeline-scale {
+            display: flex; justify-content: space-between;
+            font-size: 10px; color: #64748b; margin-bottom: 6px;
+            font-family: monospace;
+        }
+        .lm-timeline-track { display: flex; flex-direction: column; gap: 3px; }
+        .lm-timeline-row {
+            position: relative; height: 18px;
+            background: #1e293b; border-radius: 3px; overflow: hidden;
+        }
+        .lm-timeline-row--bg { height: 12px; opacity: .35; }
+        .lm-span {
+            position: absolute; top: 0; height: 100%; border-radius: 2px;
+            cursor: default; transition: opacity .15s;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.15);
+        }
+        .lm-span:hover { opacity: .85; outline: 1px solid rgba(255,255,255,.4); }
+
+        /* category colours */
+        .lm-span--boot   { background: var(--lm-boot); }
+        .lm-span--app    { background: var(--lm-app); }
+        .lm-span--db     { background: var(--lm-db); }
+        .lm-span--cache  { background: var(--lm-cache); }
+        .lm-span--render { background: var(--lm-render); }
+        .lm-span--http   { background: var(--lm-http); }
+        .lm-span--queue  { background: var(--lm-queue); }
+        .lm-span--auth   { background: var(--lm-auth); }
+        .lm-span--event  { background: var(--lm-event); }
+
+        .lm-legend {
+            display: flex; gap: 12px; flex-wrap: wrap;
+            font-size: 11px; color: #94a3b8; margin-bottom: 12px;
+        }
+        .lm-legend-item { display: flex; align-items: center; gap: 5px; }
+        .lm-legend-dot {
+            width: 10px; height: 10px; border-radius: 2px; display: inline-block;
+        }
+        .lm-legend-item--boot   .lm-legend-dot { background: var(--lm-boot); }
+        .lm-legend-item--app    .lm-legend-dot { background: var(--lm-app); }
+        .lm-legend-item--db     .lm-legend-dot { background: var(--lm-db); }
+        .lm-legend-item--cache  .lm-legend-dot { background: var(--lm-cache); }
+        .lm-legend-item--render .lm-legend-dot { background: var(--lm-render); }
+        .lm-legend-item--http   .lm-legend-dot { background: var(--lm-http); }
+        .lm-legend-item--queue  .lm-legend-dot { background: var(--lm-queue); }
+        .lm-legend-item--auth   .lm-legend-dot { background: var(--lm-auth); }
+        .lm-legend-item--event  .lm-legend-dot { background: var(--lm-event); }
+
+        .lm-span-list-empty {
+            font-size: 12px; color: #64748b; padding: 8px 0;
+        }
+        .lm-span-list-empty code {
+            background: #1e293b; padding: 1px 5px; border-radius: 3px; font-family: monospace;
+        }
+        .lm-span-table {
+            width: 100%; border-collapse: collapse; font-size: 11px;
+            color: #cbd5e1;
+        }
+        .lm-span-table th {
+            text-align: left; padding: 4px 8px; color: #64748b;
+            border-bottom: 1px solid #1e293b; font-weight: 600;
+            text-transform: uppercase; font-size: 10px; letter-spacing: .05em;
+        }
+        .lm-span-table td { padding: 3px 8px; border-bottom: 1px solid #0f172a; }
+        .lm-span-table tr:hover td { background: #1e293b; }
+        .lm-span-label { font-family: monospace; max-width: 480px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lm-dur   { color: #fbbf24; font-family: monospace; }
+        .lm-start { color: #64748b; font-family: monospace; }
+
+        .lm-badge {
+            display: inline-block; padding: 1px 6px; border-radius: 3px;
+            font-size: 10px; font-weight: 700; text-transform: uppercase; color: #fff;
+        }
+        .lm-badge--boot   { background: var(--lm-boot); }
+        .lm-badge--app    { background: var(--lm-app); }
+        .lm-badge--db     { background: var(--lm-db); }
+        .lm-badge--cache  { background: var(--lm-cache); }
+        .lm-badge--render { background: var(--lm-render); }
+        .lm-badge--http   { background: var(--lm-http); }
+        .lm-badge--queue  { background: var(--lm-queue); }
+        .lm-badge--auth   { background: var(--lm-auth); }
+        .lm-badge--event  { background: var(--lm-event); }
+        /* ── End Timeline ─────────────────────────────────────────────── */
 
         .lazymephp-debug-toolbar {
             position: fixed;

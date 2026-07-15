@@ -15,10 +15,13 @@ namespace Core\Http;
  */
 class HttpClient
 {
-    private array   $headers = [];
-    private int     $timeout = 30;
-    private bool    $verify  = true;
-    private ?string $baseUrl = null;
+    private array   $headers     = [];
+    private int     $timeout     = 30;
+    private bool    $verify      = true;
+    private ?string $baseUrl     = null;
+    private int     $retryTimes  = 0;
+    private int     $retryDelayMs = 100;
+    private bool    $retryExponential = false;
 
     // -------------------------------------------------------------------------
     // Fake / testing state (static — shared across all instances)
@@ -87,6 +90,20 @@ class HttpClient
         return $this;
     }
 
+    /**
+     * Retry the request up to $times times on failure (5xx or exception).
+     *
+     *   Http::retry(3, 200)->get($url);          // 3 retries, 200ms delay
+     *   Http::retry(3, 100, true)->get($url);    // exponential backoff
+     */
+    public function retry(int $times, int $delayMs = 100, bool $exponential = false): static
+    {
+        $this->retryTimes       = $times;
+        $this->retryDelayMs     = $delayMs;
+        $this->retryExponential = $exponential;
+        return $this;
+    }
+
     // -------------------------------------------------------------------------
     // HTTP verbs
     // -------------------------------------------------------------------------
@@ -127,6 +144,36 @@ class HttpClient
             $url = $this->baseUrl . '/' . ltrim($url, '/');
         }
 
+        if ($this->retryTimes > 0) {
+            return $this->sendWithRetry($method, $url, $body);
+        }
+
+        return $this->sendOnce($method, $url, $body);
+    }
+
+    private function sendWithRetry(string $method, string $url, array|string $body): HttpResponse
+    {
+        $attempt = 0;
+        $delay   = $this->retryDelayMs;
+
+        while (true) {
+            try {
+                $response = $this->sendOnce($method, $url, $body);
+                if (!$response->serverError() || $attempt >= $this->retryTimes) {
+                    return $response;
+                }
+            } catch (\RuntimeException $e) {
+                if ($attempt >= $this->retryTimes) throw $e;
+            }
+
+            $attempt++;
+            if ($delay > 0) usleep($delay * 1000);
+            if ($this->retryExponential) $delay *= 2;
+        }
+    }
+
+    private function sendOnce(string $method, string $url, array|string $body = []): HttpResponse
+    {
         // Intercept when fake mode is active
         if (self::$fakeMode) {
             self::$recorded[] = ['method' => $method, 'url' => $url, 'body' => $body];

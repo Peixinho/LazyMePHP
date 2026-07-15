@@ -126,6 +126,7 @@ class LazyMeCLI {
                 $this->serve();
                 break;
             case 'build':
+                $this->requireDatabase('build');
                 $this->build();
                 break;
             case 'batman':
@@ -139,18 +140,23 @@ class LazyMeCLI {
                 echo \Core\Auth\Auth::hashPassword($tableName) . "\n";
                 break;
             case 'migrate':
+                $this->requireDatabase('migrate');
                 \Core\Migration\Runner::run();
                 break;
             case 'migrate:rollback':
+                $this->requireDatabase('migrate:rollback');
                 \Core\Migration\Runner::rollback($step);
                 break;
             case 'migrate:reset':
+                $this->requireDatabase('migrate:reset');
                 \Core\Migration\Runner::reset();
                 break;
             case 'migrate:fresh':
+                $this->requireDatabase('migrate:fresh');
                 \Core\Migration\Runner::fresh();
                 break;
             case 'migrate:status':
+                $this->requireDatabase('migrate:status');
                 \Core\Migration\Runner::status();
                 break;
             case 'make:migration':
@@ -358,12 +364,50 @@ class LazyMeCLI {
         @exec("php -S 0.0.0.0:$port -t ./public App/Tools/Webserver");
     }
 
+    /** Verify a database is configured and reachable before running DB-dependent commands. */
+    private function requireDatabase(string $command): void
+    {
+        $type = strtolower($_ENV['DB_TYPE'] ?? '');
+        if ($type === '') {
+            echo "\033[31mError:\033[0m No database configured for '{$command}'.\n";
+            echo "Add DB_TYPE (and related vars) to your .env file:\n\n";
+            echo "  DB_TYPE=sqlite\n";
+            echo "  DB_FILE_PATH=database/database.sqlite\n\n";
+            echo "Or for MySQL:\n\n";
+            echo "  DB_TYPE=mysql\n";
+            echo "  DB_HOST=127.0.0.1\n";
+            echo "  DB_NAME=mydb\n";
+            echo "  DB_USER=root\n";
+            echo "  DB_PASSWORD=secret\n\n";
+            exit(1);
+        }
+
+        // Quick connection smoke-test
+        try {
+            \Core\LazyMePHP::DB_CONNECTION();
+        } catch (\Throwable $e) {
+            echo "\033[31mDatabase connection failed:\033[0m " . $e->getMessage() . "\n";
+            echo "Check your .env DB_* settings and make sure the server is running.\n";
+            exit(1);
+        }
+    }
+
     private function build(): void {
         echo "Running build tools...\n";
-        if (file_exists(__DIR__.'/App/Tools/build')) {
-            require_once __DIR__.'/App/Tools/build';
-        } else {
+        if (!file_exists(__DIR__.'/App/Tools/build')) {
             echo "Build script (App/Tools/build) not found.\n";
+            exit(1);
+        }
+        try {
+            require_once __DIR__.'/App/Tools/build';
+        } catch (\Core\DB\DatabaseException $e) {
+            echo "\033[31mDatabase error during build:\033[0m " . $e->getMessage() . "\n";
+            if ($e->getQuery()) {
+                echo "Query: " . $e->getQuery() . "\n";
+            }
+            exit(1);
+        } catch (\Throwable $e) {
+            echo "\033[31mBuild failed:\033[0m " . $e->getMessage() . "\n";
             exit(1);
         }
     }

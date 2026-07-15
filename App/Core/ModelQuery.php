@@ -291,6 +291,16 @@ class ModelQuery
     }
 
     /**
+     * Return results as a fluent Collection instead of a plain array.
+     *
+     *   $names = User::query()->where('active', 1)->collect()->pluck('name');
+     */
+    public function collect(): \Core\Collection
+    {
+        return new \Core\Collection($this->get());
+    }
+
+    /**
      * Add a correlated COUNT subquery for each named relation.
      * The result is available as `$model->relation_count` (int).
      *

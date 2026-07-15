@@ -137,10 +137,18 @@ abstract class ISQL
                 $stmt->bindValue($param, $value, $type);
             }
 
+            if (class_exists('Core\Debug\Profiler')) {
+                \Core\Debug\Profiler::start('db', $query);
+            }
+
             $stmt->execute();
             $result->setStatement($stmt);
 
             $executionTime = microtime(true) - $startTime;
+
+            if (class_exists('Core\Debug\Profiler')) {
+                \Core\Debug\Profiler::stop();
+            }
             if (class_exists('Core\Debug\DebugToolbar')) {
                 \Core\Debug\DebugToolbar::getInstance()->addQuery($query, $executionTime, $params);
             }
@@ -153,6 +161,9 @@ abstract class ISQL
             }
         } catch (\PDOException $e) {
             $executionTime = microtime(true) - $startTime;
+            if (class_exists('Core\Debug\Profiler')) {
+                \Core\Debug\Profiler::stop();
+            }
             if (class_exists('Core\Debug\DebugToolbar')) {
                 \Core\Debug\DebugToolbar::getInstance()->addQuery($query, $executionTime, $params);
             }
