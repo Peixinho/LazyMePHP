@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Core\Tenancy;
 
 use Core\LazyMePHP;
+use Core\Model;
 use Pecee\Http\Middleware\IMiddleware;
 use Pecee\Http\Request;
 
@@ -44,19 +45,33 @@ class TenantMiddleware implements IMiddleware
         $table  = $_ENV['TENANT_TABLE']  ?? 'tenants';
         $column = $_ENV['TENANT_COLUMN'] ?? 'slug';
 
-        $rows = LazyMePHP::DB_CONNECTION()->query(
+        $result = LazyMePHP::DB_CONNECTION()->query(
             'SELECT * FROM "' . $table . '" WHERE "' . $column . '"=? LIMIT 1',
             [$identifier]
         );
 
-        if (empty($rows)) {
+        $tenantRow = $result->fetchArray();
+
+        if (!$tenantRow) {
             http_response_code(404);
             header('Content-Type: application/json');
             echo json_encode(['error' => 'Tenant not found.']);
             exit;
         }
 
-        Tenant::set($rows[0]);
+        Tenant::set($tenantRow);
+
+        // Register a universal scope so ALL model queries are automatically scoped
+        // to this tenant, even on models that don't use the HasTenant trait.
+        // The scope is a no-op for tables that lack a tenant_id column.
+        Model::addUniversalScope('tenant', function (\Core\ModelQuery $q): void {
+            $id = Tenant::id();
+            if ($id === null) return;
+            $schema = Model::schemaFor($q->getTable());
+            if (array_key_exists('tenant_id', $schema)) {
+                $q->where('tenant_id', $id);
+            }
+        });
     }
 
     private function resolveIdentifier(Request $request): ?string

@@ -68,6 +68,15 @@ class Model implements IDB
      */
     protected static array $globalScopes = [];
 
+    /**
+     * Universal scopes — applied to ALL model queries regardless of class.
+     * Stored only on the base Model so they are truly shared (not per-subclass).
+     * Register via Model::addUniversalScope() (e.g. from TenantMiddleware).
+     *
+     * @var array<string, callable(ModelQuery): void>
+     */
+    private static array $universalScopes = [];
+
     // -------------------------------------------------------------------------
     // Internal state
     // -------------------------------------------------------------------------
@@ -267,6 +276,30 @@ class Model implements IDB
     public static function getGlobalScopes(): array
     {
         return static::$globalScopes;
+    }
+
+    /**
+     * Register a scope that is automatically applied to every query across ALL models.
+     * Useful for cross-cutting concerns like multi-tenancy.
+     *
+     *   Model::addUniversalScope('tenant', function(ModelQuery $q): void {
+     *       if (Tenant::id() !== null) $q->where('tenant_id', Tenant::id());
+     *   });
+     */
+    public static function addUniversalScope(string $name, callable $scope): void
+    {
+        self::$universalScopes[$name] = $scope;
+    }
+
+    public static function removeUniversalScope(string $name): void
+    {
+        unset(self::$universalScopes[$name]);
+    }
+
+    /** @internal */
+    public static function getUniversalScopes(): array
+    {
+        return self::$universalScopes;
     }
 
     /**

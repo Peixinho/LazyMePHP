@@ -103,6 +103,34 @@ if (\Core\LazyMePHP::DEBUG_MODE()) {
 }
 
 /*
+ * Auto-discover and register model observers from App/Observers/.
+ *
+ * Each observer class must declare `protected static string $table = 'table_name';`
+ * so it can be matched to the correct model events.
+ */
+$_observerDir = __DIR__ . '/Observers';
+if (is_dir($_observerDir)) {
+    foreach (glob($_observerDir . '/*.php') ?: [] as $_observerFile) {
+        require_once $_observerFile;
+        $_observerClass = basename($_observerFile, '.php');
+        if (class_exists($_observerClass)) {
+            try {
+                $_ref   = new ReflectionClass($_observerClass);
+                $_table = $_ref->hasProperty('table')
+                    ? $_ref->getStaticPropertyValue('table', null)
+                    : null;
+                if ($_table) {
+                    \Core\Events\ModelEvents::registerObserver($_table, new $_observerClass());
+                }
+            } catch (\Throwable) {
+                // Skip unloadable observers silently
+            }
+        }
+    }
+}
+unset($_observerDir, $_observerFile, $_observerClass, $_ref, $_table);
+
+/*
  * Register fatal error shutdown handler (must be last to have priority)
  */
 register_shutdown_function(['\Core\Helpers\ErrorUtil', 'FatalErrorShutdownHandler']);

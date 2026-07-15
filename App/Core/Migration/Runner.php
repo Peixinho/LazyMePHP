@@ -158,26 +158,141 @@ class Runner
         $filename = sprintf('%s_%04d_%s.php', $date, $seq, $slug);
         $fullPath = $dir . '/' . $filename;
 
-        file_put_contents($fullPath, <<<PHP
+        file_put_contents($fullPath, static::inferStub($name));
+
+        return "database/migrations/$filename";
+    }
+
+    public static function fresh(): void
+    {
+        static::ensureTable();
+        $db     = LazyMePHP::DB_CONNECTION();
+        $dbType = strtolower(LazyMePHP::DB_TYPE() ?? 'mysql');
+
+        // Drop all user tables (skip __ internal tables)
+        $sql = match($dbType) {
+            'sqlite' => "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '#__%' ESCAPE '#' ORDER BY name",
+            'mysql'  => "SELECT TABLE_NAME AS name FROM information_schema.TABLES WHERE TABLE_SCHEMA = '" . LazyMePHP::DB_NAME() . "' AND TABLE_NAME NOT LIKE '\\_\\_%'",
+            'mssql'  => "SELECT TABLE_NAME AS name FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME NOT LIKE '\\_\\_%'",
+            default  => throw new \RuntimeException("Unsupported DB type: $dbType"),
+        };
+
+        $result = $db->query($sql);
+        $tables = [];
+        while ($row = $result->fetchArray()) {
+            $tables[] = $row['name'] ?? $row['TABLE_NAME'] ?? '';
+        }
+
+        foreach (array_filter($tables) as $table) {
+            if ($dbType === 'sqlite') {
+                $db->query('DROP TABLE IF EXISTS "' . $table . '"');
+            } elseif ($dbType === 'mysql') {
+                $db->query('DROP TABLE IF EXISTS `' . $table . '`');
+            } else {
+                $db->query('DROP TABLE IF EXISTS [' . $table . ']');
+            }
+            echo "  Dropped: $table\n";
+        }
+
+        static::run();
+    }
+
+    protected static function inferStub(string $name): string
+    {
+        $raw = strtolower($name);
+
+        if (preg_match('/^create_(.+)_table$/', $raw, $m)) {
+            $table = $m[1];
+            return <<<PHP
 <?php
 
 return [
     'up' => function (\$db): void {
         \$db->query("
-            -- CREATE TABLE example (
-            --     id    INTEGER PRIMARY KEY AUTOINCREMENT,
-            --     name  TEXT    NOT NULL
-            -- )
+            CREATE TABLE {$table} (
+                id   INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT    NOT NULL
+            )
         ");
     },
 
     'down' => function (\$db): void {
-        // \$db->query("DROP TABLE IF EXISTS example");
+        \$db->query("DROP TABLE IF EXISTS {$table}");
     },
 ];
-PHP);
+PHP;
+        }
 
-        return "database/migrations/$filename";
+        if (preg_match('/^add_(.+)_to_(.+)$/', $raw, $m)) {
+            $column = $m[1];
+            $table  = $m[2];
+            return <<<PHP
+<?php
+
+return [
+    'up' => function (\$db): void {
+        \$db->query("ALTER TABLE {$table} ADD COLUMN {$column} TEXT");
+    },
+
+    'down' => function (\$db): void {
+        // SQLite does not support DROP COLUMN before 3.35.0
+        // \$db->query("ALTER TABLE {$table} DROP COLUMN {$column}");
+    },
+];
+PHP;
+        }
+
+        if (preg_match('/^drop_(.+)_table$/', $raw, $m)) {
+            $table = $m[1];
+            return <<<PHP
+<?php
+
+return [
+    'up' => function (\$db): void {
+        \$db->query("DROP TABLE IF EXISTS {$table}");
+    },
+
+    'down' => function (\$db): void {
+        // Recreate the {$table} table here if you need rollback support
+    },
+];
+PHP;
+        }
+
+        if (preg_match('/^rename_(.+)_to_(.+)$/', $raw, $m)) {
+            $oldTable = $m[1];
+            $newTable = $m[2];
+            return <<<PHP
+<?php
+
+return [
+    'up' => function (\$db): void {
+        \$db->query("ALTER TABLE {$oldTable} RENAME TO {$newTable}");
+    },
+
+    'down' => function (\$db): void {
+        \$db->query("ALTER TABLE {$newTable} RENAME TO {$oldTable}");
+    },
+];
+PHP;
+        }
+
+        // Generic stub
+        return <<<PHP
+<?php
+
+return [
+    'up' => function (\$db): void {
+        \$db->query("
+            -- Write your SQL here
+        ");
+    },
+
+    'down' => function (\$db): void {
+        // Reverse the 'up' operation
+    },
+];
+PHP;
     }
 
     // -------------------------------------------------------------------------

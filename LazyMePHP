@@ -63,6 +63,7 @@ class LazyMeCLI {
         'migrate'          => 'Run all pending migrations',
         'migrate:rollback' => 'Roll back the last migration batch  [--step=N]',
         'migrate:reset'    => 'Roll back every migration',
+        'migrate:fresh'    => 'Drop all tables and re-run every migration',
         'migrate:status'   => 'Show which migrations have run',
         'make:migration'   => 'Scaffold a new migration file  [name]',
         'make:api'         => 'GraphQL API is auto-generated — shows how to customise field exposure',
@@ -77,7 +78,7 @@ class LazyMeCLI {
         'make:factory'     => 'Scaffold a new model factory  [name]',
         'make:observer'    => 'Scaffold a new model observer  [name]',
         'make:resource'    => 'Scaffold a new API resource  [name]',
-        'make:model'       => 'Scaffold a new Model subclass  [name]',
+        'make:model'       => 'Scaffold a new Model subclass  [name] [--table=TableName]',
         'make:job'         => 'Scaffold a new queue job  [name]',
         'make:request'     => 'Scaffold a new FormRequest  [name]',
         'make:mail'        => 'Scaffold a new Mailable class  [name]',
@@ -94,19 +95,21 @@ class LazyMeCLI {
         $command = $argv[1];
         $tableName = $argv[2] ?? null;
 
-        // Parse --step=N, --class=Name, --queue=X, --sleep=N, --tries=N, --stop-when-empty
+        // Parse --step=N, --class=Name, --queue=X, --sleep=N, --tries=N, --stop-when-empty, --table=Name
         $step          = 1;
         $classArg      = null;
         $queueArg      = 'default';
         $sleepArg      = 3;
         $triesArg      = 3;
         $stopWhenEmpty = false;
+        $tableArg      = null;
         foreach ($argv as $arg) {
             if (preg_match('/^--step=(\d+)$/',  $arg, $m)) { $step      = (int)$m[1]; }
             if (preg_match('/^--class=(.+)$/',   $arg, $m)) { $classArg  = $m[1]; }
             if (preg_match('/^--queue=(.+)$/',   $arg, $m)) { $queueArg  = $m[1]; }
             if (preg_match('/^--sleep=(\d+)$/',  $arg, $m)) { $sleepArg  = (int)$m[1]; }
             if (preg_match('/^--tries=(\d+)$/',  $arg, $m)) { $triesArg  = (int)$m[1]; }
+            if (preg_match('/^--table=(.+)$/',   $arg, $m)) { $tableArg  = $m[1]; }
             if ($arg === '--stop-when-empty') { $stopWhenEmpty = true; }
         }
 
@@ -135,6 +138,9 @@ class LazyMeCLI {
                 break;
             case 'migrate:reset':
                 \Core\Migration\Runner::reset();
+                break;
+            case 'migrate:fresh':
+                \Core\Migration\Runner::fresh();
                 break;
             case 'migrate:status':
                 \Core\Migration\Runner::status();
@@ -201,10 +207,10 @@ class LazyMeCLI {
                 break;
             case 'make:model':
                 if (!$tableName) {
-                    echo "Usage: php lazymephp make:model <Name>\n";
+                    echo "Usage: php lazymephp make:model <Name> [--table=TableName]\n";
                     exit(1);
                 }
-                $this->makeModel($tableName);
+                $this->makeModel($tableName, $tableArg);
                 break;
             case 'make:job':
                 if (!$tableName) {
@@ -366,7 +372,9 @@ class LazyMeCLI {
         if (!is_dir($dir)) mkdir($dir, 0755, true);
         $file = "$dir/{$name}.php";
         if (file_exists($file)) { echo "Observer already exists: $file\n"; exit(1); }
-        file_put_contents($file, "<?php\n\nclass {$name}\n{\n    public function creating(mixed \$model): void {}\n    public function created(mixed \$model): void {}\n    public function updating(mixed \$model): void {}\n    public function updated(mixed \$model): void {}\n    public function deleting(mixed \$model): void {}\n    public function deleted(mixed \$model): void {}\n}\n");
+        $defaultTable = rtrim(strtolower(preg_replace('/Observer$/', '', $name) ?? $name), '') . 's';
+        $tableSlug    = strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', preg_replace('/Observer$/', '', $name) ?? $name)) . 's';
+        file_put_contents($file, "<?php\n\nclass {$name}\n{\n    // Bootstrap auto-discovery reads this to know which model events to attach to.\n    protected static string \$table = '{$tableSlug}';\n\n    public function creating(mixed \$model): void {}\n    public function created(mixed \$model): void {}\n    public function updating(mixed \$model): void {}\n    public function updated(mixed \$model): void {}\n    public function deleting(mixed \$model): void {}\n    public function deleted(mixed \$model): void {}\n}\n");
         echo "Created: $file\n";
     }
 
@@ -406,13 +414,28 @@ class LazyMeCLI {
         echo "Created: $file\n";
     }
 
-    private function makeModel(string $name): void {
+    private function makeModel(string $name, ?string $dbTable = null): void {
         $dir  = __DIR__ . '/App/Models';
         if (!is_dir($dir)) mkdir($dir, 0755, true);
         $file = "$dir/{$name}.php";
         if (file_exists($file)) { echo "Model already exists: $file\n"; exit(1); }
-        $table = strtolower($name) . 's';
-        file_put_contents($file, "<?php\n\ndeclare(strict_types=1);\n\nnamespace Models;\n\nuse Core\\Model;\n\nclass {$name} extends Model\n{\n    protected static string \$table = '{$table}';\n\n    // protected static array \$rules = [\n    //     'name' => 'required|max:255',\n    // ];\n}\n");
+        $table = $dbTable ?? (strtolower($name) . 's');
+
+        $fillableLine = '';
+        if ($dbTable) {
+            try {
+                $schema = \Core\Model::schemaFor($dbTable);
+                $cols   = array_filter(array_keys($schema), fn($c) => !($schema[$c]['pk'] ?? false));
+                if (!empty($cols)) {
+                    $list = implode("', '", $cols);
+                    $fillableLine = "\n    protected static array \$fillable = ['{$list}'];\n";
+                }
+            } catch (\Throwable) {
+                // Schema not available — skip fillable
+            }
+        }
+
+        file_put_contents($file, "<?php\n\ndeclare(strict_types=1);\n\nnamespace Models;\n\nuse Core\\Model;\n\nclass {$name} extends Model\n{\n    protected static string \$table = '{$table}';\n{$fillableLine}\n    // protected static array \$rules = [\n    //     'name' => 'required|max:255',\n    // ];\n}\n");
         echo "Created: $file\n";
     }
 

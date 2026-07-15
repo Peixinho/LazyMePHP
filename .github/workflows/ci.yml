@@ -42,6 +42,52 @@ jobs:
       - name: Run test suite
         run: vendor/bin/pest --no-coverage
 
+  redis-integration:
+    name: Redis Integration (PHP 8.2)
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: sqlite3, pdo_sqlite, pdo, redis
+          coverage: none
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-php-8.2-${{ hashFiles('composer.lock') }}
+          restore-keys: ${{ runner.os }}-php-8.2-
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Copy .env for tests
+        run: cp .env.example .env 2>/dev/null || true
+
+      - name: Run test suite with Redis cache and queue
+        env:
+          CACHE_DRIVER: redis
+          QUEUE_DRIVER: redis
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: 6379
+        run: vendor/bin/pest --no-coverage
+
   analyse:
     name: PHPStan Static Analysis
     runs-on: ubuntu-latest

@@ -56,11 +56,22 @@ class ModelQuery
         return $this;
     }
 
+    /** The table this query targets — used by universal scopes to check schema. */
+    public function getTable(): string
+    {
+        return $this->tableName;
+    }
+
     /** Apply global scopes exactly once (idempotent). */
     private function applyGlobalScopes(): void
     {
         if ($this->skipGlobalScopes || $this->globalScopesApplied) return;
         $this->globalScopesApplied = true;
+        // Universal scopes (apply to every model, e.g. multi-tenancy)
+        foreach (Model::getUniversalScopes() as $scope) {
+            $scope($this);
+        }
+        // Per-class global scopes
         if (method_exists($this->modelClass, 'getGlobalScopes')) {
             foreach (($this->modelClass)::getGlobalScopes() as $scope) {
                 $scope($this);

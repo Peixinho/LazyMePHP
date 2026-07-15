@@ -41,6 +41,20 @@ class Cache
             default => new ArrayStore(),
         };
 
+        // Warn in production: ArrayStore is per-process and per-request.
+        // Rate limiting, query caching, and session-independent state will not
+        // persist across PHP-FPM workers or between requests.
+        if (self::$instance instanceof ArrayStore
+            && strtolower($_ENV['APP_ENV'] ?? 'local') === 'production'
+        ) {
+            trigger_error(
+                'CACHE_DRIVER is unset or "array" in production. '
+                . 'Cache data is lost between requests and not shared across workers. '
+                . 'Set CACHE_DRIVER=redis or CACHE_DRIVER=apcu.',
+                E_USER_WARNING
+            );
+        }
+
         return self::$instance;
     }
 
