@@ -35,8 +35,20 @@ require_once __DIR__ . '/../App/Core/BladeFactory.php';
 // 2. Get the shared BladeOne instance
 $blade = \Core\BladeFactory::getBlade();
 
-// 3. Load Application Routes within a Base Path Group
-$basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
+// 3. Serve pre-built docs site at /docs — bypass router and layout entirely
+$basePath    = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
+$requestUri  = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
+$requestPath = $basePath !== '' ? substr($requestUri, strlen($basePath)) : $requestUri;
+
+if (str_starts_with($requestPath, '/docs')) {
+    \Core\DocsServer::serve(
+        substr($requestPath, strlen('/docs')),
+        __DIR__ . '/../docs/build'
+    );
+    exit();
+}
+
+// 3b. Load Application Routes within a Base Path Group
 \Pecee\SimpleRouter\SimpleRouter::group(['prefix' => $basePath], function () use ($blade) {
     // Load all route files. The $blade variable is available to them.
     foreach(glob(__DIR__."/../App/Routes/" . "/*.php") as $routeFile) {

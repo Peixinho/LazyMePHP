@@ -7,7 +7,7 @@ const config = {
   favicon: 'img/favicon.ico',
 
   url: 'https://peixinho.github.io',
-  baseUrl: '/LazyMePHP/',
+  baseUrl: '/docs/',
 
   organizationName: 'Peixinho',
   projectName: 'LazyMePHP',
