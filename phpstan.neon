@@ -11,6 +11,8 @@ parameters:
         - App/Api/
         # Vendored third-party code copied into App/Ext (not our code to fix)
         - App/Ext/
+        # Testing helpers are consumed by Pest's uses() which PHPStan cannot see
+        - App/Core/Testing/
     ignoreErrors:
         # PHP superglobals ($_GET, $_POST, $_COOKIE, $_SESSION) always exist —
         # PHPStan incorrectly flags the ?? as redundant because it knows they

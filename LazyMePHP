@@ -84,6 +84,7 @@ class LazyMeCLI {
         'make:mail'        => 'Scaffold a new Mailable class  [name]',
         'make:test'        => 'Scaffold a new Pest test  [name]',
         'make:command'     => 'Scaffold a new console command  [name]',
+        'make:kernel'      => 'Scaffold App/Console/Kernel.php (task scheduler entry point)',
         'schedule:run'     => 'Run scheduled tasks that are due now',
         'queue:work'       => 'Start the queue worker  [--queue=default --sleep=3 --tries=3 --stop-when-empty]',
         'queue:size'       => 'Show number of pending jobs  [--queue=default]',
@@ -261,6 +262,9 @@ class LazyMeCLI {
                     exit(1);
                 }
                 $this->makeCommand($tableName);
+                break;
+            case 'make:kernel':
+                $this->makeKernel();
                 break;
             case 'queue:work':
                 (new \Core\Queue\Worker())->run($queueArg, $sleepArg, $triesArg, $stopWhenEmpty);
@@ -538,6 +542,24 @@ class LazyMeCLI {
         if (file_exists($file)) { echo "FormRequest already exists: $file\n"; exit(1); }
         file_put_contents($file, "<?php\n\ndeclare(strict_types=1);\n\nuse Core\\Http\\FormRequest;\n\nclass {$name} extends FormRequest\n{\n    public function rules(): array\n    {\n        return [\n            // 'name' => 'required|min:2|max:255',\n            // 'email' => 'required|email',\n        ];\n    }\n\n    public function authorize(): bool\n    {\n        return true;\n    }\n}\n");
         echo "Created: $file\n";
+    }
+
+    private function makeKernel(): void {
+        $file = __DIR__ . '/App/Console/Kernel.php';
+        if (file_exists($file)) {
+            echo "Kernel already exists: {$file}\n";
+            echo "Edit it to register your scheduled tasks.\n";
+            echo "\nExample:\n";
+            echo "  \$schedule->call(fn() => Cache::flush())->daily()->at('03:00');\n";
+            echo "  \$schedule->command('queue:flush')->weekly();\n";
+            return;
+        }
+        $dir = __DIR__ . '/App/Console';
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+        file_put_contents($file, "<?php\n\ndeclare(strict_types=1);\n\nnamespace App\\Console;\n\nuse Core\\Console\\Schedule;\n\nclass Kernel\n{\n    public function schedule(Schedule \$schedule): void\n    {\n        // Register scheduled tasks here.\n        // Add to cron:  * * * * * cd /var/www && php lazymephp schedule:run\n        //\n        // \$schedule->call(fn() => \\Core\\Cache\\Cache::flush())\n        //          ->daily()->at('03:00')->withDescription('Flush cache');\n        //\n        // \$schedule->command('queue:flush')->weekly();\n    }\n}\n");
+        echo "Created: {$file}\n";
+        echo "Add this to your crontab (runs every minute):\n";
+        echo "  * * * * * cd " . __DIR__ . " && php lazymephp schedule:run >> /dev/null 2>&1\n";
     }
 
     private function makeCommand(string $name): void {

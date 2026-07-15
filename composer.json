@@ -23,7 +23,7 @@
         }
     ],
     "require": {
-        "php": "^8.0",
+        "php": "^8.1",
         "eftec/bladeone": "^4.13",
         "pecee/simple-router": "dev-master",
         "adhocore/jwt": "^1.1.3",
