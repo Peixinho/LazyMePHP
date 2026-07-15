@@ -20,6 +20,9 @@ use Core\LazyMePHP;
  */
 class BroadcastChannel
 {
+    private bool $ensured = false;
+    private int $lastPrune = 0;
+
     public function __construct(private readonly string $channel) {}
 
     // -------------------------------------------------------------------------
@@ -48,9 +51,25 @@ class BroadcastChannel
      *
      *   // routes.php
      *   Router::get('/events/orders', fn() => Broadcast::channel('orders')->listen());
+     *
+     * Auth (optional):
+     *   Pass a callable that receives the bearer token and returns bool, or set
+     *   BROADCAST_TOKEN env var for simple static-token auth.
+     *
+     *   Broadcast::channel('orders')->listen(auth: fn($tok) => $tok === 'secret');
+     *
+     * Rate limiting:
+     *   BROADCAST_MAX_CONNECTIONS=10  limits concurrent SSE listeners by IP (APCu only).
+     *   BROADCAST_RATE_WINDOW=60      seconds for the connection rate window.
      */
-    public function listen(int $pollIntervalMs = 1000, int $maxSeconds = 0): void
-    {
+    public function listen(
+        int $pollIntervalMs = 1000,
+        int $maxSeconds     = 0,
+        ?callable $auth     = null,
+    ): void {
+        $this->authenticateSse($auth);
+        $this->rateLimitSse();
+
         $this->ensureTable();
 
         // SSE headers
@@ -108,9 +127,8 @@ class BroadcastChannel
 
     private function pruneOldMessages(): void
     {
-        static $lastPrune = 0;
-        if ((time() - $lastPrune) < 60) return;
-        $lastPrune = time();
+        if ((time() - $this->lastPrune) < 60) return;
+        $this->lastPrune = time();
         $cutoff    = date('Y-m-d H:i:s', time() - 300); // keep 5 minutes
         LazyMePHP::DB_CONNECTION()->query(
             'DELETE FROM __broadcast_messages WHERE created_at < ?',
@@ -118,11 +136,64 @@ class BroadcastChannel
         );
     }
 
+    private function authenticateSse(?callable $auth): void
+    {
+        $token = null;
+        $header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+        if (str_starts_with($header, 'Bearer ')) {
+            $token = substr($header, 7);
+        }
+
+        // Callable auth guard
+        if ($auth !== null) {
+            if (!$auth($token)) {
+                http_response_code(401);
+                header('Content-Type: application/json');
+                echo json_encode(['error' => 'Unauthorized']);
+                exit;
+            }
+            return;
+        }
+
+        // Static token from env
+        $envToken = $_ENV['BROADCAST_TOKEN'] ?? '';
+        if ($envToken !== '' && $token !== $envToken) {
+            http_response_code(401);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Unauthorized']);
+            exit;
+        }
+    }
+
+    private function rateLimitSse(): void
+    {
+        $max    = (int)($_ENV['BROADCAST_MAX_CONNECTIONS'] ?? 0);
+        $window = (int)($_ENV['BROADCAST_RATE_WINDOW']    ?? 60);
+
+        if ($max <= 0 || !function_exists('apcu_fetch')) return;
+
+        $ip  = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+        $key = "sse_rate:{$this->channel}:{$ip}";
+
+        $count = (int)apcu_fetch($key);
+        if ($count >= $max) {
+            http_response_code(429);
+            header('Content-Type: application/json');
+            header("Retry-After: {$window}");
+            echo json_encode(['error' => 'Too Many Connections']);
+            exit;
+        }
+
+        apcu_inc($key, 1, $success, $window);
+        if (!$success) {
+            apcu_store($key, 1, $window);
+        }
+    }
+
     private function ensureTable(): void
     {
-        static $ensured = false;
-        if ($ensured) return;
-        $ensured = true;
+        if ($this->ensured) return;
+        $this->ensured = true;
 
         $db   = LazyMePHP::DB_CONNECTION();
         $type = strtolower($_ENV['DB_TYPE'] ?? 'sqlite');

@@ -33,28 +33,28 @@ class AutoRouter
     /**
      * Register the 6 standard CRUD web routes for a single table.
      */
-    public static function register(string $table, BladeOne $blade): void
+    public static function register(string $table, ?BladeOne $blade = null): void
     {
-        SimpleRouter::get("/$table", function () use ($table, $blade): void {
+        SimpleRouter::get("/$table", function () use ($table): void {
             $request    = new Request();
             $controller = CrudController::forTable($table, $request);
             $data       = $controller->index((int)($request->get('page') ?? 1), LazyMePHP::NRESULTS());
-            echo $blade->run($controller->viewName('index'), array_merge($data, [
+            echo BladeFactory::render($controller->viewName('index'), array_merge($data, [
                 'current' => $request->get('page') ?? 1,
                 'limit'   => LazyMePHP::NRESULTS(),
             ]));
         });
 
-        SimpleRouter::get("/$table/new", function () use ($table, $blade): void {
+        SimpleRouter::get("/$table/new", function () use ($table): void {
             $request    = new Request();
             $controller = CrudController::forTable($table, $request);
-            echo $blade->run($controller->viewName('edit'), $controller->edit());
+            echo BladeFactory::render($controller->viewName('edit'), $controller->edit());
         });
 
-        SimpleRouter::get("/$table/{id}/edit", function (string $id) use ($table, $blade): void {
+        SimpleRouter::get("/$table/{id}/edit", function (string $id) use ($table): void {
             $request    = new Request();
             $controller = CrudController::forTable($table, $request);
-            echo $blade->run($controller->viewName('edit'), $controller->edit((int)$id));
+            echo BladeFactory::render($controller->viewName('edit'), $controller->edit((int)$id));
         });
 
         SimpleRouter::post("/$table/{id}", function (string $id) use ($table): void {
@@ -84,11 +84,11 @@ class AutoRouter
      * Uses schema cache file names when available, otherwise queries the DB.
      * Tables whose controller subclass sets $hidden = true are skipped.
      */
-    public static function registerAll(BladeOne $blade): void
+    public static function registerAll(?BladeOne $blade = null): void
     {
         foreach (Model::listTables() as $table) {
             if (CrudController::isHidden($table)) continue;
-            self::register($table, $blade);
+            self::register($table);
         }
     }
 }

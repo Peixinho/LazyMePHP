@@ -45,4 +45,25 @@ class BladeFactory
         }
         return self::$blade;
     }
-} 
+
+    /**
+     * Render a Blade view with Profiler instrumentation.
+     *
+     * Prefer this over getBlade()->run() so render spans appear in the debug timeline.
+     *
+     *   echo BladeFactory::render('users.index', ['users' => $users]);
+     *
+     * @param array<string,mixed> $data
+     */
+    public static function render(string $view, array $data = []): string
+    {
+        if (class_exists(\Core\Debug\Profiler::class)) {
+            \Core\Debug\Profiler::start('render', $view);
+        }
+        $html = self::getBlade()->run($view, $data);
+        if (class_exists(\Core\Debug\Profiler::class)) {
+            \Core\Debug\Profiler::stop();
+        }
+        return $html;
+    }
+}
