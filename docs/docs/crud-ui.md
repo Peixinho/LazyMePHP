@@ -1,0 +1,84 @@
+---
+id: crud-ui
+title: CRUD Web UI
+sidebar_position: 12
+---
+
+# CRUD Web UI
+
+Every table in the database gets a full web UI automatically. No code generation required.
+
+## Auto-generated routes
+
+| Method | Path | Action |
+|---|---|---|
+| GET | `/{table}` | Paginated list with filters |
+| GET | `/{table}/new` | New record form |
+| GET | `/{table}/{id}/edit` | Edit form |
+| POST | `/{table}` | Create |
+| POST | `/{table}/{id}` | Update |
+| POST | `/{table}/{id}/delete` | Delete |
+
+## Views
+
+Generic Blade templates live in `App/Views/_Crud/`. To override for a specific table, create table-specific files — the controller resolves to these first:
+
+```
+App/Views/{TableName}/index.blade.php   → list page
+App/Views/{TableName}/edit.blade.php    → create / edit page
+```
+
+All schema variables are passed automatically:
+
+| Variable | Description |
+|---|---|
+| `$schema` | Column definitions from the live schema |
+| `$record` | The current model instance (on edit) |
+| `$pk` | Primary key column name |
+| `$table` | Table name |
+| `$foreignKeys` | FK relationships for dropdown rendering |
+
+## Customising behaviour
+
+Create `App/Controllers/{TableName}.php` (matching the table name, PascalCase) to extend the default behaviour:
+
+```php
+namespace Controllers;
+use Core\CrudController;
+use Core\Model;
+
+class Users extends CrudController {
+    protected static string $table = 'users';
+
+    // Declare FK columns so the UI renders dropdowns
+    protected function foreignKeys(): array {
+        return ['role_id' => 'roles'];
+    }
+
+    // Add extra validation on top of model rules
+    protected function extraValidationRules(): array {
+        return [
+            'username' => [
+                'validations' => [\Core\Validations\ValidationsMethod::STRING],
+                'required'    => true,
+            ],
+        ];
+    }
+
+    // Called before every save (create or update)
+    protected function beforeSave(Model $obj, array &$data, bool $isUpdate): void {
+        $data['updated_at'] = date('Y-m-d H:i:s');
+    }
+
+    protected function afterSave(Model $obj, bool $isUpdate): void {}
+    protected function beforeDelete(Model $obj): void {}
+
+    // Restrict which columns the GraphQL API exposes for this table
+    public function exposedFields(): array {
+        return ['id', 'name', 'email', 'role_id', 'created_at'];
+    }
+
+    // Set to true to exclude this table from the auto-wired UI
+    // public static bool $hidden = true;
+}
+```
