@@ -29,7 +29,7 @@ enum Error:string {
     // Database errors
     case DB_CONNECTION_FAILED = "Database connection failed.";
     case DB_QUERY_FAILED = "Database query failed.";
-    case DB_RECORD_NOT_FOUND = "Record not found.";
+    case DB_RECORD_NOT_FOUND = "{type} not found.";
     case DB_DUPLICATE_ENTRY = "This record already exists.";
     case DB_CONSTRAINT_VIOLATION = "Database constraint violation.";
     

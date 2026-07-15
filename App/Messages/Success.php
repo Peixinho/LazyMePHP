@@ -19,10 +19,10 @@ enum Success:string {
     case PASSWORD_RESET = "Password reset email sent.";
     
     // CRUD operations
-    case RECORD_CREATED = "Record created successfully.";
-    case RECORD_UPDATED = "Record updated successfully.";
-    case RECORD_DELETED = "Record deleted successfully.";
-    case RECORD_RESTORED = "Record restored successfully.";
+    case RECORD_CREATED = "{type} created successfully.";
+    case RECORD_UPDATED = "{type} updated successfully.";
+    case RECORD_DELETED = "{type} deleted successfully.";
+    case RECORD_RESTORED = "{type} restored successfully.";
     
     // File operations
     case FILE_UPLOADED = "File uploaded successfully.";
