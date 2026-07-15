@@ -133,6 +133,22 @@ class Model implements IDB
     }
 
     /**
+     * Hydrate an array of raw DB rows into Model instances.
+     * Use this after a raw query (CTE, UNION, window function, subquery in FROM)
+     * when ModelQuery cannot express the SQL.
+     *
+     *   $result = LazyMePHP::DB_CONNECTION()->query($cte, $bindings);
+     *   $rows   = [];
+     *   while ($row = $result->fetchArray()) $rows[] = $row;
+     *   $models = Model::hydrate('users', $rows);
+     *   // each model has all columns — schema columns + computed aliases
+     */
+    public static function hydrate(string $table, array $rows): array
+    {
+        return array_map(fn($row) => new static($table, $row), $rows);
+    }
+
+    /**
      * Load a single record by primary key, or null if not found.
      */
     public static function find(string $table, mixed $id): ?static

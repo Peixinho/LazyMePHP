@@ -184,6 +184,35 @@ describe('ModelQuery::update() scoped', function () {
     });
 });
 
+describe('Model::hydrate()', function () {
+    it('wraps raw DB rows into Model instances', function () {
+        $result = LazyMePHP::DB_CONNECTION()->query(
+            'SELECT * FROM "users" WHERE "dept_id" = ?', [1]
+        );
+        $rows = [];
+        while ($row = $result->fetchArray()) $rows[] = $row;
+
+        $models = Model::hydrate('users', $rows);
+        expect($models)->toHaveCount(2);
+        expect($models[0])->toBeInstanceOf(Model::class);
+        expect($models[0]->name)->toBeIn(['Alice', 'Bob']);
+    });
+
+    it('preserves computed columns from a CTE-style subquery', function () {
+        $result = LazyMePHP::DB_CONNECTION()->query(
+            'SELECT "dept_id", COUNT(*) AS cnt FROM "users" GROUP BY "dept_id"', []
+        );
+        $rows = [];
+        while ($row = $result->fetchArray()) $rows[] = $row;
+
+        $models = Model::hydrate('users', $rows);
+        expect($models)->toHaveCount(2);
+        foreach ($models as $m) {
+            expect((int)$m->cnt)->toBe(2);
+        }
+    });
+});
+
 describe('ModelQuery::remember() — cache key uniqueness', function () {
     it('different order-by clauses produce different cached results', function () {
         $asc  = Model::query('users')->orderBy('name', 'ASC')->remember(60)->get();
