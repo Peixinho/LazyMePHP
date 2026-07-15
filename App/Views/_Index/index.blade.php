@@ -78,22 +78,22 @@
         <div class="welcome-card">
             <h3>Your Home Page</h3>
             <p>This is your default landing page. You can customize it by editing the file at:<br><code>App/Views/_Index/index.blade.php</code></p>
-            <a href="https://github.com/DuartePeixinho/LazyMePHP/wiki" target="_blank">Read the Docs &rarr;</a>
+            <a href="/docs" target="_blank">Read the Docs &rarr;</a>
         </div>
         <div class="welcome-card">
             <h3>Routing</h3>
             <p>Define your application's URLs in the <code>App/Routes/</code> directory. The default routes are located in <code>Routes.php</code>.</p>
-            <a href="https://github.com/DuartePeixinho/LazyMePHP/wiki" target="_blank">Learn about Routing &rarr;</a>
+            <a href="/docs/routing/basics" target="_blank">Learn about Routing &rarr;</a>
         </div>
         <div class="welcome-card">
             <h3>Models & Database</h3>
-            <p>Use the built-in generator to create your models and interact with your database effortlessly. See the wiki for details.</p>
-            <a href="https://github.com/DuartePeixinho/LazyMePHP/wiki" target="_blank">Database Guide &rarr;</a>
+            <p>Use runtime schema introspection to interact with your database — no code generation needed. Point at a table and query it instantly.</p>
+            <a href="/docs/orm/overview" target="_blank">Database Guide &rarr;</a>
         </div>
         <div class="welcome-card">
             <h3>Create an API</h3>
-            <p>Build powerful APIs by creating handler files in <code>App/Api/</code>. Your endpoints will become available at <code>/api/...</code>.</p>
-            <a href="https://github.com/DuartePeixinho/LazyMePHP/wiki" target="_blank">API Development &rarr;</a>
+            <p>Build powerful APIs by creating controllers in <code>App/Api/</code> that extend <code>Core\Controller</code>. Shape responses with <code>ApiResource</code>.</p>
+            <a href="/docs/api/resources" target="_blank">API Development &rarr;</a>
         </div>
     </div>
 </div> 

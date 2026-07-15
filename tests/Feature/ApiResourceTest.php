@@ -95,3 +95,36 @@ describe('ApiResource::withMeta()', function () {
         expect($arr['meta']['total'])->toBe(2);
     });
 });
+
+describe('ApiResource::fromPaginator()', function () {
+    it('wraps paginated data with pagination meta', function () {
+        $page = Model::query('res_users')->paginate(1, 1);
+        $arr  = UserResource::fromPaginator($page)->toResponseArray();
+
+        expect($arr)->toHaveKey('data');
+        expect($arr)->toHaveKey('meta');
+        expect($arr['data'])->toHaveCount(1);
+        expect($arr['meta']['total'])->toBe(2);
+        expect($arr['meta']['per_page'])->toBe(1);
+        expect($arr['meta']['current_page'])->toBe(1);
+        expect($arr['meta']['last_page'])->toBe(2);
+    });
+
+    it('includes from/to in meta', function () {
+        $page = Model::query('res_users')->paginate(1, 2);
+        $arr  = UserResource::fromPaginator($page)->toResponseArray();
+
+        expect($arr['meta']['current_page'])->toBe(2);
+        expect($arr['meta']['from'])->toBe(2);
+        expect($arr['meta']['to'])->toBe(2);
+    });
+
+    it('applies the resource transformation to each item', function () {
+        $page = Model::query('res_users')->paginate(10, 1);
+        $arr  = UserResource::fromPaginator($page)->toResponseArray();
+
+        foreach ($arr['data'] as $item) {
+            expect($item)->not->toHaveKey('email');
+        }
+    });
+});

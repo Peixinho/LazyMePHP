@@ -421,9 +421,9 @@ class BuildInterface
         echo "\n" . str_repeat('=', 60) . "\n";
         echo "🚀 LazyMePHP Build Tool - Code Generator\n";
         echo str_repeat('=', 60) . "\n";
-        echo "📦 [c] Build Models     - Generate PHP model classes from database tables\n";
-        echo "📝 [f] Build Forms       - Create HTML forms for data input/editing\n";
-        echo "🔌 [a] Build API         - Generate REST API endpoints and routes\n";
+        echo "📦 [c] Models            - Runtime schema introspection — see how to use Core\\Model\n";
+        echo "📝 [f] Forms / CRUD      - Blade template conventions for forms and controllers\n";
+        echo "🔌 [a] API               - REST API conventions using Core\\Controller + ApiResource\n";
         echo "🏷️ [d] Change Descriptor - Modify table display fields for better UX\n";
         echo "❌ [q] Quit              - Exit the build tool\n";
         echo str_repeat('-', 60) . "\n";

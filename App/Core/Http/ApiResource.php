@@ -64,6 +64,26 @@ abstract class ApiResource
         return $instance;
     }
 
+    /**
+     * Wrap the result of ModelQuery::paginate() — attaches pagination metadata automatically.
+     *
+     * @param array{data: list<Model>, total: int, per_page: int, current_page: int,
+     *              last_page: int, from: int, to: int} $page
+     */
+    public static function fromPaginator(array $page): static
+    {
+        $instance = static::collection($page['data']);
+        $instance->meta = [
+            'total'        => $page['total'],
+            'per_page'     => $page['per_page'],
+            'current_page' => $page['current_page'],
+            'last_page'    => $page['last_page'],
+            'from'         => $page['from'],
+            'to'           => $page['to'],
+        ];
+        return $instance;
+    }
+
     /** Attach arbitrary metadata (appears under `meta` key in JSON output). */
     public function withMeta(array $meta): static
     {
