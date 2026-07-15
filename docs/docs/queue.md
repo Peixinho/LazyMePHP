@@ -14,7 +14,7 @@ LazyMePHP ships with a full background job system. Jobs can run synchronously (d
 QUEUE_DRIVER=database    # sync (default) | database | redis
 ```
 
-The `database` driver requires the `__queue_jobs` table — run `php LazyMePHP migrate` to create it.
+The `database` driver creates the `__queue_jobs` table automatically on first use — no migration needed.
 
 ## Defining a job
 

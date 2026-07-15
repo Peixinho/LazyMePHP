@@ -166,6 +166,7 @@ class Auth
         ?string $ip = null,
         ?string $ua = null,
     ): string {
+        self::ensureRefreshTokensTable();
         self::pruneExpiredTokens();
 
         $raw       = bin2hex(random_bytes(32));
@@ -296,6 +297,8 @@ class Auth
      */
     public static function createPasswordResetToken(mixed $userId): string
     {
+        self::ensurePasswordResetsTable();
+
         $raw  = bin2hex(random_bytes(32));
         $hash = hash('sha256', $raw);
         $ttl  = (int)($_ENV['AUTH_PASSWORD_RESET_TTL'] ?? 3600);
@@ -318,6 +321,7 @@ class Auth
      */
     public static function validatePasswordResetToken(string $rawToken): mixed
     {
+        self::ensurePasswordResetsTable();
         $hash   = hash('sha256', $rawToken);
         $db     = \Core\LazyMePHP::DB_CONNECTION();
         $result = $db->query(
@@ -382,6 +386,8 @@ class Auth
      */
     public static function createEmailVerificationToken(mixed $userId): string
     {
+        self::ensureEmailVerificationsTable();
+
         $raw  = bin2hex(random_bytes(32));
         $hash = hash('sha256', $raw);
         $ttl  = (int)($_ENV['AUTH_EMAIL_VERIFY_TTL'] ?? 86400);
@@ -404,6 +410,7 @@ class Auth
      */
     public static function verifyEmail(string $rawToken): mixed
     {
+        self::ensureEmailVerificationsTable();
         $hash   = hash('sha256', $rawToken);
         $db     = \Core\LazyMePHP::DB_CONNECTION();
         $result = $db->query(
@@ -493,5 +500,110 @@ class Auth
         } catch (\Throwable) {
             // Table may not exist yet; ignore silently
         }
+    }
+
+    private static function ensureRefreshTokensTable(): void
+    {
+        $db   = \Core\LazyMePHP::DB_CONNECTION();
+        $type = strtolower(\Core\LazyMePHP::DB_TYPE() ?? 'sqlite');
+        $sql  = match ($type) {
+            'mysql'  => "CREATE TABLE IF NOT EXISTS `__AUTH_TOKENS` (
+                `id`          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `user_id`     VARCHAR(64)     NOT NULL,
+                `token_hash`  VARCHAR(64)     NOT NULL UNIQUE,
+                `expires_at`  DATETIME        NOT NULL,
+                `revoked_at`  DATETIME        NULL,
+                `created_at`  DATETIME        NOT NULL,
+                `ip_address`  VARCHAR(45)     NOT NULL DEFAULT '',
+                `user_agent`  TEXT            NULL,
+                PRIMARY KEY (`id`),
+                INDEX `idx_token_hash` (`token_hash`),
+                INDEX `idx_user_id`   (`user_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            'mssql'  => "IF NOT EXISTS (SELECT * FROM sys.tables WHERE name='__AUTH_TOKENS')
+                CREATE TABLE [__AUTH_TOKENS] (
+                [id]         BIGINT IDENTITY(1,1) PRIMARY KEY,
+                [user_id]    NVARCHAR(64)  NOT NULL,
+                [token_hash] NVARCHAR(64)  NOT NULL UNIQUE,
+                [expires_at] DATETIME2     NOT NULL,
+                [revoked_at] DATETIME2     NULL,
+                [created_at] DATETIME2     NOT NULL,
+                [ip_address] NVARCHAR(45)  NOT NULL DEFAULT '',
+                [user_agent] NVARCHAR(MAX) NULL
+            )",
+            default  => "CREATE TABLE IF NOT EXISTS \"__AUTH_TOKENS\" (
+                \"id\"         INTEGER PRIMARY KEY AUTOINCREMENT,
+                \"user_id\"    TEXT    NOT NULL,
+                \"token_hash\" TEXT    NOT NULL UNIQUE,
+                \"expires_at\" TEXT    NOT NULL,
+                \"revoked_at\" TEXT    NULL,
+                \"created_at\" TEXT    NOT NULL,
+                \"ip_address\" TEXT    NOT NULL DEFAULT '',
+                \"user_agent\" TEXT    NULL
+            )",
+        };
+        $db->query($sql);
+    }
+
+    private static function ensurePasswordResetsTable(): void
+    {
+        $db   = \Core\LazyMePHP::DB_CONNECTION();
+        $type = strtolower(\Core\LazyMePHP::DB_TYPE() ?? 'sqlite');
+        $sql  = match ($type) {
+            'mysql'  => "CREATE TABLE IF NOT EXISTS `__AUTH_PASSWORD_RESETS` (
+                `id`         INT AUTO_INCREMENT PRIMARY KEY,
+                `user_id`    INT         NOT NULL,
+                `token_hash` VARCHAR(64) NOT NULL UNIQUE,
+                `expires_at` DATETIME    NOT NULL,
+                `used_at`    DATETIME    NULL
+            )",
+            'mssql'  => "IF NOT EXISTS (SELECT * FROM sys.tables WHERE name='__AUTH_PASSWORD_RESETS')
+                CREATE TABLE [__AUTH_PASSWORD_RESETS] (
+                id         INT IDENTITY(1,1) PRIMARY KEY,
+                user_id    INT          NOT NULL,
+                token_hash NVARCHAR(64) NOT NULL UNIQUE,
+                expires_at DATETIME     NOT NULL,
+                used_at    DATETIME     NULL
+            )",
+            default  => "CREATE TABLE IF NOT EXISTS \"__AUTH_PASSWORD_RESETS\" (
+                id         INTEGER  PRIMARY KEY AUTOINCREMENT,
+                user_id    INTEGER  NOT NULL,
+                token_hash TEXT     NOT NULL UNIQUE,
+                expires_at DATETIME NOT NULL,
+                used_at    DATETIME NULL
+            )",
+        };
+        $db->query($sql);
+    }
+
+    private static function ensureEmailVerificationsTable(): void
+    {
+        $db   = \Core\LazyMePHP::DB_CONNECTION();
+        $type = strtolower(\Core\LazyMePHP::DB_TYPE() ?? 'sqlite');
+        $sql  = match ($type) {
+            'mysql'  => "CREATE TABLE IF NOT EXISTS `__AUTH_EMAIL_VERIFICATIONS` (
+                `id`         INT AUTO_INCREMENT PRIMARY KEY,
+                `user_id`    INT         NOT NULL,
+                `token_hash` VARCHAR(64) NOT NULL UNIQUE,
+                `expires_at` DATETIME    NOT NULL,
+                `used_at`    DATETIME    NULL
+            )",
+            'mssql'  => "IF NOT EXISTS (SELECT * FROM sys.tables WHERE name='__AUTH_EMAIL_VERIFICATIONS')
+                CREATE TABLE [__AUTH_EMAIL_VERIFICATIONS] (
+                id         INT IDENTITY(1,1) PRIMARY KEY,
+                user_id    INT          NOT NULL,
+                token_hash NVARCHAR(64) NOT NULL UNIQUE,
+                expires_at DATETIME     NOT NULL,
+                used_at    DATETIME     NULL
+            )",
+            default  => "CREATE TABLE IF NOT EXISTS \"__AUTH_EMAIL_VERIFICATIONS\" (
+                id         INTEGER  PRIMARY KEY AUTOINCREMENT,
+                user_id    INTEGER  NOT NULL,
+                token_hash TEXT     NOT NULL UNIQUE,
+                expires_at DATETIME NOT NULL,
+                used_at    DATETIME NULL
+            )",
+        };
+        $db->query($sql);
     }
 }

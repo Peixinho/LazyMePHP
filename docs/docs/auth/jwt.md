@@ -25,7 +25,7 @@ php LazyMePHP auth:hash mypassword
 # → $2y$12$...  (copy into your users table)
 ```
 
-Run `php LazyMePHP migrate` to create the refresh-token table (`__auth_refresh_tokens`).
+The refresh-token table (`__AUTH_TOKENS`) is created automatically on first use — no migration needed.
 
 ## Endpoints
 
@@ -107,7 +107,7 @@ $ok   = Auth::check();  // true when a valid Bearer token is present
 
 ## Password reset
 
-Run `php LazyMePHP migrate` to create the `__AUTH_PASSWORD_RESETS` table, then:
+The `__AUTH_PASSWORD_RESETS` table is created automatically on first use. Then:
 
 ```php
 use Core\Auth\Auth;
@@ -147,7 +147,7 @@ TTL is controlled by `AUTH_PASSWORD_RESET_TTL` (env, default 3600 seconds).
 
 ## Email verification
 
-Run `php LazyMePHP migrate` to create `__AUTH_EMAIL_VERIFICATIONS`, then:
+The `__AUTH_EMAIL_VERIFICATIONS` table is created automatically on first use. Then:
 
 ```php
 // 1. Issue a token after registration
