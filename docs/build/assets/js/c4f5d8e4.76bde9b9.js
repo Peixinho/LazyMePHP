@@ -1,0 +1,1 @@
+"use strict";(globalThis.webpackChunkdocs=globalThis.webpackChunkdocs||[]).push([[634],{192(s,o,r){r.r(o),r.d(o,{default:()=>a});var t=r(6347),u=r(4848);function a(){return(0,u.jsx)(t.rd,{to:"/intro"})}}}]);
