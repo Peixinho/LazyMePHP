@@ -21,8 +21,13 @@ class ErrorUtil
 
     private static function SendMail(string $from_mail, string $to_mail, string $subject, string $message): bool
     {
-        $headers = "Content-Type: text/html; charset=iso-8859-1\n";
-        $headers .= "From: $from_mail\n";
+        // Strip CRLF from addresses to prevent header injection
+        $from_mail = preg_replace('/[\r\n]/', '', $from_mail);
+        $to_mail   = preg_replace('/[\r\n]/', '', $to_mail);
+        $subject   = preg_replace('/[\r\n]/', '', $subject);
+
+        $headers  = "Content-Type: text/html; charset=UTF-8\r\n";
+        $headers .= "From: {$from_mail}\r\n";
         return mail($to_mail, $subject, $message, $headers);
     }
 
@@ -46,10 +51,6 @@ class ErrorUtil
         if (!(error_reporting() & $errno)) {
             return;
         }
-        if ($errno === E_NOTICE) {
-            return; 
-        }
-
         $errorId = self::generateErrorId();
 
         // Create structured error data
@@ -59,7 +60,7 @@ class ErrorUtil
             'message' => $errstr,
             'file' => $errfile,
             'line' => $errline,
-            'timestamp' => date('Y-m-d H:i:s'),
+            'timestamp' => date('Y-m-d H:i:s T'),
             'url' => $_SERVER['REQUEST_URI'] ?? 'unknown',
             'method' => $_SERVER['REQUEST_METHOD'] ?? 'unknown',
             'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
@@ -87,41 +88,46 @@ class ErrorUtil
         // Create modern error page
         $errorPage = \Core\Helpers\ErrorPage::generate($errorData);
 
-        $appName = LazyMePHP::NAME();
-        $supportEmail = LazyMePHP::SUPPORT_EMAIL();
+        // Only email on errors that warrant developer attention (not notices/deprecations)
+        $emailableErrors = [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR, E_RECOVERABLE_ERROR];
+        if (in_array($errno, $emailableErrors)) {
+            $appName      = LazyMePHP::NAME();
+            $supportEmail = LazyMePHP::SUPPORT_EMAIL();
 
-        $to_mail = $supportEmail;
-        $from_mail = "noreply@" . ($_SERVER['SERVER_NAME'] ?? 'localhost');
-        $subject = "Application Error: " . $appName . " [Error ID: $errorId]";
-        
-        $messageContent = "<h2>LazyMePHP Application Error</h2>";
-        $messageContent .= "<b>Error ID:</b> $errorId<br>";
-        $messageContent .= "<b>Error Type:</b> " . self::getErrorTypeName($errno) . "<br>";
-        $messageContent .= "<b>Message:</b> $errstr<br>";
-        $messageContent .= "<b>File:</b> $errfile<br>";
-        $messageContent .= "<b>Line:</b> $errline<br>";
-        $messageContent .= "<br><br><b>Request Data:</b><br>";
-        
-        // Sanitize sensitive data before emailing
-        $sanitizedSession = self::sanitizeSessionData($_SESSION);
-        $sanitizedPost = self::sanitizeRequestData($_POST);
-        $sanitizedGet = self::sanitizeRequestData($_GET);
-        
-        $messageContent .= "SESSION: ".json_encode($sanitizedSession)."<br>";
-        $messageContent .= "POST: ".json_encode($sanitizedPost)."<br>";
-        $messageContent .= "GET: ".json_encode($sanitizedGet)."<br>";
-        $messageContent .= "<br><b>Error Context:</b><br>";
-        $messageContent .= "URL: ".($errorData['url'])."<br>";
-        $messageContent .= "Method: ".($errorData['method'])."<br>";
-        $messageContent .= "IP: ".($errorData['ip'])."<br>";
-        $messageContent .= "Memory: ".self::formatBytes($errorData['memory_usage'])."<br>";
-        $messageContent .= "<br><b>PHP Version:</b> ".phpversion()."<br>";
-        $messageContent .= "<b>File:</b> $errfile<br>";
-        $messageContent .= "<b>Line:</b> $errline<br>";
-        $messageContent .= "<b>Timestamp:</b> ".date('Y-m-d H:i:s')."<br>";
-        
-        if (!headers_sent()) {
-            self::SendMail($from_mail, $to_mail, $subject, $messageContent);
+            if ($supportEmail) {
+                // Derive from-address from app name — never from user-supplied SERVER_NAME
+                $serverName = preg_replace('/[^a-zA-Z0-9.\-]/', '', $_SERVER['SERVER_NAME'] ?? 'localhost');
+                $from_mail  = 'noreply@' . ($serverName ?: 'localhost');
+                $subject    = "Application Error: {$appName} [Error ID: {$errorId}]";
+
+                $sanitizedSession = self::sanitizeData($_SESSION ?? []);
+                $sanitizedPost    = self::sanitizeData($_POST ?? []);
+                $sanitizedGet     = self::sanitizeData($_GET ?? []);
+
+                $e = fn(string $v): string => htmlspecialchars($v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+
+                $messageContent  = '<h2>LazyMePHP Application Error</h2>';
+                $messageContent .= "<b>Error ID:</b> {$e($errorId)}<br>";
+                $messageContent .= '<b>Error Type:</b> ' . $e(self::getErrorTypeName($errno)) . '<br>';
+                $messageContent .= '<b>Message:</b> ' . $e($errstr) . '<br>';
+                $messageContent .= '<b>File:</b> ' . $e($errfile) . '<br>';
+                $messageContent .= "<b>Line:</b> {$errline}<br>";
+                $messageContent .= '<br><b>Request Data:</b><br>';
+                $messageContent .= 'SESSION: ' . $e(json_encode($sanitizedSession)) . '<br>';
+                $messageContent .= 'POST: ' . $e(json_encode($sanitizedPost)) . '<br>';
+                $messageContent .= 'GET: ' . $e(json_encode($sanitizedGet)) . '<br>';
+                $messageContent .= '<br><b>Error Context:</b><br>';
+                $messageContent .= 'URL: ' . $e($errorData['url']) . '<br>';
+                $messageContent .= 'Method: ' . $e($errorData['method']) . '<br>';
+                $messageContent .= 'IP: ' . $e($errorData['ip']) . '<br>';
+                $messageContent .= 'Memory: ' . $e(self::formatBytes($errorData['memory_usage'])) . '<br>';
+                $messageContent .= '<br><b>PHP Version:</b> ' . $e(phpversion()) . '<br>';
+                $messageContent .= "<b>Timestamp:</b> {$e($errorData['timestamp'])}<br>";
+
+                if (!headers_sent()) {
+                    self::SendMail($from_mail, $supportEmail, $subject, $messageContent);
+                }
+            }
         }
         
         // Only display error message and die for fatal errors
@@ -261,54 +267,46 @@ class ErrorUtil
     public static function FatalErrorShutdownHandler(): void
     {
         $last_error = error_get_last();
-        
-        // Debug output to see what's happening
-        echo "<!-- SHUTDOWN HANDLER CALLED -->\n";
-        echo "<!-- Last error: " . print_r($last_error, true) . " -->\n";
-        
-        if (is_array($last_error) && $last_error['type'] !== null) {
-            echo "<!-- Processing error type: " . $last_error['type'] . " -->\n";
-            
-            $errorId = self::generateErrorId();
-            $errorData = [
-                'error_id' => $errorId,
-                'type' => $last_error['type'],
-                'message' => $last_error['message'],
-                'file' => $last_error['file'],
-                'line' => $last_error['line'],
-                'timestamp' => date('Y-m-d H:i:s'),
-                'url' => $_SERVER['REQUEST_URI'] ?? 'unknown',
-                'method' => $_SERVER['REQUEST_METHOD'] ?? 'unknown',
-                'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
-                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown',
-                'php_version' => phpversion(),
-                'memory_usage' => memory_get_usage(true),
-                'peak_memory' => memory_get_peak_usage(true)
-            ];
-            // Store in static array for debug bar
-            self::$currentRequestErrors[] = $errorData;
-            if (LazyMePHP::ACTIVITY_LOG()) {
-                self::logErrorToDatabase($errorData);
-            }
-            self::logErrorToFile($errorData);
-            
-            // Always set type to 500 for the error page
-            $pageErrorData = [
-                'error_id' => $errorId,
-                'type' => '500 - Internal Server Error',
-                'message' => 'A fatal error occurred: ' . $last_error['message'],
-                'file' => $last_error['file'],
-                'line' => $last_error['line'],
-                'trace' => ''
-            ];
-            
-            echo "<!-- About to generate error page -->\n";
-            // Output error page using ErrorPage class
-            echo \Core\Helpers\ErrorPage::generate($pageErrorData);
-            echo "<!-- Error page generated -->\n";
+
+        $fatalTypes = [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR];
+        if (!is_array($last_error) || !in_array($last_error['type'], $fatalTypes)) {
             return;
-        } else {
         }
+
+        $errorId = self::generateErrorId();
+        $errorData = [
+            'error_id'     => $errorId,
+            'type'         => $last_error['type'],
+            'message'      => $last_error['message'],
+            'file'         => $last_error['file'],
+            'line'         => $last_error['line'],
+            'timestamp'    => date('Y-m-d H:i:s T'),
+            'url'          => $_SERVER['REQUEST_URI'] ?? 'unknown',
+            'method'       => $_SERVER['REQUEST_METHOD'] ?? 'unknown',
+            'ip'           => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+            'user_agent'   => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown',
+            'php_version'  => phpversion(),
+            'memory_usage' => memory_get_usage(true),
+            'peak_memory'  => memory_get_peak_usage(true),
+        ];
+
+        self::$currentRequestErrors[] = $errorData;
+
+        if (LazyMePHP::ACTIVITY_LOG()) {
+            self::logErrorToDatabase($errorData);
+        }
+        self::logErrorToFile($errorData);
+
+        $pageErrorData = [
+            'error_id' => $errorId,
+            'type'     => '500 - Internal Server Error',
+            'message'  => 'A fatal error occurred: ' . $last_error['message'],
+            'file'     => $last_error['file'],
+            'line'     => $last_error['line'],
+            'trace'    => '',
+        ];
+
+        echo \Core\Helpers\ErrorPage::generate($pageErrorData);
     }
     
     public static function trigger_error(string $message, int $type = E_USER_NOTICE): void 
@@ -399,64 +397,35 @@ class ErrorUtil
     }
 
     /**
-     * Sanitize session data to remove sensitive information
+     * Recursively redact sensitive keys from any array (session, POST, GET, etc.).
      */
-    private static function sanitizeSessionData(?array $sessionData): array
+    private static function sanitizeData(?array $data): array
     {
-        if (!$sessionData) return [];
-        
-        $sensitiveKeys = ['password', 'token', 'secret', 'key', 'auth', 'session_id', 'csrf'];
-        $sanitized = [];
-        
-        foreach ($sessionData as $key => $value) {
-            $lowerKey = strtolower($key);
-            $isSensitive = false;
-            
-            foreach ($sensitiveKeys as $sensitiveKey) {
-                if (strpos($lowerKey, $sensitiveKey) !== false) {
-                    $isSensitive = true;
-                    break;
-                }
-            }
-            
-            if ($isSensitive) {
-                $sanitized[$key] = '[REDACTED]';
-            } else {
-                $sanitized[$key] = $value;
-            }
-        }
-        
-        return $sanitized;
-    }
+        if (!$data) return [];
 
-    /**
-     * Sanitize request data to remove sensitive information
-     */
-    private static function sanitizeRequestData(?array $requestData): array
-    {
-        if (!$requestData) return [];
-        
-        $sensitiveKeys = ['password', 'token', 'secret', 'key', 'auth', 'csrf', 'api_key'];
+        $sensitiveKeys = ['password', 'passwd', 'token', 'secret', 'key', 'auth', 'session_id', 'csrf', 'bearer', 'credential', 'private', 'signature'];
+
         $sanitized = [];
-        
-        foreach ($requestData as $key => $value) {
-            $lowerKey = strtolower($key);
+        foreach ($data as $key => $value) {
+            $lowerKey    = strtolower((string)$key);
             $isSensitive = false;
-            
-            foreach ($sensitiveKeys as $sensitiveKey) {
-                if (strpos($lowerKey, $sensitiveKey) !== false) {
+
+            foreach ($sensitiveKeys as $pattern) {
+                if (str_contains($lowerKey, $pattern)) {
                     $isSensitive = true;
                     break;
                 }
             }
-            
+
             if ($isSensitive) {
                 $sanitized[$key] = '[REDACTED]';
+            } elseif (is_array($value)) {
+                $sanitized[$key] = self::sanitizeData($value);
             } else {
                 $sanitized[$key] = $value;
             }
         }
-        
+
         return $sanitized;
     }
 }

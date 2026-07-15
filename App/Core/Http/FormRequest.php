@@ -139,28 +139,53 @@ abstract class FormRequest
     private function applyRule(string $name, ?string $param, string $field, mixed $value): ?string
     {
         return match ($name) {
-            'email'   => filter_var($value, FILTER_VALIDATE_EMAIL) ? null
-                          : "The {$field} must be a valid email address.",
-            'url'     => filter_var($value, FILTER_VALIDATE_URL) ? null
-                          : "The {$field} must be a valid URL.",
-            'integer' => (is_numeric($value) && floor((float)$value) == (float)$value) ? null
-                          : "The {$field} must be an integer.",
-            'numeric' => is_numeric($value) ? null
-                          : "The {$field} must be a number.",
-            'boolean' => in_array($value, [true, false, 1, 0, '1', '0', 'true', 'false'], true) ? null
-                          : "The {$field} must be true or false.",
-            'min'     => $this->applyMin($field, $value, (int)$param),
-            'max'     => $this->applyMax($field, $value, (int)$param),
-            'in'      => in_array($value, explode(',', $param ?? ''), true) ? null
-                          : "The {$field} must be one of: {$param}.",
-            'regex'   => @preg_match($param ?? '//', $value) ? null
-                          : "The {$field} format is invalid.",
+            'email'      => filter_var($value, FILTER_VALIDATE_EMAIL) ? null
+                              : "The {$field} must be a valid email address.",
+            'url'        => filter_var($value, FILTER_VALIDATE_URL) ? null
+                              : "The {$field} must be a valid URL.",
+            'integer'    => (is_numeric($value) && floor((float)$value) == (float)$value) ? null
+                              : "The {$field} must be an integer.",
+            'numeric'    => is_numeric($value) ? null
+                              : "The {$field} must be a number.",
+            'boolean'    => in_array($value, [true, false, 1, 0, '1', '0', 'true', 'false'], true) ? null
+                              : "The {$field} must be true or false.",
+            'alpha'      => ctype_alpha((string)$value) ? null
+                              : "The {$field} may only contain letters.",
+            'alpha_num'  => ctype_alnum((string)$value) ? null
+                              : "The {$field} may only contain letters and numbers.",
+            'min'        => $this->applyMin($field, $value, (int)$param),
+            'max'        => $this->applyMax($field, $value, (int)$param),
+            'in'         => in_array($value, array_map('trim', explode(',', $param ?? '')), true) ? null
+                              : "The {$field} must be one of: {$param}.",
+            'not_in'     => !in_array($value, array_map('trim', explode(',', $param ?? '')), true) ? null
+                              : "The {$field} must not be one of: {$param}.",
+            'confirmed'  => $this->applyConfirmed($field, $value),
+            'regex'      => $this->applyRegex($field, $value, $param),
             'min_digits' => (is_numeric($value) && strlen((string)(int)$value) >= (int)$param) ? null
-                          : "The {$field} must have at least {$param} digits.",
+                              : "The {$field} must have at least {$param} digits.",
             'max_digits' => (is_numeric($value) && strlen((string)(int)$value) <= (int)$param) ? null
-                          : "The {$field} must not have more than {$param} digits.",
-            default   => null,
+                              : "The {$field} must not have more than {$param} digits.",
+            default      => null,
         };
+    }
+
+    private function applyRegex(string $field, mixed $value, ?string $pattern): ?string
+    {
+        if ($pattern === null || $pattern === '') {
+            return "The {$field} regex pattern is missing.";
+        }
+        $result = @preg_match($pattern, (string)$value);
+        if ($result === false) {
+            return "The {$field} has an invalid regex pattern.";
+        }
+        return $result === 1 ? null : "The {$field} format is invalid.";
+    }
+
+    private function applyConfirmed(string $field, mixed $value): ?string
+    {
+        $confirmation = $this->input["{$field}_confirmation"] ?? null;
+        return $value === $confirmation ? null
+            : "The {$field} confirmation does not match.";
     }
 
     private function applyMin(string $field, mixed $value, int $param): ?string

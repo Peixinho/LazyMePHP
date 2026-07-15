@@ -282,9 +282,18 @@ class Validations {
   static function ValidateRegExp(mixed $value, string $regexp): bool
   {
       if ($value === null || $value === '') {
-          return true; // Empty values are allowed
+          return true; // Empty values pass optional regex
       }
-      return is_string($value) && preg_match($regexp, $value) === 1;
+      if (!is_string($value)) {
+          return false;
+      }
+      // Suppress warning so preg_match doesn't trigger the error handler on a bad pattern,
+      // then check return value: false means invalid regex, which we treat as "no match".
+      $result = @preg_match($regexp, $value);
+      if ($result === false) {
+          throw new \InvalidArgumentException("Invalid regular expression: {$regexp}");
+      }
+      return $result === 1;
   }
 
   static function ValidateDateTime(mixed $value): bool
@@ -432,11 +441,9 @@ class Validations {
           }
           break;
         case 'string':
-          // Encode HTML entities to prevent XSS attacks
-          $validatedData[$field] = htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+          $validatedData[$field] = (string)$value;
           break;
         case 'iso_date':
-          // Verify ISO_DATE format
           $date = \DateTime::createFromFormat('Y-m-d|', $value) ?: \DateTime::createFromFormat('Y-m-d H:i:s|', $value);
           if (!$date) {
             $errors[$field] = ['Invalid ISO 8601 date format.'];
@@ -576,8 +583,7 @@ class Validations {
                       }
                       break;
                   case 'string':
-                      // Encode HTML entities to prevent XSS attacks
-                      $validatedData[$field] = htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+                      $validatedData[$field] = (string)$value;
                       break;
                   case 'iso_date':
                       // Verify ISO 8601 date format

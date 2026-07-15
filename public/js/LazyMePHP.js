@@ -350,6 +350,8 @@ LazyMePHP.Validation = {
   markFieldValid: function(field) {
     field.classList.remove('is-invalid');
     field.classList.add('is-valid');
+    field.removeAttribute('aria-invalid');
+    field.removeAttribute('aria-describedby');
     const feedback = field.nextElementSibling;
     if (feedback && feedback.classList.contains('invalid-feedback')) {
       feedback.remove();
@@ -357,13 +359,15 @@ LazyMePHP.Validation = {
   },
 
   /**
-   * Mark a field as invalid
+   * Mark a field as invalid with accessible error feedback
    * @param {HTMLElement} field - Form field element
    * @param {string[]} errors - Error messages
    */
   markFieldInvalid: function(field, errors) {
     field.classList.remove('is-valid');
     field.classList.add('is-invalid');
+    field.setAttribute('aria-invalid', 'true');
+
     const customMsg = field.getAttribute('validation-fail');
     const message = customMsg || errors.join(', ');
 
@@ -371,9 +375,14 @@ LazyMePHP.Validation = {
     if (!feedback || !feedback.classList.contains('invalid-feedback')) {
       feedback = document.createElement('div');
       feedback.classList.add('invalid-feedback');
+      // Generate a stable ID so aria-describedby can reference it
+      if (!feedback.id) {
+        feedback.id = 'vfb-' + (field.id || field.name || Math.random().toString(36).slice(2));
+      }
       field.parentNode.insertBefore(feedback, field.nextSibling);
     }
     feedback.textContent = message;
+    field.setAttribute('aria-describedby', feedback.id);
   },
 
   // Individual validators - MUST MATCH PHP behavior exactly
@@ -593,13 +602,14 @@ LazyMePHP.Notifications = {
   },
 
   /**
-   * Store notification reference for management
+   * Store notification reference for management.
+   * WeakMap ensures removed notifications are garbage-collected automatically.
    * @param {HTMLElement} notification - Notification element
    * @param {Object} data - Notification data
    */
   storeNotification: function(notification, data) {
     if (!this.activeNotifications) {
-      this.activeNotifications = new Map();
+      this.activeNotifications = new WeakMap();
     }
     this.activeNotifications.set(notification, data);
   },
@@ -613,6 +623,9 @@ LazyMePHP.Notifications = {
     if (!container) {
       container = document.createElement('div');
       container.className = 'notification-container';
+      container.setAttribute('role', 'status');
+      container.setAttribute('aria-live', 'polite');
+      container.setAttribute('aria-atomic', 'false');
       document.body.appendChild(container);
     }
     return container;
@@ -636,25 +649,43 @@ LazyMePHP.Notifications = {
     notification.setAttribute('data-id', id);
     notification.setAttribute('data-category', category);
     notification.setAttribute('data-priority', priority);
-    
-    let content = '';
+    // Errors require manual dismissal; use 'alert' role so screen readers announce immediately
+    notification.setAttribute('role', type === 'error' || type === 'critical' ? 'alert' : 'status');
+
     if (title) {
-      content += `<div class="notification-title">${title}</div>`;
+      const titleEl = document.createElement('div');
+      titleEl.className = 'notification-title';
+      titleEl.textContent = title;
+      notification.appendChild(titleEl);
     }
-    content += `<div class="notification-message">${message}</div>`;
-    
-    // Add category badge for non-user categories
+
+    const msgEl = document.createElement('div');
+    msgEl.className = 'notification-message';
+    msgEl.textContent = message;
+    notification.appendChild(msgEl);
+
     if (category !== 'user') {
-      content += `<div class="notification-category">${category}</div>`;
+      const catEl = document.createElement('div');
+      catEl.className = 'notification-category';
+      catEl.textContent = category;
+      notification.appendChild(catEl);
     }
-    
+
     if (dismissible) {
-      content += `<button class="notification-close" onclick="LazyMePHP.Notifications.dismiss(this.parentElement)"><span>&times;</span></button>`;
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'notification-close';
+      closeBtn.setAttribute('aria-label', 'Dismiss notification');
+      closeBtn.innerHTML = '<span aria-hidden="true">&times;</span>';
+      closeBtn.addEventListener('click', function() {
+        LazyMePHP.Notifications.dismiss(notification);
+      });
+      notification.appendChild(closeBtn);
     }
-    
-    content += '<div class="notification-progress"></div>';
-    notification.innerHTML = content;
-    
+
+    const progress = document.createElement('div');
+    progress.className = 'notification-progress';
+    notification.appendChild(progress);
+
     return notification;
   },
 
@@ -675,11 +706,12 @@ LazyMePHP.Notifications = {
   },
 
   /**
-   * Remove notification reference from storage
+   * Remove notification reference from storage.
+   * With WeakMap this is optional cleanup; WeakMap handles GC automatically.
    * @param {HTMLElement} notification - Notification element
    */
   removeNotificationReference: function(notification) {
-    if (this.activeNotifications && this.activeNotifications.has(notification)) {
+    if (this.activeNotifications) {
       this.activeNotifications.delete(notification);
     }
   },
@@ -821,11 +853,12 @@ LazyMePHP.Notifications = {
   },
 
   /**
-   * Get active notifications
-   * @returns {Map} Active notifications map
+   * Get active notification elements from the DOM.
+   * (WeakMap is non-enumerable, so we query the DOM directly.)
+   * @returns {NodeList} Active notification elements
    */
   getActiveNotifications: function() {
-    return this.activeNotifications || new Map();
+    return document.querySelectorAll('.notification');
   }
 };
 
@@ -869,9 +902,3 @@ LazyMePHP.GetNotificationStats = function() {
   return LazyMePHP.Notifications.getStats();
 };
 
-// Polyfill for Date.now if not available
-if (!Date.now) {
-  Date.now = function() {
-    return +new Date();
-  };
-}

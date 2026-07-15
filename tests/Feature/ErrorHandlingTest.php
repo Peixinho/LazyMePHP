@@ -132,44 +132,46 @@ describe('Error Handling System', function () {
     });
 
     it('should sanitize sensitive data in error emails', function () {
-        // Test the sanitization methods using reflection
-        $reflection = new ReflectionClass(ErrorUtil::class);
-        
-        // Test session data sanitization
-        $sanitizeSessionMethod = $reflection->getMethod('sanitizeSessionData');
-        $sanitizeSessionMethod->setAccessible(true);
-        
+        $reflection     = new ReflectionClass(ErrorUtil::class);
+        $sanitizeMethod = $reflection->getMethod('sanitizeData');
+        $sanitizeMethod->setAccessible(true);
+
+        // Session-style data
         $testSession = [
-            'user_id' => 123,
-            'password' => 'secret123',
+            'user_id'    => 123,
+            'password'   => 'secret123',
             'auth_token' => 'abc123',
-            'normal_data' => 'safe'
+            'normal_data' => 'safe',
         ];
-        
-        $sanitized = $sanitizeSessionMethod->invoke(null, $testSession);
-        
+        $sanitized = $sanitizeMethod->invoke(null, $testSession);
         expect($sanitized['user_id'])->toBe(123);
         expect($sanitized['password'])->toBe('[REDACTED]');
         expect($sanitized['auth_token'])->toBe('[REDACTED]');
         expect($sanitized['normal_data'])->toBe('safe');
-        
-        // Test request data sanitization
-        $sanitizeRequestMethod = $reflection->getMethod('sanitizeRequestData');
-        $sanitizeRequestMethod->setAccessible(true);
-        
+
+        // Request-style data
         $testRequest = [
-            'username' => 'john',
-            'password' => 'secret123',
-            'api_key' => 'xyz789',
-            'normal_field' => 'safe'
+            'username'     => 'john',
+            'password'     => 'secret123',
+            'api_key'      => 'xyz789',
+            'normal_field' => 'safe',
         ];
-        
-        $sanitized = $sanitizeRequestMethod->invoke(null, $testRequest);
-        
+        $sanitized = $sanitizeMethod->invoke(null, $testRequest);
         expect($sanitized['username'])->toBe('john');
         expect($sanitized['password'])->toBe('[REDACTED]');
         expect($sanitized['api_key'])->toBe('[REDACTED]');
         expect($sanitized['normal_field'])->toBe('safe');
+
+        // Nested arrays are also sanitized
+        $testNested = [
+            'user' => [
+                'name'     => 'Alice',
+                'password' => 'hunter2',
+            ],
+        ];
+        $sanitized = $sanitizeMethod->invoke(null, $testNested);
+        expect($sanitized['user']['name'])->toBe('Alice');
+        expect($sanitized['user']['password'])->toBe('[REDACTED]');
     });
 
     it('should handle database connection failures gracefully', function () {
