@@ -21,6 +21,16 @@ class BladeFactory
             $echoFormatProperty->setAccessible(true);
             $echoFormatProperty->setValue(self::$blade, 'static::e(%s)');
 
+            // @csrf — hidden input for form submission
+            self::$blade->directive('csrf', function() {
+                return '<?php echo \'<input type="hidden" name="csrf_token" value="\' . \Core\Security\CsrfProtection::renderInput() . \'">\'; ?>';
+            });
+
+            // @csrfMeta — <meta> tag for AJAX (LazyMePHP.js reads this automatically)
+            self::$blade->directive('csrfMeta', function() {
+                return '<?php echo \'<meta name="csrf-token" content="\' . \Core\Security\CsrfProtection::renderInput() . \'">\'; ?>';
+            });
+
             // Share global settings here if you want
             self::$blade->share('settings', [
                 'appName' => $_ENV['APP_NAME'] ?? 'LazyMePHP',

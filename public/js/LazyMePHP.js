@@ -6,6 +6,67 @@
 // Main namespace
 var LazyMePHP = LazyMePHP || {};
 
+// ---------------------------------------------------------------------------
+// CSRF helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Return the current CSRF token from the <meta name="csrf-token"> tag
+ * that @csrfMeta injects into every page layout.
+ * Returns null on pages that explicitly opt out of CSRF (API responses, etc.).
+ */
+LazyMePHP.getCsrfToken = function() {
+  var meta = document.querySelector('meta[name="csrf-token"]');
+  return meta ? meta.getAttribute('content') : null;
+};
+
+/**
+ * Refresh the in-page CSRF token after a successful form rotation.
+ * The server rotates the token on every verified request, so call this
+ * when you receive a fresh token in an AJAX response header.
+ */
+LazyMePHP.setCsrfToken = function(token) {
+  var meta = document.querySelector('meta[name="csrf-token"]');
+  if (meta) meta.setAttribute('content', token);
+  // Also update every hidden csrf_token field currently on the page
+  document.querySelectorAll('input[name="csrf_token"]').forEach(function(el) {
+    el.value = token;
+  });
+};
+
+// Intercept fetch() — automatically attach X-CSRF-TOKEN on mutating requests
+(function() {
+  var _fetch = window.fetch;
+  window.fetch = function(input, init) {
+    init = init || {};
+    var method = (init.method || 'GET').toUpperCase();
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+      var token = LazyMePHP.getCsrfToken();
+      if (token) {
+        init.headers = Object.assign({}, init.headers, { 'X-CSRF-TOKEN': token });
+      }
+    }
+    return _fetch.call(this, input, init);
+  };
+})();
+
+// Intercept XMLHttpRequest — same for legacy AJAX
+(function() {
+  var _open = XMLHttpRequest.prototype.open;
+  var _send = XMLHttpRequest.prototype.send;
+  XMLHttpRequest.prototype.open = function(method) {
+    this._lmMethod = method ? method.toUpperCase() : 'GET';
+    return _open.apply(this, arguments);
+  };
+  XMLHttpRequest.prototype.send = function() {
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(this._lmMethod)) {
+      var token = LazyMePHP.getCsrfToken();
+      if (token) this.setRequestHeader('X-CSRF-TOKEN', token);
+    }
+    return _send.apply(this, arguments);
+  };
+})();
+
 // Validation constants - MUST MATCH PHP ValidationsMethod enum exactly
 LazyMePHP.ValidationsMethods = {
   STRING: 'string',

@@ -49,7 +49,11 @@ if (str_starts_with($requestPath, '/docs')) {
 }
 
 // 3b. Load Application Routes within a Base Path Group
-\Pecee\SimpleRouter\SimpleRouter::group(['prefix' => $basePath], function () use ($blade) {
+// CsrfMiddleware validates the token on every non-GET, non-API request automatically.
+\Pecee\SimpleRouter\SimpleRouter::group([
+    'prefix'     => $basePath,
+    'middleware' => \Core\Security\CsrfMiddleware::class,
+], function () use ($blade) {
     // Load all route files. The $blade variable is available to them.
     foreach(glob(__DIR__."/../App/Routes/" . "/*.php") as $routeFile) {
         require_once $routeFile;
