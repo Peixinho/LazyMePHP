@@ -281,6 +281,165 @@ class Auth
     }
 
     // -------------------------------------------------------------------------
+    // Password reset
+    // -------------------------------------------------------------------------
+
+    /**
+     * Create a one-time password-reset token for the given user ID.
+     * Returns the raw token (plain hex); store only the hash server-side.
+     * TTL defaults to AUTH_PASSWORD_RESET_TTL (env, default 3600 seconds).
+     *
+     *   $token = Auth::createPasswordResetToken($user['id']);
+     *   Mail::to($user['email'])->subject('Reset password')
+     *       ->text("Use this link: https://example.com/reset?token=$token")
+     *       ->send();
+     */
+    public static function createPasswordResetToken(mixed $userId): string
+    {
+        $raw  = bin2hex(random_bytes(32));
+        $hash = hash('sha256', $raw);
+        $ttl  = (int)($_ENV['AUTH_PASSWORD_RESET_TTL'] ?? 3600);
+        $exp  = date('Y-m-d H:i:s', time() + $ttl);
+
+        $db = \Core\LazyMePHP::DB_CONNECTION();
+        // Invalidate any previous tokens for this user
+        $db->query('DELETE FROM __AUTH_PASSWORD_RESETS WHERE user_id = ?', [$userId]);
+        $db->query(
+            'INSERT INTO __AUTH_PASSWORD_RESETS (user_id, token_hash, expires_at) VALUES (?, ?, ?)',
+            [$userId, $hash, $exp]
+        );
+
+        return $raw;
+    }
+
+    /**
+     * Verify a password-reset token. Returns the user ID if valid and unexpired, null otherwise.
+     * Does NOT consume the token — call consumePasswordResetToken() after changing the password.
+     */
+    public static function validatePasswordResetToken(string $rawToken): mixed
+    {
+        $hash   = hash('sha256', $rawToken);
+        $db     = \Core\LazyMePHP::DB_CONNECTION();
+        $result = $db->query(
+            'SELECT user_id, expires_at, used_at FROM __AUTH_PASSWORD_RESETS WHERE token_hash = ?',
+            [$hash]
+        );
+        $row = $result->fetchArray();
+        if (!$row) return null;
+        if ($row['used_at'] !== null) return null;
+        if (strtotime($row['expires_at']) < time()) return null;
+        return $row['user_id'];
+    }
+
+    /**
+     * Change the user's password and mark the token as used (single-use).
+     * Returns false if the token is invalid, expired, or already used.
+     *
+     *   if (Auth::consumePasswordResetToken($token, $newPassword)) {
+     *       // redirect to login
+     *   }
+     */
+    public static function consumePasswordResetToken(string $rawToken, string $newPassword): bool
+    {
+        $userId = self::validatePasswordResetToken($rawToken);
+        if ($userId === null) return false;
+
+        $table       = $_ENV['AUTH_TABLE']           ?? 'users';
+        $passwordCol = $_ENV['AUTH_PASSWORD_COLUMN'] ?? 'password';
+        $pk          = self::pkColumn($table) ?? 'id';
+
+        $db = \Core\LazyMePHP::DB_CONNECTION();
+        $db->query(
+            "UPDATE \"$table\" SET \"$passwordCol\" = ? WHERE \"$pk\" = ?",
+            [password_hash($newPassword, PASSWORD_BCRYPT), $userId]
+        );
+
+        // Mark token as used
+        $hash = hash('sha256', $rawToken);
+        $db->query(
+            'UPDATE __AUTH_PASSWORD_RESETS SET used_at = ? WHERE token_hash = ?',
+            [date('Y-m-d H:i:s'), $hash]
+        );
+
+        // Revoke all active refresh tokens for security
+        self::revokeAllTokens($userId);
+
+        return true;
+    }
+
+    // -------------------------------------------------------------------------
+    // Email verification
+    // -------------------------------------------------------------------------
+
+    /**
+     * Create a one-time email-verification token for the given user ID.
+     * Returns the raw token. TTL from AUTH_EMAIL_VERIFY_TTL (env, default 86400 seconds).
+     *
+     *   $token = Auth::createEmailVerificationToken($user['id']);
+     *   Mail::to($user['email'])->subject('Verify your email')
+     *       ->text("Click here: https://example.com/verify-email?token=$token")
+     *       ->send();
+     */
+    public static function createEmailVerificationToken(mixed $userId): string
+    {
+        $raw  = bin2hex(random_bytes(32));
+        $hash = hash('sha256', $raw);
+        $ttl  = (int)($_ENV['AUTH_EMAIL_VERIFY_TTL'] ?? 86400);
+        $exp  = date('Y-m-d H:i:s', time() + $ttl);
+
+        $db = \Core\LazyMePHP::DB_CONNECTION();
+        $db->query('DELETE FROM __AUTH_EMAIL_VERIFICATIONS WHERE user_id = ?', [$userId]);
+        $db->query(
+            'INSERT INTO __AUTH_EMAIL_VERIFICATIONS (user_id, token_hash, expires_at) VALUES (?, ?, ?)',
+            [$userId, $hash, $exp]
+        );
+
+        return $raw;
+    }
+
+    /**
+     * Mark the user's email as verified. Consumes the token (single-use).
+     * Also sets AUTH_EMAIL_VERIFIED_COLUMN (env, default: email_verified_at) to now().
+     * Returns the user ID on success, null on failure.
+     */
+    public static function verifyEmail(string $rawToken): mixed
+    {
+        $hash   = hash('sha256', $rawToken);
+        $db     = \Core\LazyMePHP::DB_CONNECTION();
+        $result = $db->query(
+            'SELECT user_id, expires_at, used_at FROM __AUTH_EMAIL_VERIFICATIONS WHERE token_hash = ?',
+            [$hash]
+        );
+        $row = $result->fetchArray();
+        if (!$row) return null;
+        if ($row['used_at'] !== null) return null;
+        if (strtotime($row['expires_at']) < time()) return null;
+
+        $userId  = $row['user_id'];
+        $table   = $_ENV['AUTH_TABLE'] ?? 'users';
+        $verCol  = $_ENV['AUTH_EMAIL_VERIFIED_COLUMN'] ?? 'email_verified_at';
+        $pk      = self::pkColumn($table) ?? 'id';
+        $now     = date('Y-m-d H:i:s');
+
+        // Update the user row if the verified column exists
+        $schema = Model::schemaFor($table);
+        if (array_key_exists($verCol, $schema)) {
+            $db->query(
+                "UPDATE \"$table\" SET \"$verCol\" = ? WHERE \"$pk\" = ?",
+                [$now, $userId]
+            );
+        }
+
+        // Consume token
+        $db->query(
+            'UPDATE __AUTH_EMAIL_VERIFICATIONS SET used_at = ? WHERE token_hash = ?',
+            [$now, $hash]
+        );
+
+        return $userId;
+    }
+
+    // -------------------------------------------------------------------------
     // Internals
     // -------------------------------------------------------------------------
 

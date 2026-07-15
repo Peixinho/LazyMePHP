@@ -86,4 +86,45 @@ class RedisDriver implements QueueDriver
     {
         return (int) $this->store->connection()->lLen($this->queueKey($queue));
     }
+
+    public function listFailed(string $queue = 'default'): array
+    {
+        $raw  = $this->store->connection()->lRange('queue:failed', 0, -1);
+        $rows = [];
+        foreach (array_reverse($raw) as $i => $item) {
+            $data = json_decode($item, true) ?? [];
+            if (isset($data['queue']) && $data['queue'] !== $queue) continue;
+            try {
+                $job = Job::deserialize($data['job'] ?? '');
+                $data['job_class'] = get_class($job);
+            } catch (\Throwable) {
+                $data['job_class'] = '(unreadable)';
+            }
+            $data['id']  = $i;
+            $data['raw'] = $item;
+            $rows[]      = $data;
+        }
+        return $rows;
+    }
+
+    public function retryFailed(mixed $id): void
+    {
+        // $id is the list index into queue:failed
+        $raw = $this->store->connection()->lIndex('queue:failed', (int)$id);
+        if (!$raw) return;
+        $data = json_decode($raw, true) ?? [];
+        $queue = $data['queue'] ?? 'default';
+        // Reset attempt counter and re-push
+        $data['attempts'] = 0;
+        unset($data['error']);
+        $this->store->connection()->rPush($this->queueKey($queue), json_encode($data));
+        // Remove from failed list by replacing with a tombstone then trimming
+        $this->store->connection()->lSet('queue:failed', (int)$id, '__deleted__');
+        $this->store->connection()->lRem('queue:failed', '__deleted__', 0);
+    }
+
+    public function flushFailed(string $queue = 'default'): void
+    {
+        $this->store->connection()->del('queue:failed');
+    }
 }

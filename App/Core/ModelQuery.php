@@ -691,6 +691,39 @@ class ModelQuery
     }
 
     /**
+     * Atomically increment a column by $amount for all rows matching the current WHERE.
+     * Optional $extra sets additional columns in the same UPDATE statement.
+     *
+     *   Model::query('posts')->where('id', $id)->increment('views');
+     *   Model::query('products')->where('id', $id)->increment('stock', 5, ['updated_at' => date('Y-m-d H:i:s')]);
+     */
+    public function increment(string $column, int|float $amount = 1, array $extra = []): void
+    {
+        $this->applyGlobalScopes();
+        $db     = LazyMePHP::DB_CONNECTION();
+        $sets   = ["\"$column\" = \"$column\" + ?"];
+        $params = [$amount];
+        foreach ($extra as $k => $v) {
+            $sets[]   = "\"$k\" = ?";
+            $params[] = $v;
+        }
+        $where  = $this->conditions ? 'WHERE ' . implode('', $this->conditions) : '';
+        $params = array_merge($params, $this->bindings);
+        $db->query("UPDATE \"{$this->tableName}\" SET " . implode(', ', $sets) . " $where", $params);
+        self::invalidateTable($this->tableName);
+    }
+
+    /**
+     * Atomically decrement a column by $amount for all rows matching the current WHERE.
+     *
+     *   Model::query('products')->where('id', $id)->decrement('stock');
+     */
+    public function decrement(string $column, int|float $amount = 1, array $extra = []): void
+    {
+        $this->increment($column, -$amount, $extra);
+    }
+
+    /**
      * Hard-delete all rows matching the current WHERE conditions.
      * (Use Model::Delete() for single soft-delete-aware deletion.)
      *
@@ -763,6 +796,12 @@ class ModelQuery
 
     /** Flush the entire query cache (delegates to the configured cache driver). */
     public static function clearMemCache(): void
+    {
+        \Core\Cache\Cache::flush();
+    }
+
+    /** @internal Reset table version counters — for use between tests. */
+    public static function resetTableVersions(): void
     {
         \Core\Cache\Cache::flush();
     }

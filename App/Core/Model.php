@@ -893,6 +893,70 @@ class Model implements IDB
     }
 
     /**
+     * Atomically increment a column on this record by $amount.
+     * Updates the in-memory value so the model reflects the new state.
+     *
+     *   $post->increment('views');
+     *   $product->increment('stock', 10);
+     */
+    public function increment(string $column, int|float $amount = 1): bool
+    {
+        if (!$this->exists || $this->primaryKey === null) return false;
+        (new ModelQuery($this->tableName))
+            ->where($this->primaryKey, $this->data[$this->primaryKey])
+            ->increment($column, $amount);
+        $this->data[$column] = ($this->data[$column] ?? 0) + $amount;
+        return true;
+    }
+
+    /**
+     * Atomically decrement a column on this record by $amount.
+     *
+     *   $product->decrement('stock');
+     */
+    public function decrement(string $column, int|float $amount = 1): bool
+    {
+        return $this->increment($column, -$amount);
+    }
+
+    /**
+     * Update a timestamp column to now without touching other fields.
+     * Defaults to `updated_at` if the column exists, otherwise the first DATETIME/TIMESTAMP column.
+     *
+     *   $model->touch();
+     *   $model->touch('last_seen_at');
+     */
+    public function touch(?string $column = null): bool
+    {
+        if (!$this->exists || $this->primaryKey === null) return false;
+
+        if ($column === null) {
+            if (array_key_exists('updated_at', $this->schema)) {
+                $column = 'updated_at';
+            } else {
+                foreach ($this->schema as $col => $def) {
+                    if (str_contains(strtolower($def['type']), 'datetime')
+                        || str_contains(strtolower($def['type']), 'timestamp')) {
+                        $column = $col;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if ($column === null) return false;
+
+        $now = date('Y-m-d H:i:s');
+        LazyMePHP::DB_CONNECTION()->query(
+            "UPDATE \"{$this->tableName}\" SET \"$column\" = ? WHERE \"{$this->primaryKey}\" = ?",
+            [$now, $this->data[$this->primaryKey]]
+        );
+        $this->data[$column] = $now;
+        ModelQuery::invalidateTable($this->tableName);
+        return true;
+    }
+
+    /**
      * @param array<string, list<string>>|null $mask  Keys: table name; values: allowed columns
      */
     public function Serialize(?array $mask = null): array

@@ -225,8 +225,12 @@ final class SQLiteResult extends IDBObject
         if (!$this->dbResult) {
             return null;
         }
-        $result = $this->dbResult->fetch(PDO::FETCH_ASSOC);
-        return $result === false ? null : $result;
+        $row = $this->dbResult->fetch(PDO::FETCH_ASSOC);
+        if ($row === false) {
+            $this->dbResult->closeCursor();
+            return null;
+        }
+        return $row;
     }
 
     /**
@@ -236,7 +240,10 @@ final class SQLiteResult extends IDBObject
      */
     public function fetchAll(): array
     {
-        return $this->dbResult ? $this->dbResult->fetchAll(PDO::FETCH_ASSOC) : [];
+        if (!$this->dbResult) return [];
+        $rows = $this->dbResult->fetchAll(PDO::FETCH_ASSOC);
+        $this->dbResult->closeCursor();
+        return $rows;
     }
 
     /**

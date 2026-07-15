@@ -25,4 +25,8 @@ class SyncDriver implements QueueDriver
     {
         return 0;
     }
+
+    public function listFailed(string $queue = 'default'): array { return []; }
+    public function retryFailed(mixed $id): void {}
+    public function flushFailed(string $queue = 'default'): void {}
 }

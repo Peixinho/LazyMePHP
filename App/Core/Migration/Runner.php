@@ -177,13 +177,19 @@ class Runner
             default  => throw new \RuntimeException("Unsupported DB type: $dbType"),
         };
 
-        $result = $db->query($sql);
+        // fetchAll() drains and closes the cursor so SQLite doesn't lock on DROP
+        $rows   = $db->query($sql)->fetchAll();
         $tables = [];
-        while ($row = $result->fetchArray()) {
-            $tables[] = $row['name'] ?? $row['TABLE_NAME'] ?? '';
+        foreach ($rows as $row) {
+            $name = $row['name'] ?? $row['TABLE_NAME'] ?? '';
+            if ($name !== '') $tables[] = $name;
         }
 
-        foreach (array_filter($tables) as $table) {
+        // Internal SQLite tables that cannot and should not be dropped
+        $sqliteInternal = ['sqlite_sequence', 'sqlite_stat1', 'sqlite_stat2', 'sqlite_stat3', 'sqlite_stat4'];
+
+        foreach ($tables as $table) {
+            if ($dbType === 'sqlite' && in_array($table, $sqliteInternal, true)) continue;
             if ($dbType === 'sqlite') {
                 $db->query('DROP TABLE IF EXISTS "' . $table . '"');
             } elseif ($dbType === 'mysql') {
@@ -295,13 +301,27 @@ return [
 PHP;
     }
 
+    /** @internal For tests: override the migrations directory. Pass null to reset. */
+    public static function setMigrationsDir(?string $dir): void
+    {
+        self::$migrationsDirOverride = $dir;
+    }
+
+    /** @internal For tests: return just the inferred stub content without writing a file. */
+    public static function scaffoldStub(string $name): string
+    {
+        return static::inferStub($name);
+    }
+
     // -------------------------------------------------------------------------
     // Internals
     // -------------------------------------------------------------------------
 
+    private static ?string $migrationsDirOverride = null;
+
     protected static function migrationsDir(): string
     {
-        return dirname(__DIR__, 3) . '/database/migrations';
+        return self::$migrationsDirOverride ?? (dirname(__DIR__, 3) . '/database/migrations');
     }
 
     protected static function execute(mixed $step): void

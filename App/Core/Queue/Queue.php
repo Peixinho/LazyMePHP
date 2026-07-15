@@ -49,4 +49,19 @@ class Queue
     {
         return self::driver()->size($queue);
     }
+
+    public static function failed(string $queue = 'default'): array
+    {
+        return self::driver()->listFailed($queue);
+    }
+
+    public static function retry(mixed $id): void
+    {
+        self::driver()->retryFailed($id);
+    }
+
+    public static function flush(string $queue = 'default'): void
+    {
+        self::driver()->flushFailed($queue);
+    }
 }

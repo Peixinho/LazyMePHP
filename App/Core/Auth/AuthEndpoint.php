@@ -136,5 +136,71 @@ class AuthEndpoint
             }
             echo json_encode(['user' => $user]);
         })->addMiddleware(JwtMiddleware::class);
+
+        // POST /auth/forgot-password  {"email":"..."}
+        SimpleRouter::post('/auth/forgot-password', function (): void {
+            header('Content-Type: application/json');
+            $body  = json_decode((string)file_get_contents('php://input'), true) ?? [];
+            $email = trim((string)($body['email'] ?? ''));
+
+            // Always 200 to avoid user enumeration
+            if ($email !== '') {
+                try {
+                    $table  = $_ENV['AUTH_TABLE']           ?? 'users';
+                    $col    = $_ENV['AUTH_USERNAME_COLUMN'] ?? 'email';
+                    $result = \Core\LazyMePHP::DB_CONNECTION()->query(
+                        "SELECT * FROM \"$table\" WHERE \"$col\" = ? LIMIT 1", [$email]
+                    );
+                    $user = $result->fetchArray();
+                    if ($user) {
+                        $schema = \Core\Model::schemaFor($table);
+                        $pk     = (string)(array_key_first(array_filter($schema, fn($m) => $m['pk'])) ?? 'id');
+                        $token  = Auth::createPasswordResetToken($user[$pk]);
+                        \Core\Events\ModelEvents::fire($table, 'password.reset.requested', ['user' => $user, 'token' => $token]);
+                    }
+                } catch (\Throwable) {}
+            }
+            echo json_encode(['message' => 'If that email exists, a reset link has been sent.']);
+        });
+
+        // POST /auth/reset-password  {"token":"...","password":"..."}
+        SimpleRouter::post('/auth/reset-password', function (): void {
+            header('Content-Type: application/json');
+            $body     = json_decode((string)file_get_contents('php://input'), true) ?? [];
+            $token    = trim((string)($body['token']    ?? ''));
+            $password = trim((string)($body['password'] ?? ''));
+
+            if ($token === '' || $password === '') {
+                http_response_code(422);
+                echo json_encode(['error' => 'token and password are required.']);
+                return;
+            }
+            if (!Auth::consumePasswordResetToken($token, $password)) {
+                http_response_code(422);
+                echo json_encode(['error' => 'Invalid or expired reset token.']);
+                return;
+            }
+            echo json_encode(['message' => 'Password updated successfully.']);
+        });
+
+        // POST /auth/verify-email  {"token":"..."}
+        SimpleRouter::post('/auth/verify-email', function (): void {
+            header('Content-Type: application/json');
+            $body  = json_decode((string)file_get_contents('php://input'), true) ?? [];
+            $token = trim((string)($body['token'] ?? ''));
+
+            if ($token === '') {
+                http_response_code(422);
+                echo json_encode(['error' => 'token is required.']);
+                return;
+            }
+            $userId = Auth::verifyEmail($token);
+            if ($userId === null) {
+                http_response_code(422);
+                echo json_encode(['error' => 'Invalid or expired verification token.']);
+                return;
+            }
+            echo json_encode(['message' => 'Email verified successfully.']);
+        });
     }
 }

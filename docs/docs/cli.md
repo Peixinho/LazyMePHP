@@ -93,6 +93,26 @@ php LazyMePHP queue:work --stop-when-empty          # exit after draining
 
 php LazyMePHP queue:size                            # pending job count
 php LazyMePHP queue:size --queue=<name>             # pending count for a named queue
+php LazyMePHP queue:failed                          # list permanently failed jobs
+php LazyMePHP queue:failed --queue=<name>           # failed jobs for a specific queue
+php LazyMePHP queue:retry <id>                      # re-queue a failed job by its ID
+php LazyMePHP queue:flush                           # delete all failed jobs
+php LazyMePHP queue:flush --queue=<name>            # delete failed jobs for one queue
+```
+
+## Route inspection
+
+```bash
+php LazyMePHP route:list
+# Prints a table of all registered routes: method, path, handler
+```
+
+## Production optimization
+
+```bash
+php LazyMePHP optimize
+# Warms the schema cache for all tables (skips DB introspection on every request)
+# and runs composer dump-autoload --optimize for faster class loading
 ```
 
 ## Build tool

@@ -84,6 +84,11 @@ class LazyMeCLI {
         'make:mail'        => 'Scaffold a new Mailable class  [name]',
         'queue:work'       => 'Start the queue worker  [--queue=default --sleep=3 --tries=3 --stop-when-empty]',
         'queue:size'       => 'Show number of pending jobs  [--queue=default]',
+        'queue:failed'     => 'List failed jobs  [--queue=default]',
+        'queue:retry'      => 'Retry a failed job by ID  [id]',
+        'queue:flush'      => 'Delete all failed jobs  [--queue=default]',
+        'route:list'       => 'Print all registered routes',
+        'optimize'         => 'Cache schema + optimize autoloader for production',
     ];
 
     public function run(array $argv): void {
@@ -238,6 +243,24 @@ class LazyMeCLI {
                 break;
             case 'queue:size':
                 echo "Pending jobs on '{$queueArg}': " . \Core\Queue\Queue::size($queueArg) . "\n";
+                break;
+            case 'queue:failed':
+                $this->queueFailed($queueArg);
+                break;
+            case 'queue:retry':
+                if ($tableName === null) { echo "Usage: php LazyMePHP queue:retry <id>\n"; exit(1); }
+                \Core\Queue\Queue::retry($tableName);
+                echo "Job {$tableName} re-queued.\n";
+                break;
+            case 'queue:flush':
+                \Core\Queue\Queue::flush($queueArg);
+                echo "Flushed failed jobs on '{$queueArg}'.\n";
+                break;
+            case 'route:list':
+                $this->routeList();
+                break;
+            case 'optimize':
+                $this->optimize();
                 break;
             default:
                 echo "Unknown command: $command\n";
@@ -437,6 +460,74 @@ class LazyMeCLI {
 
         file_put_contents($file, "<?php\n\ndeclare(strict_types=1);\n\nnamespace Models;\n\nuse Core\\Model;\n\nclass {$name} extends Model\n{\n    protected static string \$table = '{$table}';\n{$fillableLine}\n    // protected static array \$rules = [\n    //     'name' => 'required|max:255',\n    // ];\n}\n");
         echo "Created: $file\n";
+    }
+
+    private function queueFailed(string $queue): void {
+        $jobs = \Core\Queue\Queue::failed($queue);
+        if (empty($jobs)) {
+            echo "No failed jobs on '{$queue}'.\n";
+            return;
+        }
+        printf("%-6s %-40s %-20s %s\n", 'ID', 'Job', 'Failed At', 'Error');
+        echo str_repeat('-', 100) . "\n";
+        foreach ($jobs as $job) {
+            printf(
+                "%-6s %-40s %-20s %s\n",
+                $job['id'] ?? '?',
+                substr($job['job_class'] ?? '?', 0, 40),
+                $job['failed_at'] ?? '?',
+                substr($job['error'] ?? '', 0, 40)
+            );
+        }
+    }
+
+    private function routeList(): void {
+        $tables = \Core\Model::listTables();
+        $hidden = array_filter($tables, fn($t) => \Core\CrudController::isHidden($t));
+        $visible = array_values(array_diff($tables, $hidden));
+
+        printf("%-8s %-40s %s\n", 'Method', 'Path', 'Handler');
+        echo str_repeat('-', 80) . "\n";
+
+        // Auth routes
+        foreach (['POST /auth/login', 'POST /auth/refresh', 'POST /auth/logout', 'GET  /auth/me'] as $r) {
+            [$m, $p] = explode(' ', $r, 2);
+            printf("%-8s %-40s %s\n", trim($m), $p, 'Core\\Auth\\AuthEndpoint');
+        }
+        // POST /auth/forgot-password, /auth/reset-password, /auth/verify-email
+        foreach (['POST /auth/forgot-password', 'POST /auth/reset-password', 'POST /auth/verify-email'] as $r) {
+            [$m, $p] = explode(' ', $r, 2);
+            printf("%-8s %-40s %s\n", trim($m), $p, 'Core\\Auth\\AuthEndpoint');
+        }
+        // GraphQL
+        printf("%-8s %-40s %s\n", 'POST', '/graphql', 'Core\\GraphQL\\Endpoint');
+        // CRUD routes
+        foreach ($visible as $table) {
+            $methods = [
+                ['GET',  "/$table",           "CrudController::index"],
+                ['GET',  "/$table/new",        "CrudController::edit"],
+                ['GET',  "/$table/{id}/edit",  "CrudController::edit"],
+                ['POST', "/$table/{id}",       "CrudController::save"],
+                ['POST', "/$table",            "CrudController::save"],
+                ['POST', "/$table/{id}/delete","CrudController::delete"],
+            ];
+            foreach ($methods as [$method, $path, $handler]) {
+                printf("%-8s %-40s %s\n", $method, $path, $handler);
+            }
+        }
+    }
+
+    private function optimize(): void {
+        echo "Warming schema cache...\n";
+        $tables = \Core\Model::listTables();
+        foreach ($tables as $table) {
+            \Core\Model::warmSchemaCache($table);
+            echo "  Cached: $table\n";
+        }
+        echo "Optimizing Composer autoloader...\n";
+        @exec('composer dump-autoload --optimize --quiet 2>&1', $out, $code);
+        foreach ($out as $line) echo "  $line\n";
+        echo $code === 0 ? "Done.\n" : "Composer optimize failed (exit $code).\n";
     }
 
     private function schemaClear(?string $tableName): void {

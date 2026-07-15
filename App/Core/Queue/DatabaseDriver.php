@@ -68,4 +68,40 @@ class DatabaseDriver implements QueueDriver
         $row = $result->fetchArray();
         return (int) ($row['cnt'] ?? 0);
     }
+
+    public function listFailed(string $queue = 'default'): array
+    {
+        $result = $this->db()->query(
+            'SELECT "id","queue","payload","attempts","error","failed_at" FROM "__queue_jobs" WHERE "queue"=? AND "failed_at" IS NOT NULL ORDER BY "failed_at" DESC',
+            [$queue]
+        );
+        $rows = [];
+        while ($row = $result->fetchArray()) {
+            try {
+                $job = Job::deserialize($row['payload']);
+                $row['job_class'] = get_class($job);
+            } catch (\Throwable) {
+                $row['job_class'] = '(unreadable)';
+            }
+            $rows[] = $row;
+        }
+        return $rows;
+    }
+
+    public function retryFailed(mixed $id): void
+    {
+        $result = $this->db()->query('SELECT * FROM "__queue_jobs" WHERE "id"=? AND "failed_at" IS NOT NULL', [$id]);
+        $row    = $result->fetchArray();
+        if (!$row) return;
+
+        $this->db()->query(
+            'UPDATE "__queue_jobs" SET "failed_at"=NULL,"error"=NULL,"reserved_at"=NULL,"attempts"=0,"available_at"=? WHERE "id"=?',
+            [date('Y-m-d H:i:s'), $id]
+        );
+    }
+
+    public function flushFailed(string $queue = 'default'): void
+    {
+        $this->db()->query('DELETE FROM "__queue_jobs" WHERE "queue"=? AND "failed_at" IS NOT NULL', [$queue]);
+    }
 }
