@@ -91,7 +91,6 @@ describe('Error Handling with Logging Disabled', function () {
         $isUnconnected = false;
         if (is_object($db) && (get_class($db) === Core\DB\MySQL::class || get_class($db) === Core\DB\SQLite::class)) {
             $ref = new ReflectionProperty($db, 'dbName');
-            $ref->setAccessible(true);
             $dbName = $ref->getValue($db);
             $isUnconnected = ($dbName === '' || $dbName === null);
         }

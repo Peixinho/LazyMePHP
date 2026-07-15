@@ -18,7 +18,6 @@ class BladeFactory
             // Use the new static::e() method instead of the old htmlentities() format
             $reflection = new \ReflectionClass(self::$blade);
             $echoFormatProperty = $reflection->getProperty('echoFormat');
-            $echoFormatProperty->setAccessible(true);
             $echoFormatProperty->setValue(self::$blade, 'static::e(%s)');
 
             // @csrf — hidden input for form submission

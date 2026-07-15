@@ -134,7 +134,6 @@ describe('Error Handling System', function () {
     it('should sanitize sensitive data in error emails', function () {
         $reflection     = new ReflectionClass(ErrorUtil::class);
         $sanitizeMethod = $reflection->getMethod('sanitizeData');
-        $sanitizeMethod->setAccessible(true);
 
         // Session-style data
         $testSession = [
@@ -193,7 +192,6 @@ describe('Error Handling System', function () {
         // Test error type name mapping
         $reflection = new ReflectionClass(ErrorUtil::class);
         $getErrorTypeNameMethod = $reflection->getMethod('getErrorTypeName');
-        $getErrorTypeNameMethod->setAccessible(true);
         
         expect($getErrorTypeNameMethod->invoke(null, E_ERROR))->toBe('E_ERROR');
         expect($getErrorTypeNameMethod->invoke(null, E_WARNING))->toBe('E_WARNING');
@@ -205,7 +203,6 @@ describe('Error Handling System', function () {
         // Test byte formatting
         $reflection = new ReflectionClass(ErrorUtil::class);
         $formatBytesMethod = $reflection->getMethod('formatBytes');
-        $formatBytesMethod->setAccessible(true);
         
         expect($formatBytesMethod->invoke(null, 1024))->toBe('1 KB');
         expect($formatBytesMethod->invoke(null, 1048576))->toBe('1 MB');
@@ -230,7 +227,6 @@ describe('Error Handling System', function () {
         // Test that error IDs are included in error data
         $reflection = new ReflectionClass(ErrorUtil::class);
         $errorHandlerMethod = $reflection->getMethod('ErrorHandler');
-        $errorHandlerMethod->setAccessible(true);
         
         // Create a mock error data structure
         $errorData = [
