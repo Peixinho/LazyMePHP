@@ -139,15 +139,18 @@ class Collection implements \Countable, \IteratorAggregate, \ArrayAccess, \JsonS
 
     public function flatten(int $depth = PHP_INT_MAX): static
     {
-        $items  = $depth === PHP_INT_MAX ? $this->items : $this->flattenDepth($this->items, $depth);
-        $result = [];
-        $flat   = function (array $arr) use (&$flat, &$result): void {
-            foreach ($arr as $v) {
-                if (is_array($v)) { $flat($v); } else { $result[] = $v; }
-            }
-        };
-        $flat($items);
-        return new static($result);
+        if ($depth === PHP_INT_MAX) {
+            $result = [];
+            $flat   = function (array $arr) use (&$flat, &$result): void {
+                foreach ($arr as $v) {
+                    if (is_array($v)) { $flat($v); } else { $result[] = $v; }
+                }
+            };
+            $flat($this->items);
+            return new static($result);
+        }
+
+        return new static($this->flattenDepth($this->items, $depth));
     }
 
     private function flattenDepth(array $array, int $depth): array

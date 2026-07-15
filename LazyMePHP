@@ -189,6 +189,7 @@ class LazyMeCLI {
                 $this->schemaClear($tableName);
                 break;
             case 'db:seed':
+                $this->requireDatabase('db:seed');
                 (new \Core\Seeder\Runner())->run($classArg);
                 break;
             case 'make:seeder':

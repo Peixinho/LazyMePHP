@@ -72,12 +72,25 @@ class Cache
 
     public static function get(string $key): mixed
     {
-        return self::store()->get($key);
+        if (class_exists('Core\Debug\Profiler')) {
+            \Core\Debug\Profiler::start('cache', "get:{$key}");
+        }
+        $result = self::store()->get($key);
+        if (class_exists('Core\Debug\Profiler')) {
+            \Core\Debug\Profiler::stop();
+        }
+        return $result;
     }
 
     public static function set(string $key, mixed $value, int $ttl = 3600): void
     {
+        if (class_exists('Core\Debug\Profiler')) {
+            \Core\Debug\Profiler::start('cache', "set:{$key}");
+        }
         self::store()->set($key, $value, $ttl);
+        if (class_exists('Core\Debug\Profiler')) {
+            \Core\Debug\Profiler::stop();
+        }
     }
 
     public static function delete(string $key): void
@@ -105,11 +118,24 @@ class Cache
      */
     public static function remember(string $key, int $ttl, callable $callback): mixed
     {
-        $cached = self::get($key);
-        if ($cached !== null) return $cached;
+        if (class_exists('Core\Debug\Profiler')) {
+            \Core\Debug\Profiler::start('cache', "remember:{$key}");
+        }
+
+        $cached = self::store()->get($key);
+        if ($cached !== null) {
+            if (class_exists('Core\Debug\Profiler')) {
+                \Core\Debug\Profiler::stop();
+            }
+            return $cached;
+        }
 
         $value = $callback();
-        self::set($key, $value, $ttl);
+        self::store()->set($key, $value, $ttl);
+
+        if (class_exists('Core\Debug\Profiler')) {
+            \Core\Debug\Profiler::stop();
+        }
         return $value;
     }
 }

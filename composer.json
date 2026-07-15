@@ -50,7 +50,11 @@
             "Routes\\": "App/Routes/",
             "Tools\\": "App/Tools/",
             "Views\\": "App/Views/"
-        }
+        },
+        "files": [
+            "App/Core/Translation/helpers.php",
+            "App/Core/helpers.php"
+        ]
     },
     "autoload-dev": {
         "psr-4": {

@@ -126,6 +126,14 @@ class Generator
             ];
         }
 
+        // Merge routes declared via PHP 8 attributes on controllers
+        $attrPaths = self::scanControllerAttributes();
+        foreach ($attrPaths as $path => $methods) {
+            foreach ($methods as $method => $operation) {
+                $paths[$path][$method] = $operation;
+            }
+        }
+
         return [
             'openapi' => '3.0.3',
             'info'    => [
@@ -141,6 +149,122 @@ class Generator
             ],
             'paths' => $paths,
         ];
+    }
+
+    /**
+     * Scan App/Controllers for methods decorated with HTTP verb attributes.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public static function scanControllerAttributes(string $dir = ''): array
+    {
+        $dir   = $dir ?: (defined('BASE_PATH') ? BASE_PATH . '/App/Controllers' : __DIR__ . '/../../../App/Controllers');
+        $paths = [];
+
+        if (!is_dir($dir)) return $paths;
+
+        $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dir));
+        foreach ($files as $file) {
+            if (!$file->isFile() || $file->getExtension() !== 'php') continue;
+            require_once $file->getPathname();
+        }
+
+        $verbMap = [
+            Get::class    => 'get',
+            Post::class   => 'post',
+            Put::class    => 'put',
+            Patch::class  => 'patch',
+            Delete::class => 'delete',
+        ];
+
+        foreach (get_declared_classes() as $class) {
+            $rc = new \ReflectionClass($class);
+
+            $classPrefix = '';
+            $classTag    = '';
+            $apiAttr     = $rc->getAttributes(ApiController::class);
+            if ($apiAttr !== []) {
+                $inst        = $apiAttr[0]->newInstance();
+                $classPrefix = $inst->prefix;
+                $classTag    = $inst->tag;
+            }
+
+            foreach ($rc->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
+                $operation = [];
+                $httpVerb  = null;
+                $httpPath  = null;
+
+                foreach ($verbMap as $attrClass => $verb) {
+                    $attrs = $method->getAttributes($attrClass);
+                    if ($attrs !== []) {
+                        $httpVerb = $verb;
+                        $httpPath = $classPrefix . $attrs[0]->newInstance()->path;
+                        break;
+                    }
+                }
+
+                if ($httpVerb === null) continue;
+
+                $summaryAttrs = $method->getAttributes(Summary::class);
+                if ($summaryAttrs !== []) {
+                    $operation['summary'] = $summaryAttrs[0]->newInstance()->text;
+                }
+
+                $descAttrs = $method->getAttributes(Description::class);
+                if ($descAttrs !== []) {
+                    $operation['description'] = $descAttrs[0]->newInstance()->text;
+                }
+
+                $tags = [];
+                if ($classTag !== '') $tags[] = $classTag;
+                foreach ($method->getAttributes(Tag::class) as $t) {
+                    $tags[] = $t->newInstance()->name;
+                }
+                if ($tags !== []) $operation['tags'] = $tags;
+
+                $params = [];
+                foreach ($method->getAttributes(Param::class) as $p) {
+                    $pi       = $p->newInstance();
+                    $params[] = [
+                        'name'        => $pi->name,
+                        'in'          => $pi->in,
+                        'required'    => $pi->required,
+                        'description' => $pi->description,
+                        'schema'      => ['type' => $pi->type],
+                    ];
+                }
+                if ($params !== []) $operation['parameters'] = $params;
+
+                $bodyAttrs = $method->getAttributes(Body::class);
+                if ($bodyAttrs !== []) {
+                    $bi = $bodyAttrs[0]->newInstance();
+                    $schemaObj = $bi->schema !== []
+                        ? ['type' => 'object', 'properties' => array_map(fn($t) => ['type' => $t], $bi->schema)]
+                        : ['type' => 'object'];
+                    $operation['requestBody'] = [
+                        'required' => $bi->required,
+                        'content'  => [$bi->contentType => ['schema' => $schemaObj]],
+                    ];
+                }
+
+                $responses = [];
+                foreach ($method->getAttributes(Response::class) as $r) {
+                    $ri = $r->newInstance();
+                    $resp = ['description' => $ri->description];
+                    if ($ri->ref !== '') {
+                        $resp['content'] = ['application/json' => ['schema' => ['$ref' => "#/components/schemas/{$ri->ref}"]]];
+                    }
+                    $responses[(string)$ri->status] = $resp;
+                }
+                if ($responses !== []) $operation['responses'] = $responses;
+
+                $operation['operationId'] = strtolower($rc->getShortName()) . '_' . $method->getName();
+
+                $paths[$httpPath][$httpVerb] = $operation;
+            }
+        }
+
+        return $paths;
     }
 
     private static function visibleTables(): array
