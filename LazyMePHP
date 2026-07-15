@@ -82,6 +82,7 @@ class LazyMeCLI {
         'make:job'         => 'Scaffold a new queue job  [name]',
         'make:request'     => 'Scaffold a new FormRequest  [name]',
         'make:mail'        => 'Scaffold a new Mailable class  [name]',
+        'make:test'        => 'Scaffold a new Pest test  [name]',
         'queue:work'       => 'Start the queue worker  [--queue=default --sleep=3 --tries=3 --stop-when-empty]',
         'queue:size'       => 'Show number of pending jobs  [--queue=default]',
         'queue:failed'     => 'List failed jobs  [--queue=default]',
@@ -237,6 +238,13 @@ class LazyMeCLI {
                     exit(1);
                 }
                 $this->makeMail($tableName);
+                break;
+            case 'make:test':
+                if (!$tableName) {
+                    echo "Usage: php lazymephp make:test <Name>\n";
+                    exit(1);
+                }
+                $this->makeTest($tableName);
                 break;
             case 'queue:work':
                 (new \Core\Queue\Worker())->run($queueArg, $sleepArg, $triesArg, $stopWhenEmpty);
@@ -425,6 +433,15 @@ class LazyMeCLI {
         $file = "$dir/{$name}.php";
         if (file_exists($file)) { echo "FormRequest already exists: $file\n"; exit(1); }
         file_put_contents($file, "<?php\n\ndeclare(strict_types=1);\n\nuse Core\\Http\\FormRequest;\n\nclass {$name} extends FormRequest\n{\n    public function rules(): array\n    {\n        return [\n            // 'name' => 'required|min:2|max:255',\n            // 'email' => 'required|email',\n        ];\n    }\n\n    public function authorize(): bool\n    {\n        return true;\n    }\n}\n");
+        echo "Created: $file\n";
+    }
+
+    private function makeTest(string $name): void {
+        $dir  = __DIR__ . '/tests/Feature';
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+        $file = "$dir/{$name}Test.php";
+        if (file_exists($file)) { echo "Test already exists: $file\n"; exit(1); }
+        file_put_contents($file, "<?php\n\ndeclare(strict_types=1);\n\nuse Core\\Model;\n\nbeforeEach(function () {\n    // Reset any global state before each test\n});\n\ntest('{$name} works correctly', function () {\n    // Arrange\n    // ...\n\n    // Act\n    // ...\n\n    // Assert\n    expect(true)->toBeTrue();\n});\n");
         echo "Created: $file\n";
     }
 

@@ -97,6 +97,31 @@ REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
 ```
 
+## Failed job management
+
+When a job exhausts its `$tries` limit, its `failed()` method is called and the job is moved to a failed-jobs store. You can inspect and replay failed jobs without restarting the worker.
+
+```bash
+php LazyMePHP queue:failed                # list all permanently failed jobs
+php LazyMePHP queue:failed --queue=high   # filter by queue name
+
+php LazyMePHP queue:retry <id>            # re-queue one failed job by its ID
+php LazyMePHP queue:flush                 # delete all failed jobs
+php LazyMePHP queue:flush --queue=high    # delete failed jobs for one queue
+```
+
+From PHP:
+
+```php
+use Core\Queue\Queue;
+
+$jobs = Queue::failed();          // array of failed job records
+Queue::retry($id);                // re-queue by ID
+Queue::flush();                   // delete all failed jobs
+```
+
+The `database` driver stores failed jobs in the same `__queue_jobs` table (marked with a `failed_at` timestamp). The `redis` driver stores them in a `queue:failed` Redis list.
+
 ## Job serialisation
 
 Properties passed to the job constructor are serialised to JSON. Primitive types, arrays, and nested objects that are JSON-serialisable work out of the box. Do not store full Model instances in jobs — store the primary key and reload in `handle()`.

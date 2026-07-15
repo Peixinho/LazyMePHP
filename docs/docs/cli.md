@@ -40,6 +40,7 @@ php LazyMePHP make:resource <Name>               # ApiResource subclass stub
 php LazyMePHP make:job <Name>                    # Queue Job stub in App/Jobs/
 php LazyMePHP make:request <Name>                # FormRequest stub in App/Requests/
 php LazyMePHP make:mail <Name>                   # Mailable stub in App/Mail/
+php LazyMePHP make:test <Name>                   # Pest feature test stub in tests/Feature/
 php LazyMePHP make:view                          # explains how to override Blade views
 php LazyMePHP make:route                         # explains how AutoRouter works
 php LazyMePHP make:api                           # explains how to restrict GraphQL fields

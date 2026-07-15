@@ -134,3 +134,32 @@ Model::query('subscribers')
 ```
 
 `chunk($size, $callback)` runs one query per page. The callback receives an array of `Model` instances. Returning `false` from the callback aborts the loop.
+
+## Atomic increment / decrement
+
+Update a numeric column atomically without fetching the row first:
+
+```php
+// Via ModelQuery (fluent)
+Model::query('products')->where('id', 42)->increment('stock', 10);
+Model::query('orders')->where('id', $id)->decrement('quantity');
+
+// Via a Model instance
+$product = new Model('products', 42);
+$product->increment('views');       // +1
+$product->decrement('stock', 5);    // -5
+$product->increment('score', 1, ['updated_by' => $adminId]);  // extra columns
+```
+
+`increment()` and `decrement()` issue a single `UPDATE SET col = col ± N` — safe under concurrent writes.
+
+## touch()
+
+Update a model's timestamp without changing any other fields:
+
+```php
+$post = new Model('posts', 1);
+$post->touch();                 // sets updated_at (or first DATETIME column) to now
+```
+
+`touch()` auto-detects `updated_at` if the column exists, otherwise uses the first `DATETIME`/`TIMESTAMP` column in the schema.

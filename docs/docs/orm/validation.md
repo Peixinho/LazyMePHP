@@ -58,5 +58,38 @@ $errors = $user->validate();  // empty array = valid
 | `min:N` | String: minimum length N. Number: minimum value N |
 | `max:N` | String: maximum length N. Number: maximum value N |
 | `in:a,b,c` | Must be one of the listed values |
+| `confirmed` | Must match a sibling field named `{field}_confirmation` |
+| `unique:table,column` | Value must not exist in `table.column` |
+| `unique:table,column,exceptId` | Same, but ignores the row with `id = exceptId` (useful on update) |
+| `exists:table,column` | Value must already exist in `table.column` |
 
 Rules are pipe-separated: `'required\|email\|max:255'`.
+
+### `confirmed`
+
+```php
+protected static array $rules = [
+    'password' => 'required|min:8|confirmed',
+];
+
+// Model must also have a password_confirmation field set:
+$user->password              = 'secret123';
+$user->password_confirmation = 'secret123';
+$user->passes(); // true
+```
+
+### `unique` and `exists`
+
+```php
+protected static array $rules = [
+    'email'   => 'required|email|unique:users,email',
+    'role_id' => 'required|exists:roles,id',
+];
+
+// Exclude the current row on update:
+protected static array $rules = [
+    'email' => 'required|email|unique:users,email,' . self::$primaryKey,
+];
+```
+
+These rules hit the database — they run during `validate()` / `Save()`, so the connection must be active.

@@ -236,6 +236,32 @@ class Model implements IDB
                                     ? "{$field} must be at most {$param} characters." : null),
                     'in'       => ($value !== null && $value !== '' && !in_array((string)$value, explode(',', (string)$param), true))
                                     ? "{$field} must be one of: {$param}." : null,
+                    'confirmed' => (function () use ($value, $field): ?string {
+                        $confirmation = $this->data[$field . '_confirmation'] ?? null;
+                        return ($value !== $confirmation) ? "{$field} confirmation does not match." : null;
+                    })(),
+                    'unique'   => (function () use ($value, $field, $param): ?string {
+                        if ($value === null || $value === '') return null;
+                        [$table, $col, $exceptId] = array_pad(explode(',', (string)$param), 3, null);
+                        $db  = \Core\LazyMePHP::DB_CONNECTION();
+                        $sql = "SELECT COUNT(*) as \"cnt\" FROM \"{$table}\" WHERE \"{$col}\" = ?";
+                        $args = [$value];
+                        if ($exceptId !== null) {
+                            $sql  .= " AND \"id\" != ?";
+                            $args[] = $exceptId;
+                        }
+                        $result = $db->query($sql, $args);
+                        $row    = $result->fetchArray();
+                        return ((int) ($row['cnt'] ?? 0)) > 0 ? "{$field} is already taken." : null;
+                    })(),
+                    'exists'   => (function () use ($value, $field, $param): ?string {
+                        if ($value === null || $value === '') return null;
+                        [$table, $col] = array_pad(explode(',', (string)$param), 2, null);
+                        $db     = \Core\LazyMePHP::DB_CONNECTION();
+                        $result = $db->query("SELECT COUNT(*) as \"cnt\" FROM \"{$table}\" WHERE \"{$col}\" = ?", [$value]);
+                        $row    = $result->fetchArray();
+                        return ((int) ($row['cnt'] ?? 0)) === 0 ? "{$field} does not exist." : null;
+                    })(),
                     default    => null,
                 };
 
