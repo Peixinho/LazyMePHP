@@ -1,5 +1,30 @@
+includes:
+    - phpstan-baseline.neon
+
 parameters:
     level: 5
     paths:
         - App/
         - public/
+    excludePaths:
+        # Legacy auto-generated API files (references controllers that no longer exist)
+        - App/Api/
+        # Vendored third-party code copied into App/Ext (not our code to fix)
+        - App/Ext/
+    ignoreErrors:
+        # PHP superglobals ($_GET, $_POST, $_COOKIE, $_SESSION) always exist —
+        # PHPStan incorrectly flags the ?? as redundant because it knows they
+        # can be empty arrays but never null.
+        -
+            message: '#Variable \$_(GET|POST|COOKIE|SERVER|REQUEST|SESSION|FILES|ENV) on left side of \?\? always exists#'
+            reportUnmatched: false
+        # new static() is the standard PHP pattern for fluent builder inheritance.
+        # PHPStan flags it as "unsafe" without a @phpstan-self-out annotation,
+        # but these classes are leaf nodes or designed for extension.
+        -
+            message: '#Unsafe usage of new static\(\)#'
+            reportUnmatched: false
+        # @pagination is a custom Blade directive, not a real PHPDoc tag.
+        -
+            message: '#PHPDoc tag @pagination has invalid value#'
+            reportUnmatched: false

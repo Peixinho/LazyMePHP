@@ -70,13 +70,25 @@ You can chain multiple `groupBy` calls to group by multiple columns:
 
 ## Aggregate-only queries
 
-When you only want a count:
+Dedicated aggregate methods — all respect active `where()` conditions:
 
 ```php
-$total = Model::query('orders')->where('status', 'open')->count();
+$count   = Model::query('orders')->where('status', 'open')->count();
+$revenue = Model::query('orders')->where('user_id', 5)->sum('total');
+$avg     = Model::query('ratings')->where('product_id', 1)->avg('score');
+$highest = Model::query('products')->max('price');
+$lowest  = Model::query('products')->where('active', 1)->min('price');
 ```
 
-For any other aggregate (`SUM`, `AVG`, `MAX`, etc.) use `select()` + `first()`:
+| Method | Return type | Notes |
+|---|---|---|
+| `count()` | `int` | Always available |
+| `sum($col)` | `float` | Returns `0.0` when no rows match |
+| `avg($col)` | `float` | |
+| `max($col)` | `mixed` | `null` when no rows match |
+| `min($col)` | `mixed` | `null` when no rows match |
+
+For any other aggregate (`SUM(a) / SUM(b)`, window functions, etc.) use `select()` + `first()`:
 
 ```php
 $row = Model::query('orders')

@@ -456,6 +456,174 @@ class ModelQuery
         ];
     }
 
+    // -------------------------------------------------------------------------
+    // Aggregate queries
+    // -------------------------------------------------------------------------
+
+    /**
+     * Return the SUM of a column over the matching rows.
+     *
+     *   Model::query('orders')->where('user_id', 5)->sum('total');
+     */
+    public function sum(string $column): float
+    {
+        return (float) $this->aggregate('SUM', $column);
+    }
+
+    /**
+     * Return the average value of a column over the matching rows.
+     *
+     *   Model::query('ratings')->where('product_id', 1)->avg('score');
+     */
+    public function avg(string $column): float
+    {
+        return (float) $this->aggregate('AVG', $column);
+    }
+
+    /**
+     * Return the maximum value of a column over the matching rows.
+     *
+     *   Model::query('products')->max('price');
+     */
+    public function max(string $column): mixed
+    {
+        return $this->aggregate('MAX', $column);
+    }
+
+    /**
+     * Return the minimum value of a column over the matching rows.
+     *
+     *   Model::query('products')->min('price');
+     */
+    public function min(string $column): mixed
+    {
+        return $this->aggregate('MIN', $column);
+    }
+
+    private function aggregate(string $fn, string $column): mixed
+    {
+        $this->applyGlobalScopes();
+        $db      = LazyMePHP::DB_CONNECTION();
+        $conds   = $this->conditions;
+        $binds   = $this->bindings;
+        $hasCond = $this->hasCondition;
+
+        if (method_exists($this->modelClass, 'softDeleteColumn') && !$this->includeTrashed) {
+            $col     = ($this->modelClass)::softDeleteColumn();
+            $conds[] = ($hasCond ? ' AND ' : '') . "\"{$col}\" IS NULL";
+        }
+
+        $joins  = $this->joins ? ' ' . implode(' ', $this->joins) : '';
+        $where  = $conds ? 'WHERE ' . implode('', $conds) : '';
+        $result = $db->query(
+            "SELECT {$fn}(\"{$column}\") AS agg FROM \"{$this->tableName}\"{$joins} {$where}",
+            $binds
+        );
+        $row = $result->fetchArray();
+        return $row['agg'] ?? null;
+    }
+
+    // -------------------------------------------------------------------------
+    // firstOrCreate / updateOrCreate
+    // -------------------------------------------------------------------------
+
+    /**
+     * Find the first row matching $attributes, or create it.
+     * $values are merged into the record only on creation.
+     *
+     *   Model::query('tags')->firstOrCreate(['slug' => 'php'], ['name' => 'PHP']);
+     *
+     * @param array<string,mixed> $attributes Columns used to look up the record
+     * @param array<string,mixed> $values     Extra columns set only when creating
+     */
+    public function firstOrCreate(array $attributes, array $values = []): Model
+    {
+        $q = new static($this->tableName, $this->modelClass);
+        foreach ($attributes as $column => $value) {
+            $q->where($column, $value);
+        }
+        $existing = $q->first();
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $class  = $this->modelClass;
+        $record = new $class($this->tableName);
+        foreach (array_merge($attributes, $values) as $col => $val) {
+            $record->$col = $val;
+        }
+        $record->Save();
+        return $record;
+    }
+
+    /**
+     * Find the first row matching $attributes and update it with $values,
+     * or create it with both $attributes + $values merged.
+     *
+     *   Model::query('users')->updateOrCreate(
+     *       ['email' => 'alice@example.com'],
+     *       ['name' => 'Alice', 'active' => 1]
+     *   );
+     *
+     * @param array<string,mixed> $attributes Columns used to look up the record
+     * @param array<string,mixed> $values     Columns to update (or set on creation)
+     */
+    public function updateOrCreate(array $attributes, array $values = []): Model
+    {
+        $q = new static($this->tableName, $this->modelClass);
+        foreach ($attributes as $column => $value) {
+            $q->where($column, $value);
+        }
+        $existing = $q->first();
+        if ($existing !== null) {
+            foreach ($values as $col => $val) {
+                $existing->$col = $val;
+            }
+            $existing->Save();
+            return $existing;
+        }
+
+        $class  = $this->modelClass;
+        $record = new $class($this->tableName);
+        foreach (array_merge($attributes, $values) as $col => $val) {
+            $record->$col = $val;
+        }
+        $record->Save();
+        return $record;
+    }
+
+    // -------------------------------------------------------------------------
+    // Chunked processing
+    // -------------------------------------------------------------------------
+
+    /**
+     * Process matching rows in chunks without loading all into memory.
+     * The callback receives an array of Model instances.
+     * Returning false from the callback stops processing early.
+     *
+     *   Model::query('emails')->chunk(200, function(array $batch) {
+     *       foreach ($batch as $email) {
+     *           Mail::dispatch(new NewsletterEmail($email));
+     *       }
+     *   });
+     */
+    public function chunk(int $size, callable $callback): void
+    {
+        $offset = 0;
+        while (true) {
+            $q = clone $this;
+            $batch = $q->limit($size, $offset)->get();
+            if (empty($batch)) break;
+            if ($callback($batch) === false) break;
+            if (count($batch) < $size) break;
+            $offset += $size;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Bulk operations
+    // -------------------------------------------------------------------------
+
     /**
      * Bulk-update all rows matching the current WHERE conditions.
      * Returns the number of affected rows.

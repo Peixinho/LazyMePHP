@@ -1,0 +1,187 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Method Core\\Auth\\RBAC\:\:rolesFor\(\) should return list\<string\> but returns list\<int\<0, max\>\>\.$#'
+			identifier: return.type
+			count: 1
+			path: App/Core/Auth/RBAC.php
+
+		-
+			message: '#^Only iterables can be unpacked, string given in argument \#2\.$#'
+			identifier: argument.unpackNonIterable
+			count: 1
+			path: App/Core/Auth/RBAC.php
+
+		-
+			message: '#^Method Core\\CrudController\:\:forTable\(\) should return static\(Core\\CrudController\) but returns Core\\GenericCrudController\.$#'
+			identifier: return.type
+			count: 1
+			path: App/Core/CrudController.php
+
+		-
+			message: '#^Method Core\\CrudController\:\:forTable\(\) should return static\(Core\\CrudController\) but returns object\.$#'
+			identifier: return.type
+			count: 1
+			path: App/Core/CrudController.php
+
+		-
+			message: '#^Call to an undefined method Core\\DB\\IDBObject\:\:fetchAll\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: App/Core/DB/ListDB.php
+
+		-
+			message: '#^Comparison operation "\>" between int\<1, max\> and 0 is always true\.$#'
+			identifier: greater.alwaysTrue
+			count: 2
+			path: App/Core/Debug/DebugHelper.php
+
+		-
+			message: '#^Ternary operator condition is always true\.$#'
+			identifier: ternary.alwaysTrue
+			count: 1
+			path: App/Core/Debug/DebugHelper.php
+
+		-
+			message: '#^Dead catch \- Throwable is never thrown in the try block\.$#'
+			identifier: catch.neverThrown
+			count: 1
+			path: App/Core/Debug/DebugToolbar.php
+
+		-
+			message: '#^Property Core\\Debug\\DebugToolbar\:\:\$startMemory is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: App/Core/Debug/DebugToolbar.php
+
+		-
+			message: '#^Call to an undefined method Core\\DB\\IDBObject\:\:GetCount\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: App/Core/ErrorHandler.php
+
+		-
+			message: '#^Instanceof between Throwable and Pecee\\SimpleRouter\\Exceptions\\ClassNotFoundHttpException will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: App/Core/ErrorHandler.php
+
+		-
+			message: '#^Negated boolean expression is always false\.$#'
+			identifier: booleanNot.alwaysFalse
+			count: 1
+			path: App/Core/ErrorHandler.php
+
+		-
+			message: '#^Offset ''BAD_REQUEST''\|''CONFLICT''\|''FORBIDDEN''\|''INTERNAL_ERROR''\|''NOT_FOUND''\|''RATE_LIMIT_EXCEEDED''\|''SERVICE_UNAVAILABLE''\|''TIMEOUT''\|''UNAUTHORIZED''\|''VALIDATION_ERROR'' on array\{VALIDATION_ERROR\: ''The provided data…'', NOT_FOUND\: ''The requested…'', UNAUTHORIZED\: ''Authentication is…'', FORBIDDEN\: ''You do not have…'', RATE_LIMIT_EXCEEDED\: ''Too many requests\.…'', INTERNAL_ERROR\: ''An internal server…'', BAD_REQUEST\: ''The request is…'', CONFLICT\: ''The request…'', \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: App/Core/ErrorHandler.php
+
+		-
+			message: '#^Class GraphQL\\Validator\\Rules\\DisableIntrospection constructor invoked with 0 parameters, 1 required\.$#'
+			identifier: arguments.count
+			count: 1
+			path: App/Core/GraphQL/Endpoint.php
+
+		-
+			message: '#^Match arm comparison between 18 and 18 is always true\.$#'
+			identifier: match.alwaysTrue
+			count: 1
+			path: App/Core/Helpers/FileUploadHelper.php
+
+		-
+			message: '#^PHPDoc tag @return with type object\|null is not subtype of native type Core\\DB\\ISQL\|null\.$#'
+			identifier: return.phpDocType
+			count: 1
+			path: App/Core/LazyMePHP.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: App/Core/Migration/Runner.php
+
+		-
+			message: '#^Parameter \#1 \$array \(non\-empty\-list\<string\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: App/Core/Model.php
+
+		-
+			message: '#^Method Core\\Queue\\RedisDriver\:\:reservedKey\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: App/Core/Queue/RedisDriver.php
+
+		-
+			message: '#^Call to an undefined method Core\\DB\\IDBObject\:\:GetCount\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: App/Core/Security/RateLimiter.php
+
+		-
+			message: '#^Call to an undefined method Core\\DB\\IDBObject\:\:fetchAll\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: App/Core/Security/RateLimiter.php
+
+		-
+			message: '#^Deprecated in PHP 8\.4\: Parameter \#2 \$identifier \(string\) is implicitly nullable via default value null\.$#'
+			identifier: parameter.implicitlyNullable
+			count: 5
+			path: App/Core/Security/RateLimiter.php
+
+		-
+			message: '#^Left side of && is always true\.$#'
+			identifier: booleanAnd.leftAlwaysTrue
+			count: 2
+			path: App/Core/Security/RateLimiter.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between Core\\DB\\IDBObject and false will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 2
+			path: App/Core/Security/RateLimiter.php
+
+		-
+			message: '#^Trait Core\\SoftDeletes is used zero times and is not analysed\.$#'
+			identifier: trait.unused
+			count: 1
+			path: App/Core/SoftDeletes.php
+
+		-
+			message: '#^Trait Core\\Tenancy\\HasTenant is used zero times and is not analysed\.$#'
+			identifier: trait.unused
+			count: 1
+			path: App/Core/Tenancy/HasTenant.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between ''true'' and ''false'' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: App/Core/Tenancy/TenantMiddleware.php
+
+		-
+			message: '#^Variable \$rows in empty\(\) always exists and is not falsy\.$#'
+			identifier: empty.variable
+			count: 1
+			path: App/Core/Tenancy/TenantMiddleware.php
+
+		-
+			message: '#^Match arm comparison between \$this\(Messages\\Success\)&Messages\\Success\:\:MESSAGE_SENT and Messages\\Success\:\:MESSAGE_SENT is always true\.$#'
+			identifier: match.alwaysTrue
+			count: 1
+			path: App/Messages/Success.php
+
+		-
+			message: '#^Anonymous function has an unused use \$blade\.$#'
+			identifier: closure.unusedUse
+			count: 1
+			path: public/index.php
+
+		-
+			message: '#^Variable \$pageContent on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.variable
+			count: 1
+			path: public/index.php

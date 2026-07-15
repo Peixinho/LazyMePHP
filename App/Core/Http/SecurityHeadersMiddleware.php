@@ -22,7 +22,7 @@ use Pecee\Http\Request;
  *       "default-src 'self'; script-src 'self'; style-src 'self'; " .
  *       "img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self';";
  */
-class SecurityHeadersMiddleware implements \Pecee\SimpleRouter\Handlers\IMiddleware
+class SecurityHeadersMiddleware implements \Pecee\Http\Middleware\IMiddleware
 {
     /**
      * Override or extend the default header set from bootstrap.php / a service provider.

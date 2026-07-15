@@ -221,3 +221,94 @@ describe('ModelQuery::remember() — cache key uniqueness', function () {
         expect($desc[0]->name)->toBe('Dave');
     });
 });
+
+describe('ModelQuery aggregate methods', function () {
+    it('sum() returns total of a column', function () {
+        $total = Model::query('users')->sum('age');
+        expect($total)->toBe(112.0); // 30+25+35+22
+    });
+
+    it('avg() returns average of a column', function () {
+        $avg = Model::query('users')->avg('age');
+        expect($avg)->toBe(28.0); // 112/4
+    });
+
+    it('max() returns maximum value', function () {
+        $max = Model::query('users')->max('age');
+        expect((int)$max)->toBe(35);
+    });
+
+    it('min() returns minimum value', function () {
+        $min = Model::query('users')->min('age');
+        expect((int)$min)->toBe(22);
+    });
+
+    it('sum() respects where conditions', function () {
+        $total = Model::query('users')->where('dept_id', 1)->sum('age');
+        expect($total)->toBe(55.0); // Alice(30) + Bob(25)
+    });
+});
+
+describe('ModelQuery::firstOrCreate()', function () {
+    it('returns existing record when found', function () {
+        $user = Model::query('users')->firstOrCreate(['email' => 'alice@example.com']);
+        expect($user->name)->toBe('Alice');
+        expect((int)Model::query('users')->count())->toBe(4);
+    });
+
+    it('creates a new record when not found', function () {
+        $user = Model::query('users')->firstOrCreate(
+            ['email' => 'new@example.com'],
+            ['name'  => 'New User', 'age' => 20]
+        );
+        expect($user->name)->toBe('New User');
+        expect((int)Model::query('users')->count())->toBe(5);
+    });
+
+    it('does not duplicate on repeated calls', function () {
+        Model::query('users')->firstOrCreate(['email' => 'dup@example.com'], ['name' => 'Dup', 'age' => 1]);
+        Model::query('users')->firstOrCreate(['email' => 'dup@example.com'], ['name' => 'Dup', 'age' => 1]);
+        expect((int)Model::query('users')->count())->toBe(5);
+    });
+});
+
+describe('ModelQuery::updateOrCreate()', function () {
+    it('updates an existing record', function () {
+        $user = Model::query('users')->updateOrCreate(
+            ['email' => 'alice@example.com'],
+            ['age'   => 99]
+        );
+        expect((int)$user->age)->toBe(99);
+        expect((int)Model::query('users')->count())->toBe(4);
+    });
+
+    it('creates a new record when not found', function () {
+        $user = Model::query('users')->updateOrCreate(
+            ['email' => 'brand-new@example.com'],
+            ['name'  => 'Brand New', 'age' => 1]
+        );
+        expect($user->name)->toBe('Brand New');
+        expect((int)Model::query('users')->count())->toBe(5);
+    });
+});
+
+describe('ModelQuery::chunk()', function () {
+    it('processes all rows in chunks', function () {
+        $collected = [];
+        Model::query('users')->orderBy('id')->chunk(2, function (array $batch) use (&$collected) {
+            foreach ($batch as $m) {
+                $collected[] = $m->name;
+            }
+        });
+        expect($collected)->toBe(['Alice', 'Bob', 'Carol', 'Dave']);
+    });
+
+    it('stops early when callback returns false', function () {
+        $count = 0;
+        Model::query('users')->chunk(2, function (array $batch) use (&$count) {
+            $count += count($batch);
+            return false;
+        });
+        expect($count)->toBe(2);
+    });
+});

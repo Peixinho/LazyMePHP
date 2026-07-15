@@ -88,3 +88,22 @@ All settings live in `.env` in the project root. Copy `.env.example` to get star
 | Variable | Description |
 |---|---|
 | `OPENAPI_ENABLED` | Set to `false` to disable `/openapi.json` |
+
+## Reading config in code
+
+Use `Core\Config` instead of `$_ENV` directly. It maps dot-notation to env keys (`mail.host` → `MAIL_HOST`) and adds type coercion helpers:
+
+```php
+use Core\Config;
+
+$env    = Config::get('app.env', 'production');  // APP_ENV
+$port   = Config::int('mail.port', 587);          // MAIL_PORT as int
+$debug  = Config::bool('app.debug', false);       // APP_DEBUG as bool
+$exists = Config::has('redis.password');           // true/false
+
+// Runtime overrides (useful in tests or bootstrap)
+Config::set('app.env', 'testing');
+Config::flush(); // clear overrides
+```
+
+`Config::get()` checks runtime overrides first, then falls back to `$_ENV`.

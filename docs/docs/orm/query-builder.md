@@ -94,3 +94,43 @@ class User extends Model {
 User::query()->where('active', 1)->get();
 // No table name argument needed.
 ```
+
+## firstOrCreate / updateOrCreate
+
+Find the first matching record or create it when it doesn't exist:
+
+```php
+// Find by email, or insert with additional fields
+$user = Model::query('users')->firstOrCreate(
+    ['email' => 'alice@example.com'],          // lookup attributes
+    ['name'  => 'Alice', 'active' => 1]        // only set on creation
+);
+```
+
+Update the first matching record or create it:
+
+```php
+$user = Model::query('users')->updateOrCreate(
+    ['email' => 'alice@example.com'],          // lookup attributes
+    ['name'  => 'Alice Wonderland', 'age' => 31]  // always applied
+);
+```
+
+Both methods return the `Model` instance (new or existing) with primary key set.
+
+## chunk()
+
+Process large result sets without loading all rows into memory:
+
+```php
+Model::query('subscribers')
+    ->where('active', 1)
+    ->chunk(200, function (array $batch) {
+        foreach ($batch as $subscriber) {
+            Mail::dispatch(new NewsletterEmail($subscriber));
+        }
+        // Return false to stop processing early
+    });
+```
+
+`chunk($size, $callback)` runs one query per page. The callback receives an array of `Model` instances. Returning `false` from the callback aborts the loop.
