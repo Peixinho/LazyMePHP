@@ -1268,16 +1268,7 @@ class ModelQuery
     {
         if ($this->cacheTtl <= 0) return null;
         $key = $this->resolvedCacheKey();
-
-        if (function_exists('apcu_fetch')) {
-            $val = apcu_fetch($key, $ok);
-            return $ok ? $val : null;
-        }
-
-        if (isset(self::$memCache[$key]) && self::$memCache[$key]['expires'] > time()) {
-            return self::$memCache[$key]['data'];
-        }
-        return null;
+        return \Core\Cache\Cache::get($key);
     }
 
     private function toCache(array $rows): void
@@ -1285,17 +1276,13 @@ class ModelQuery
         if ($this->cacheTtl <= 0) return;
         $key  = $this->resolvedCacheKey();
         $data = array_map(fn($m) => $m->toArray(), $rows);
-
-        if (function_exists('apcu_store')) {
-            apcu_store($key, $data, $this->cacheTtl);
-        } else {
-            self::$memCache[$key] = ['expires' => time() + $this->cacheTtl, 'data' => $data];
-        }
+        \Core\Cache\Cache::set($key, $data, $this->cacheTtl);
     }
 
-    /** Flush the in-process memory cache (tests / manual invalidation). */
+    /** Flush the query cache (delegates to the configured cache driver). */
     public static function clearMemCache(): void
     {
         self::$memCache = [];
+        \Core\Cache\Cache::flush();
     }
 }

@@ -78,6 +78,10 @@ class LazyMeCLI {
         'make:observer'    => 'Scaffold a new model observer  [name]',
         'make:resource'    => 'Scaffold a new API resource  [name]',
         'make:model'       => 'Scaffold a new Model subclass  [name]',
+        'make:job'         => 'Scaffold a new queue job  [name]',
+        'make:request'     => 'Scaffold a new FormRequest  [name]',
+        'queue:work'       => 'Start the queue worker  [--queue=default --sleep=3 --tries=3 --stop-when-empty]',
+        'queue:size'       => 'Show number of pending jobs  [--queue=default]',
     ];
 
     public function run(array $argv): void {
@@ -89,12 +93,20 @@ class LazyMeCLI {
         $command = $argv[1];
         $tableName = $argv[2] ?? null;
 
-        // Parse --step=N and --class=Name options
-        $step       = 1;
-        $classArg   = null;
+        // Parse --step=N, --class=Name, --queue=X, --sleep=N, --tries=N, --stop-when-empty
+        $step          = 1;
+        $classArg      = null;
+        $queueArg      = 'default';
+        $sleepArg      = 3;
+        $triesArg      = 3;
+        $stopWhenEmpty = false;
         foreach ($argv as $arg) {
-            if (preg_match('/^--step=(\d+)$/', $arg, $m))   { $step     = (int)$m[1]; }
-            if (preg_match('/^--class=(.+)$/',  $arg, $m))   { $classArg = $m[1]; }
+            if (preg_match('/^--step=(\d+)$/',  $arg, $m)) { $step      = (int)$m[1]; }
+            if (preg_match('/^--class=(.+)$/',   $arg, $m)) { $classArg  = $m[1]; }
+            if (preg_match('/^--queue=(.+)$/',   $arg, $m)) { $queueArg  = $m[1]; }
+            if (preg_match('/^--sleep=(\d+)$/',  $arg, $m)) { $sleepArg  = (int)$m[1]; }
+            if (preg_match('/^--tries=(\d+)$/',  $arg, $m)) { $triesArg  = (int)$m[1]; }
+            if ($arg === '--stop-when-empty') { $stopWhenEmpty = true; }
         }
 
         switch($command) {
@@ -192,6 +204,26 @@ class LazyMeCLI {
                     exit(1);
                 }
                 $this->makeModel($tableName);
+                break;
+            case 'make:job':
+                if (!$tableName) {
+                    echo "Usage: php lazymephp make:job <Name>\n";
+                    exit(1);
+                }
+                $this->makeJob($tableName);
+                break;
+            case 'make:request':
+                if (!$tableName) {
+                    echo "Usage: php lazymephp make:request <Name>\n";
+                    exit(1);
+                }
+                $this->makeRequest($tableName);
+                break;
+            case 'queue:work':
+                (new \Core\Queue\Worker())->run($queueArg, $sleepArg, $triesArg, $stopWhenEmpty);
+                break;
+            case 'queue:size':
+                echo "Pending jobs on '{$queueArg}': " . \Core\Queue\Queue::size($queueArg) . "\n";
                 break;
             default:
                 echo "Unknown command: $command\n";
@@ -379,6 +411,24 @@ class LazyMeCLI {
         $file = "$dir/{$name}.php";
         if (file_exists($file)) { echo "Resource already exists: $file\n"; exit(1); }
         file_put_contents($file, "<?php\n\nclass {$name} extends \\Core\\Http\\ApiResource\n{\n    public function toArray(): array\n    {\n        return \$this->model->toArray();\n    }\n}\n");
+        echo "Created: $file\n";
+    }
+
+    private function makeJob(string $name): void {
+        $dir  = __DIR__ . '/App/Jobs';
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+        $file = "$dir/{$name}.php";
+        if (file_exists($file)) { echo "Job already exists: $file\n"; exit(1); }
+        file_put_contents($file, "<?php\n\ndeclare(strict_types=1);\n\nuse Core\\Queue\\Job;\n\nclass {$name} extends Job\n{\n    public int \$tries = 3;\n\n    // Add public properties for your job payload:\n    // public int \$userId = 0;\n\n    public function handle(): void\n    {\n        // Perform the job here\n    }\n}\n");
+        echo "Created: $file\n";
+    }
+
+    private function makeRequest(string $name): void {
+        $dir  = __DIR__ . '/App/Requests';
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+        $file = "$dir/{$name}.php";
+        if (file_exists($file)) { echo "FormRequest already exists: $file\n"; exit(1); }
+        file_put_contents($file, "<?php\n\ndeclare(strict_types=1);\n\nuse Core\\Http\\FormRequest;\n\nclass {$name} extends FormRequest\n{\n    public function rules(): array\n    {\n        return [\n            // 'name' => 'required|min:2|max:255',\n            // 'email' => 'required|email',\n        ];\n    }\n\n    public function authorize(): bool\n    {\n        return true;\n    }\n}\n");
         echo "Created: $file\n";
     }
 
