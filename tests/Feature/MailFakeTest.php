@@ -58,12 +58,14 @@ describe('Mail::fake()', function () {
         Mail::to('alice@example.com')->subject('Hi')->text('Hello')->send();
 
         Mail::assertSentTo('alice@example.com');
+        expect(true)->toBeTrue();
     });
 
     it('assertSentTo is case-insensitive', function () {
         Mail::to('Alice@Example.COM')->subject('Hi')->text('Hello')->send();
 
         Mail::assertSentTo('alice@example.com');
+        expect(true)->toBeTrue();
     });
 
     it('assertSentTo fails when email was not a recipient', function () {
@@ -75,6 +77,7 @@ describe('Mail::fake()', function () {
 
     it('assertNothingSent passes when no mail was sent', function () {
         Mail::assertNothingSent();
+        expect(true)->toBeTrue();
     });
 
     it('assertNothingSent fails when mail was sent', function () {
@@ -89,6 +92,7 @@ describe('Mail::fake()', function () {
         Mail::dispatch($mailable);
 
         Mail::assertSent(WelcomeMail::class);
+        expect(true)->toBeTrue();
     });
 
     it('assertSent fails when Mailable was not dispatched', function () {
@@ -101,6 +105,7 @@ describe('Mail::fake()', function () {
         Mail::dispatch($mailable);
 
         Mail::assertSent(WelcomeMail::class, fn (array $m) => str_contains($m['subject'], 'Alice'));
+        expect(true)->toBeTrue();
     });
 
     it('sent() returns all captured messages', function () {

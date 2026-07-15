@@ -52,6 +52,7 @@ describe('Http::fake()', function () {
 
         Http::assertSent(fn (array $req) => $req['url'] === 'https://api.example.com/ping'
                                          && $req['method'] === 'GET');
+        expect(true)->toBeTrue();
     });
 
     it('records POST requests', function () {
@@ -60,12 +61,14 @@ describe('Http::fake()', function () {
         Http::post('https://api.example.com/users', ['name' => 'Bob']);
 
         Http::assertSent(fn (array $req) => $req['method'] === 'POST');
+        expect(true)->toBeTrue();
     });
 
     it('assertNothingSent passes when no requests were made', function () {
         Http::fake();
 
         Http::assertNothingSent();
+        expect(true)->toBeTrue();
     });
 
     it('assertNothingSent fails when a request was made', function () {
@@ -85,6 +88,7 @@ describe('Http::fake()', function () {
         Http::get('https://api.example.com/c');
 
         Http::assertSentCount(3);
+        expect(true)->toBeTrue();
     });
 
     it('assertSentCount fails on wrong count', function () {
@@ -143,5 +147,6 @@ describe('Http::fake()', function () {
         Http::fake();
 
         Http::assertNothingSent();
+        expect(true)->toBeTrue();
     });
 });

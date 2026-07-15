@@ -83,6 +83,7 @@ describe('Queue::fake()', function () {
         Queue::dispatch(new WelcomeJob(['userId' => 42]));
 
         $fake->assertDispatched(WelcomeJob::class);
+        expect(true)->toBeTrue();
     });
 
     it('assertDispatched fails when job was not dispatched', function () {
@@ -98,6 +99,7 @@ describe('Queue::fake()', function () {
         Queue::dispatch(new WelcomeJob(['userId' => 7]));
 
         $fake->assertDispatched(WelcomeJob::class, fn (WelcomeJob $j) => $j->userId === 7);
+        expect(true)->toBeTrue();
     });
 
     it('assertDispatched with callback fails on wrong data', function () {
@@ -115,6 +117,7 @@ describe('Queue::fake()', function () {
         Queue::dispatch(new NotificationJob(['channel' => 'sms']));
 
         $fake->assertNotDispatched(WelcomeJob::class);
+        expect(true)->toBeTrue();
     });
 
     it('assertNotDispatched fails when job was dispatched', function () {
@@ -130,6 +133,7 @@ describe('Queue::fake()', function () {
         $fake = Queue::fake();
 
         $fake->assertNothingDispatched();
+        expect(true)->toBeTrue();
     });
 
     it('assertNothingDispatched fails when jobs were dispatched', function () {
@@ -148,6 +152,7 @@ describe('Queue::fake()', function () {
         Queue::dispatch(new WelcomeJob(['userId' => 2]));
 
         $fake->assertDispatchedCount(WelcomeJob::class, 2);
+        expect(true)->toBeTrue();
     });
 
     it('assertDispatchedCount fails on wrong count', function () {
@@ -165,6 +170,7 @@ describe('Queue::fake()', function () {
         Queue::dispatch(new WelcomeJob(['userId' => 1]), 'high');
 
         $fake->assertDispatchedOn('high', WelcomeJob::class);
+        expect(true)->toBeTrue();
     });
 
     it('assertDispatchedOn fails for wrong queue', function () {
