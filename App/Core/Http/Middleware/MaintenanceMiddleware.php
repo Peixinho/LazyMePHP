@@ -56,6 +56,13 @@ class MaintenanceMiddleware
 
         echo "<!DOCTYPE html><html><head><title>Maintenance</title></head>"
             . "<body><h1>503 – Service Unavailable</h1><p>{$message}</p></body></html>";
+
+        // A real `exit` can't be caught and would kill the test runner process —
+        // throw instead under Pest/PHPUnit (PEST_RUNNING is set in tests/bootstrap.php).
+        if (getenv('PEST_RUNNING')) {
+            throw new \RuntimeException('MaintenanceMiddleware: exit (test environment)');
+        }
+
         exit;
     }
 }
