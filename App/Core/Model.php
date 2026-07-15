@@ -58,6 +58,16 @@ class Model implements IDB
     /** Override in subclasses to skip passing the table name each time. */
     protected static string $table = '';
 
+    /**
+     * Global scopes — automatically applied to every query for this model.
+     * Keyed by scope name so they can be removed individually.
+     *
+     * Override or populate via addGlobalScope() / removeGlobalScope().
+     *
+     * @var array<string, callable(ModelQuery): ModelQuery>
+     */
+    protected static array $globalScopes = [];
+
     // -------------------------------------------------------------------------
     // Internal state
     // -------------------------------------------------------------------------
@@ -141,6 +151,145 @@ class Model implements IDB
     public static function observe(string $table, object $observer): void
     {
         ModelEvents::registerObserver($table, $observer);
+    }
+
+    // -------------------------------------------------------------------------
+    // Model-level validation
+    // -------------------------------------------------------------------------
+
+    /**
+     * Validation rules for this model's attributes.
+     * Override in subclasses to enforce rules on Save().
+     *
+     *   protected static array $rules = [
+     *       'email'  => 'required|email',
+     *       'name'   => 'required|min:2|max:100',
+     *       'age'    => 'integer|min:0',
+     *       'status' => 'in:active,inactive,pending',
+     *   ];
+     *
+     * Supported rules: required, email, integer, numeric, min:N, max:N, in:a,b,c, url, boolean
+     */
+    protected static array $rules = [];
+
+    /**
+     * Validate the model's current data against static::$rules.
+     * Returns an array of error messages, empty when valid.
+     *
+     * @return array<string, list<string>>  field → list of error messages
+     */
+    public function validate(): array
+    {
+        $errors = [];
+
+        foreach (static::$rules as $field => $ruleString) {
+            $value  = $this->data[$field] ?? null;
+            $rules  = explode('|', $ruleString);
+
+            foreach ($rules as $rule) {
+                [$name, $param] = array_pad(explode(':', $rule, 2), 2, null);
+
+                $error = match ($name) {
+                    'required' => ($value === null || $value === '') ? "{$field} is required." : null,
+                    'email'    => ($value !== null && $value !== '' && !filter_var($value, FILTER_VALIDATE_EMAIL))
+                                    ? "{$field} must be a valid email address." : null,
+                    'integer'  => ($value !== null && $value !== '' && !filter_var($value, FILTER_VALIDATE_INT))
+                                    ? "{$field} must be an integer." : null,
+                    'numeric'  => ($value !== null && $value !== '' && !is_numeric($value))
+                                    ? "{$field} must be numeric." : null,
+                    'boolean'  => ($value !== null && $value !== '' && !in_array($value, [0, 1, '0', '1', true, false], true))
+                                    ? "{$field} must be boolean." : null,
+                    'url'      => ($value !== null && $value !== '' && !filter_var($value, FILTER_VALIDATE_URL))
+                                    ? "{$field} must be a valid URL." : null,
+                    'min'      => ($value !== null && $value !== '' && is_numeric($value) && (float)$value < (float)$param)
+                                    ? "{$field} must be at least {$param}."
+                                    : (($value !== null && !is_numeric($value) && mb_strlen((string)$value) < (int)$param)
+                                    ? "{$field} must be at least {$param} characters." : null),
+                    'max'      => ($value !== null && $value !== '' && is_numeric($value) && (float)$value > (float)$param)
+                                    ? "{$field} must be at most {$param}."
+                                    : (($value !== null && !is_numeric($value) && mb_strlen((string)$value) > (int)$param)
+                                    ? "{$field} must be at most {$param} characters." : null),
+                    'in'       => ($value !== null && $value !== '' && !in_array((string)$value, explode(',', (string)$param), true))
+                                    ? "{$field} must be one of: {$param}." : null,
+                    default    => null,
+                };
+
+                if ($error !== null) {
+                    $errors[$field][] = $error;
+                }
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
+     * True when validate() returns no errors.
+     */
+    public function passes(): bool
+    {
+        return empty($this->validate());
+    }
+
+    /**
+     * Add a validation error to this model (for external use, e.g. service layer).
+     * @var array<string, list<string>>
+     */
+    private array $validationErrors = [];
+
+    public function addError(string $field, string $message): void
+    {
+        $this->validationErrors[$field][] = $message;
+    }
+
+    public function errors(): array
+    {
+        return array_merge_recursive($this->validate(), $this->validationErrors);
+    }
+
+    /** @internal Used by ModelQuery to apply global scopes without bypassing visibility. */
+    public static function getGlobalScopes(): array
+    {
+        return static::$globalScopes;
+    }
+
+    /**
+     * Add a global scope that is automatically applied to every query for this model class.
+     *
+     *   class ActiveUser extends Model {
+     *       protected static string $table = 'users';
+     *   }
+     *   ActiveUser::addGlobalScope('active', fn($q) => $q->where('active', 1));
+     *
+     *   // Now every ActiveUser::query()->get() silently adds WHERE active = 1
+     */
+    public static function addGlobalScope(string $name, callable $scope): void
+    {
+        static::$globalScopes[$name] = $scope;
+    }
+
+    /**
+     * Remove a named global scope for this model class.
+     *
+     *   ActiveUser::removeGlobalScope('active');
+     */
+    public static function removeGlobalScope(string $name): void
+    {
+        unset(static::$globalScopes[$name]);
+    }
+
+    /**
+     * Return a query builder with ALL global scopes bypassed.
+     *
+     *   ActiveUser::withoutGlobalScopes()->get(); // returns all users, including inactive
+     */
+    public static function withoutGlobalScopes(?string $table = null): ModelQuery
+    {
+        $t = $table ?? static::$table;
+        if ($t === '') throw new \InvalidArgumentException('Table name required.');
+        $q = new ModelQuery($t, static::class);
+        $q->bypassGlobalScopes();
+        return $q;
     }
 
     /**
@@ -417,7 +566,10 @@ class Model implements IDB
                 $this->data[$key] = $value;
             }
         }
-        $this->exists = true;
+        // Only mark as existing when the primary key is present and non-null
+        // (array hydration from DB results always includes the PK; factory-generated
+        // attribute bags do not, so they must go through INSERT on Save())
+        $this->exists = $this->primaryKey !== null && isset($this->data[$this->primaryKey]);
     }
 
     // -------------------------------------------------------------------------
@@ -734,11 +886,19 @@ class ModelQuery
     private bool $onlyTrashedFlag = false;
     private int $cacheTtl = 0;
     private ?string $cacheKey = null;
+    private bool $skipGlobalScopes = false;
 
     public function __construct(string $tableName, ?string $modelClass = null)
     {
         $this->tableName  = $tableName;
         $this->modelClass = $modelClass ?? Model::class;
+    }
+
+    /** Called by Model::withoutGlobalScopes() — skips global scope application. */
+    public function bypassGlobalScopes(): static
+    {
+        $this->skipGlobalScopes = true;
+        return $this;
     }
 
     /**
@@ -892,6 +1052,13 @@ class ModelQuery
 
     public function count(): int
     {
+        // Apply global scopes (unless bypassed)
+        if (!$this->skipGlobalScopes && method_exists($this->modelClass, 'getGlobalScopes')) {
+            foreach (($this->modelClass)::getGlobalScopes() as $scope) {
+                $scope($this);
+            }
+        }
+
         $db     = LazyMePHP::DB_CONNECTION();
         $conds  = $this->conditions;
         $binds  = $this->bindings;
@@ -921,6 +1088,13 @@ class ModelQuery
      */
     public function get(): array
     {
+        // Apply global scopes (unless bypassed)
+        if (!$this->skipGlobalScopes && method_exists($this->modelClass, 'getGlobalScopes')) {
+            foreach (($this->modelClass)::getGlobalScopes() as $scope) {
+                $scope($this);
+            }
+        }
+
         // Return from cache when available
         if ($this->cacheTtl > 0) {
             $cached = $this->fromCache();

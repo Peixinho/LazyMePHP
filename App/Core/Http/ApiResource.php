@@ -56,11 +56,11 @@ abstract class ApiResource
      */
     public static function collection(array $models): static
     {
-        // Use a dummy model to satisfy the constructor — __get proxies to items in collection mode
-        $first      = $models[0] ?? new Model('__none__');
-        $instance   = new static($first);
+        // ReflectionClass lets us bypass the constructor for the outer wrapper
+        $instance               = (new \ReflectionClass(static::class))->newInstanceWithoutConstructor();
         $instance->isCollection = true;
         $instance->items        = array_map(fn($m) => new static($m), $models);
+        $instance->meta         = [];
         return $instance;
     }
 

@@ -72,6 +72,12 @@ class LazyMeCLI {
         'make:all'         => 'Shows guidance for views, controller, routes, and API for a table',
         'schema:cache'     => 'Cache DB schema to files (avoids per-request introspection)',
         'schema:clear'     => 'Remove cached schema files',
+        'db:seed'          => 'Run database seeders  [--class=Name]',
+        'make:seeder'      => 'Scaffold a new seeder file  [name]',
+        'make:factory'     => 'Scaffold a new model factory  [name]',
+        'make:observer'    => 'Scaffold a new model observer  [name]',
+        'make:resource'    => 'Scaffold a new API resource  [name]',
+        'make:model'       => 'Scaffold a new Model subclass  [name]',
     ];
 
     public function run(array $argv): void {
@@ -83,12 +89,12 @@ class LazyMeCLI {
         $command = $argv[1];
         $tableName = $argv[2] ?? null;
 
-        // Parse --step=N option for rollback
-        $step = 1;
+        // Parse --step=N and --class=Name options
+        $step       = 1;
+        $classArg   = null;
         foreach ($argv as $arg) {
-            if (preg_match('/^--step=(\d+)$/', $arg, $m)) {
-                $step = (int)$m[1];
-            }
+            if (preg_match('/^--step=(\d+)$/', $arg, $m))   { $step     = (int)$m[1]; }
+            if (preg_match('/^--class=(.+)$/',  $arg, $m))   { $classArg = $m[1]; }
         }
 
         switch($command) {
@@ -148,6 +154,44 @@ class LazyMeCLI {
                 break;
             case 'schema:clear':
                 $this->schemaClear($tableName);
+                break;
+            case 'db:seed':
+                (new \Core\Seeder\Runner())->run($classArg);
+                break;
+            case 'make:seeder':
+                if (!$tableName) {
+                    echo "Usage: php lazymephp make:seeder <Name>\n";
+                    exit(1);
+                }
+                $this->makeSeeder($tableName);
+                break;
+            case 'make:factory':
+                if (!$tableName) {
+                    echo "Usage: php lazymephp make:factory <Name>\n";
+                    exit(1);
+                }
+                $this->makeFactory($tableName);
+                break;
+            case 'make:observer':
+                if (!$tableName) {
+                    echo "Usage: php lazymephp make:observer <Name>\n";
+                    exit(1);
+                }
+                $this->makeObserver($tableName);
+                break;
+            case 'make:resource':
+                if (!$tableName) {
+                    echo "Usage: php lazymephp make:resource <Name>\n";
+                    exit(1);
+                }
+                $this->makeResource($tableName);
+                break;
+            case 'make:model':
+                if (!$tableName) {
+                    echo "Usage: php lazymephp make:model <Name>\n";
+                    exit(1);
+                }
+                $this->makeModel($tableName);
                 break;
             default:
                 echo "Unknown command: $command\n";
@@ -299,6 +343,53 @@ class LazyMeCLI {
         }
         echo "Done. Schema cached to App/Cache/schema/\n";
         echo "Run schema:clear or re-run schema:cache after schema changes.\n";
+    }
+
+    private function makeSeeder(string $name): void {
+        $dir  = __DIR__ . '/App/Seeders';
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+        $file = "$dir/{$name}.php";
+        if (file_exists($file)) { echo "Seeder already exists: $file\n"; exit(1); }
+        file_put_contents($file, "<?php\n\nclass {$name} extends \\Core\\Seeder\\Seeder\n{\n    public function run(): void\n    {\n        // \$this->insert('table_name', ['column' => 'value']);\n    }\n}\n");
+        echo "Created: $file\n";
+    }
+
+    private function makeFactory(string $name): void {
+        $dir  = __DIR__ . '/App/Factories';
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+        $file = "$dir/{$name}.php";
+        if (file_exists($file)) { echo "Factory already exists: $file\n"; exit(1); }
+        $table = strtolower(preg_replace('/Factory$/i', '', $name)) . 's';
+        file_put_contents($file, "<?php\n\nclass {$name} extends \\Core\\Factory\\Factory\n{\n    protected string \$table = '{$table}';\n\n    public function definition(): array\n    {\n        static \$n = 0;\n        \$n++;\n        return [\n            // 'name' => \"Item {\$n}\",\n        ];\n    }\n}\n");
+        echo "Created: $file\n";
+    }
+
+    private function makeObserver(string $name): void {
+        $dir  = __DIR__ . '/App/Observers';
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+        $file = "$dir/{$name}.php";
+        if (file_exists($file)) { echo "Observer already exists: $file\n"; exit(1); }
+        file_put_contents($file, "<?php\n\nclass {$name}\n{\n    public function creating(mixed \$model): void {}\n    public function created(mixed \$model): void {}\n    public function updating(mixed \$model): void {}\n    public function updated(mixed \$model): void {}\n    public function deleting(mixed \$model): void {}\n    public function deleted(mixed \$model): void {}\n}\n");
+        echo "Created: $file\n";
+    }
+
+    private function makeResource(string $name): void {
+        $dir  = __DIR__ . '/App/Resources';
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+        $file = "$dir/{$name}.php";
+        if (file_exists($file)) { echo "Resource already exists: $file\n"; exit(1); }
+        file_put_contents($file, "<?php\n\nclass {$name} extends \\Core\\Http\\ApiResource\n{\n    public function toArray(): array\n    {\n        return \$this->model->toArray();\n    }\n}\n");
+        echo "Created: $file\n";
+    }
+
+    private function makeModel(string $name): void {
+        $dir  = __DIR__ . '/App/Models';
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+        $file = "$dir/{$name}.php";
+        if (file_exists($file)) { echo "Model already exists: $file\n"; exit(1); }
+        $table = strtolower($name) . 's';
+        file_put_contents($file, "<?php\n\ndeclare(strict_types=1);\n\nnamespace Models;\n\nuse Core\\Model;\n\nclass {$name} extends Model\n{\n    protected static string \$table = '{$table}';\n\n    // protected static array \$rules = [\n    //     'name' => 'required|max:255',\n    // ];\n}\n");
+        echo "Created: $file\n";
     }
 
     private function schemaClear(?string $tableName): void {

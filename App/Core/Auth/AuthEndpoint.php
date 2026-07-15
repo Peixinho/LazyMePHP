@@ -71,6 +71,18 @@ class AuthEndpoint
         SimpleRouter::post('/auth/refresh', function (): void {
             header('Content-Type: application/json');
 
+            // Rate-limit refresh attempts by IP: max 20 per 5 minutes
+            $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+            try {
+                if (!\Core\Security\RateLimiter::isAllowed('auth:refresh', $ip, 20, 300)) {
+                    http_response_code(429);
+                    echo json_encode(['error' => 'Too many refresh attempts. Please wait 5 minutes.']);
+                    return;
+                }
+            } catch (\Throwable) {
+                // Rate-limit table may not exist — allow the attempt
+            }
+
             $body         = json_decode((string)file_get_contents('php://input'), true) ?? [];
             $refreshToken = trim((string)($body['refresh_token'] ?? ''));
 
