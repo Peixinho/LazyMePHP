@@ -64,6 +64,21 @@ final class MSSQL extends ISQL
     }
 
     /**
+     * Creates a new independent (non-singleton) connection.
+     * Use this when you need to connect to a second MSSQL database simultaneously.
+     *
+     * @param string $dbName Database name
+     * @param string $dbUser Database username
+     * @param string $dbPassword Database password
+     * @param string $dbHost Database host
+     * @return self A fresh connection instance
+     */
+    public static function create(string $dbName, string $dbUser, string $dbPassword, string $dbHost): self
+    {
+        return new self($dbName, $dbUser, $dbPassword, $dbHost);
+    }
+
+    /**
      * Resets the singleton instance (for testing purposes).
      */
     public static function resetInstance(): void

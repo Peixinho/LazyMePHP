@@ -57,6 +57,18 @@ final class SQLite extends ISQL
     }
 
     /**
+     * Creates a new independent (non-singleton) connection.
+     * Use this when you need to open a second SQLite database simultaneously.
+     *
+     * @param string $dbName Database file path or ':memory:'
+     * @return self A fresh connection instance
+     */
+    public static function create(string $dbName): self
+    {
+        return new self($dbName);
+    }
+
+    /**
      * Resets the singleton instance (for testing purposes).
      */
     public static function resetInstance(): void
