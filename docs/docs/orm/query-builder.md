@@ -163,3 +163,46 @@ $post->touch();                 // sets updated_at (or first DATETIME column) to
 ```
 
 `touch()` auto-detects `updated_at` if the column exists, otherwise uses the first `DATETIME`/`TIMESTAMP` column in the schema.
+
+## withCount()
+
+Append a correlated COUNT subquery for a relationship without running a separate query:
+
+```php
+$users = User::query()->withCount('posts')->get();
+// $user->posts_count — int, 0 when no related rows exist
+
+// Multiple relations in one call
+$users = User::query()->withCount('posts', 'comments')->get();
+// $user->posts_count, $user->comments_count
+
+// Combine with eager loading
+$users = User::query()->with('posts')->withCount('posts')->get();
+```
+
+The alias is always `{relation}_count`. Works with `hasMany`, `hasOne`, `belongsTo`, and `belongsToMany`.
+
+## withAvg / withSum / withMin / withMax
+
+Inject aggregate subqueries for any numeric column on a relation:
+
+```php
+$users = User::query()
+    ->withAvg('orders', 'amount')    // $user->orders_avg_amount  (float|null)
+    ->withSum('orders', 'amount')    // $user->orders_sum_amount
+    ->withMin('orders', 'amount')    // $user->orders_min_amount
+    ->withMax('orders', 'amount')    // $user->orders_max_amount
+    ->get();
+```
+
+Alias pattern: `{relation}_{fn}_{column}` — e.g. `orders_avg_amount`. Returns `null` when the user has no related rows.
+
+Chain with `withCount()` freely — all subqueries are injected into the same SELECT:
+
+```php
+$users = User::query()
+    ->withCount('orders')
+    ->withSum('orders', 'amount')
+    ->withAvg('orders', 'score')
+    ->get();
+```

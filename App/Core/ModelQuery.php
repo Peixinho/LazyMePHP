@@ -38,6 +38,8 @@ class ModelQuery
     private array $with = [];
     /** @var list<string> relation names to count via subquery */
     private array $withCount = [];
+    /** @var list<array{relation: string, fn: string, column: string, alias: string}> */
+    private array $withAggregates = [];
     private bool $includeTrashed = false;
     private bool $onlyTrashedFlag = false;
     private int $cacheTtl = 0;
@@ -301,6 +303,40 @@ class ModelQuery
         return $this;
     }
 
+    /**
+     * Add AVG / SUM / MIN / MAX aggregate subqueries for a relation column.
+     * Result is available as `$model->{relation}_{fn}_{column}` (e.g. `posts_avg_score`).
+     *
+     *   User::query()->withAvg('posts', 'score')->withSum('orders', 'amount')->get();
+     *   // $user->posts_avg_score, $user->orders_sum_amount
+     */
+    public function withAvg(string $relation, string $column): static
+    {
+        return $this->withAggregate($relation, 'AVG', $column);
+    }
+
+    public function withSum(string $relation, string $column): static
+    {
+        return $this->withAggregate($relation, 'SUM', $column);
+    }
+
+    public function withMin(string $relation, string $column): static
+    {
+        return $this->withAggregate($relation, 'MIN', $column);
+    }
+
+    public function withMax(string $relation, string $column): static
+    {
+        return $this->withAggregate($relation, 'MAX', $column);
+    }
+
+    private function withAggregate(string $relation, string $fn, string $column): static
+    {
+        $alias                   = $relation . '_' . strtolower($fn) . '_' . $column;
+        $this->withAggregates[]  = compact('relation', 'fn', 'column', 'alias');
+        return $this;
+    }
+
     public function orderBy(string $column, string $direction = 'ASC'): static
     {
         $d = strtoupper($direction) === 'DESC' ? 'DESC' : 'ASC';
@@ -385,23 +421,35 @@ class ModelQuery
             }
         }
 
-        // Build withCount subqueries — correlated SELECT COUNT(*) per relation
-        $countAliases   = [];
-        $countSubqueries = [];
-        if (!empty($this->withCount)) {
+        // Build withCount + withAggregate subqueries
+        $extraAliases    = [];
+        $extraSubqueries = [];
+
+        if (!empty($this->withCount) || !empty($this->withAggregates)) {
             $dummy = new $this->modelClass($this->tableName, null);
+
             foreach ($this->withCount as $relation) {
                 if (!method_exists($dummy, $relation)) continue;
                 $rel = $dummy->$relation();
                 if (!($rel instanceof \Core\Relationships\Relationship)) continue;
                 $alias             = $relation . '_count';
-                $countAliases[]    = $alias;
-                $countSubqueries[] = $rel->countSubquery($this->tableName) . " AS \"{$alias}\"";
+                $extraAliases[]    = [$alias, 'int'];
+                $extraSubqueries[] = $rel->countSubquery($this->tableName) . " AS \"{$alias}\"";
+            }
+
+            foreach ($this->withAggregates as $agg) {
+                if (!method_exists($dummy, $agg['relation'])) continue;
+                $rel = $dummy->{$agg['relation']}();
+                if (!($rel instanceof \Core\Relationships\Relationship)) continue;
+                $alias             = $agg['alias'];
+                $extraAliases[]    = [$alias, 'float'];
+                $extraSubqueries[] = $rel->aggregateSubquery($this->tableName, $agg['fn'], $agg['column'])
+                                   . " AS \"{$alias}\"";
             }
         }
 
         $base   = $this->selectColumns ? implode(', ', $this->selectColumns) : "\"{$this->tableName}\".*";
-        $select = empty($countSubqueries) ? $base : $base . ', ' . implode(', ', $countSubqueries);
+        $select = empty($extraSubqueries) ? $base : $base . ', ' . implode(', ', $extraSubqueries);
         $joins  = $this->joins ? ' ' . implode(' ', $this->joins) : '';
         $where  = $conds ? 'WHERE ' . implode('', $conds) : '';
         $group  = $this->groupClause ? "GROUP BY {$this->groupClause}" : '';
@@ -419,14 +467,18 @@ class ModelQuery
         $class = $this->modelClass;
         $rows  = [];
         while ($row = $result->fetchArray()) {
-            // Strip count aliases before constructing the model (they are not schema columns)
-            $counts = [];
-            foreach ($countAliases as $alias) {
-                $counts[$alias] = (int)($row[$alias] ?? 0);
+            // Strip subquery aliases before constructing the model (not schema columns)
+            $extras = [];
+            foreach ($extraAliases as [$alias, $type]) {
+                $raw = $row[$alias] ?? null;
+                $extras[$alias] = match ($type) {
+                    'int'   => (int)$raw,
+                    'float' => $raw !== null ? (float)$raw : null,
+                };
                 unset($row[$alias]);
             }
             $model = new $class($this->tableName, $row);
-            foreach ($counts as $alias => $val) {
+            foreach ($extras as $alias => $val) {
                 $model->setRelation($alias, $val);
             }
             $rows[] = $model;

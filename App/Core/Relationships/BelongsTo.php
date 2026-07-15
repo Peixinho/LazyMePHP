@@ -58,8 +58,12 @@ class BelongsTo extends Relationship
 
     public function countSubquery(string $parentTable): string
     {
-        // How many rows in the related table match this model's FK — always 0 or 1
         return "(SELECT COUNT(*) FROM \"{$this->relatedTable}\" WHERE \"{$this->relatedTable}\".\"{$this->localKey}\" = \"{$parentTable}\".\"{$this->foreignKey}\")";
+    }
+
+    public function aggregateSubquery(string $parentTable, string $fn, string $column): string
+    {
+        return "(SELECT {$fn}(\"{$this->relatedTable}\".\"{$column}\") FROM \"{$this->relatedTable}\" WHERE \"{$this->relatedTable}\".\"{$this->localKey}\" = \"{$parentTable}\".\"{$this->foreignKey}\")";
     }
 
     private function fkValues(array $models): array

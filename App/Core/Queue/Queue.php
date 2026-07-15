@@ -40,6 +40,20 @@ class Queue
         self::$driver = null;
     }
 
+    /**
+     * Swap in a fake driver for testing. Returns the fake so you can call assertions on it.
+     *
+     *   $fake = Queue::fake();
+     *   Queue::dispatch(new SendWelcomeEmail(['userId' => 1]));
+     *   $fake->assertDispatched(SendWelcomeEmail::class);
+     */
+    public static function fake(): FakeQueueDriver
+    {
+        $fake         = new FakeQueueDriver();
+        self::$driver = $fake;
+        return $fake;
+    }
+
     public static function dispatch(Job $job, ?string $queue = null): void
     {
         self::driver()->push($job, $queue ?? $job->queue);

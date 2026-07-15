@@ -53,6 +53,11 @@ class HasMany extends Relationship
         return "(SELECT COUNT(*) FROM \"{$this->relatedTable}\" WHERE \"{$this->relatedTable}\".\"{$this->foreignKey}\" = \"{$parentTable}\".\"{$this->localKey}\")";
     }
 
+    public function aggregateSubquery(string $parentTable, string $fn, string $column): string
+    {
+        return "(SELECT {$fn}(\"{$this->relatedTable}\".\"{$column}\") FROM \"{$this->relatedTable}\" WHERE \"{$this->relatedTable}\".\"{$this->foreignKey}\" = \"{$parentTable}\".\"{$this->localKey}\")";
+    }
+
     /** @return list<mixed> */
     private function parentKeys(array $models, string $key): array
     {

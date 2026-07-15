@@ -50,6 +50,16 @@ abstract class Relationship
      */
     abstract public function countSubquery(string $parentTable): string;
 
+    /**
+     * Return a correlated SQL subquery that aggregates a column on related rows.
+     * Used by ModelQuery::withAvg/withSum/withMin/withMax.
+     *
+     * @param string $parentTable  The table alias for the outer (parent) query
+     * @param string $fn           SQL aggregate: AVG, SUM, MIN, MAX
+     * @param string $column       Column on the related table to aggregate
+     */
+    abstract public function aggregateSubquery(string $parentTable, string $fn, string $column): string;
+
     public function getRelatedTable(): string { return $this->relatedTable; }
     public function getForeignKey(): string   { return $this->foreignKey; }
     public function getLocalKey(): string     { return $this->localKey; }

@@ -21,6 +21,33 @@ class HttpClient
     private ?string $baseUrl = null;
 
     // -------------------------------------------------------------------------
+    // Fake / testing state (static — shared across all instances)
+    // -------------------------------------------------------------------------
+
+    private static bool   $fakeMode = false;
+    /** @var array<string, HttpResponse> URL pattern → response */
+    private static array  $stubs    = [];
+    /** @var list<array{method: string, url: string, body: mixed}> */
+    private static array  $recorded = [];
+
+    public static function enableFake(array $stubs = []): void
+    {
+        self::$fakeMode = true;
+        self::$stubs    = $stubs;
+        self::$recorded = [];
+    }
+
+    public static function disableFake(): void
+    {
+        self::$fakeMode = false;
+        self::$stubs    = [];
+        self::$recorded = [];
+    }
+
+    public static function recorded(): array  { return self::$recorded; }
+    public static function isFakeMode(): bool { return self::$fakeMode; }
+
+    // -------------------------------------------------------------------------
     // Fluent configuration
     // -------------------------------------------------------------------------
 
@@ -100,6 +127,18 @@ class HttpClient
             $url = $this->baseUrl . '/' . ltrim($url, '/');
         }
 
+        // Intercept when fake mode is active
+        if (self::$fakeMode) {
+            self::$recorded[] = ['method' => $method, 'url' => $url, 'body' => $body];
+            foreach (self::$stubs as $pattern => $response) {
+                if (self::urlMatches($pattern, $url)) {
+                    return $response;
+                }
+            }
+            // No stub matched — return a default 200 with empty body
+            return new HttpResponse(200, '{}');
+        }
+
         $ch = curl_init();
 
         $rawBody      = null;
@@ -145,5 +184,13 @@ class HttpClient
         }
 
         return new HttpResponse($status, (string)$rawResponse);
+    }
+
+    /** Match a URL against a pattern (supports * wildcards). */
+    private static function urlMatches(string $pattern, string $url): bool
+    {
+        if ($pattern === '*') return true;
+        $regex = '#^' . str_replace('\*', '.*', preg_quote($pattern, '#')) . '$#';
+        return (bool)preg_match($regex, $url);
     }
 }

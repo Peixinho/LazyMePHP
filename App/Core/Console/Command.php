@@ -84,5 +84,84 @@ abstract class Command
         echo "\033[31m{$text}\033[0m\n";
     }
 
+    // -------------------------------------------------------------------------
+    // Interactive prompts
+    // -------------------------------------------------------------------------
+
+    /**
+     * Prompt for a text value. Returns $default if the user presses Enter.
+     *
+     *   $name = $this->ask('What is your name?', 'Guest');
+     */
+    protected function ask(string $question, ?string $default = null): string
+    {
+        $hint = $default !== null ? " [{$default}]" : '';
+        echo "{$question}{$hint}: ";
+        $answer = $this->readLine();
+        return ($answer === '' && $default !== null) ? $default : $answer;
+    }
+
+    /**
+     * Prompt for a yes/no confirmation. Returns bool.
+     *
+     *   if ($this->confirm('Drop all tables?')) { ... }
+     */
+    protected function confirm(string $question, bool $default = false): bool
+    {
+        $hint = $default ? '[Y/n]' : '[y/N]';
+        echo "{$question} {$hint}: ";
+        $answer = strtolower(trim($this->readLine()));
+        if ($answer === '') return $default;
+        return in_array($answer, ['y', 'yes'], true);
+    }
+
+    /**
+     * Prompt to pick one option from a list. Returns the chosen value.
+     *
+     *   $env = $this->choice('Select environment', ['local', 'staging', 'production'], 0);
+     */
+    protected function choice(string $question, array $choices, int $default = 0): string
+    {
+        echo "{$question}\n";
+        foreach ($choices as $i => $choice) {
+            $marker = ($i === $default) ? ' (default)' : '';
+            echo "  [{$i}] {$choice}{$marker}\n";
+        }
+        echo "Choice [{$default}]: ";
+        $answer = trim($this->readLine());
+        $index  = ($answer === '') ? $default : (int)$answer;
+        return $choices[$index] ?? $choices[$default];
+    }
+
+    /**
+     * Prompt for a value without echoing input (for passwords/secrets).
+     *
+     *   $secret = $this->secret('Enter API key');
+     */
+    protected function secret(string $question): string
+    {
+        echo "{$question}: ";
+        if (function_exists('readline_callback_handler_install')) {
+            // Unix — disable echo
+            system('stty -echo');
+            $value = $this->readLine();
+            system('stty echo');
+            echo "\n";
+        } else {
+            $value = $this->readLine();
+        }
+        return $value;
+    }
+
+    private function readLine(): string
+    {
+        if (function_exists('readline')) {
+            $line = readline('');
+            return $line === false ? '' : $line;
+        }
+        $line = fgets(STDIN);
+        return $line === false ? '' : rtrim($line, "\n");
+    }
+
     abstract public function handle(): void;
 }

@@ -39,10 +39,76 @@ class Mail
     private string $fromAddress;
     private string $fromName;
 
+    private static bool  $fakeMode = false;
+    /** @var list<array{to: array, subject: string, html: string, text: string, class: string}> */
+    private static array $sent     = [];
+
     public function __construct()
     {
         $this->fromAddress = $_ENV['MAIL_FROM_ADDRESS'] ?? 'noreply@localhost';
         $this->fromName    = $_ENV['MAIL_FROM_NAME']    ?? 'LazyMePHP';
+    }
+
+    // -----------------------------------------------------------------------
+    // Fake / testing
+    // -----------------------------------------------------------------------
+
+    /**
+     * Enable fake mode — all mail is captured instead of sent.
+     *
+     *   Mail::fake();
+     *   Mail::to('alice@example.com')->subject('Hi')->text('Hello')->send();
+     *   Mail::assertSentTo('alice@example.com');
+     */
+    public static function fake(): void
+    {
+        self::$fakeMode = true;
+        self::$sent     = [];
+    }
+
+    /** Disable fake mode and clear captured mail. */
+    public static function resetFake(): void
+    {
+        self::$fakeMode = false;
+        self::$sent     = [];
+    }
+
+    /** Assert that at least one mail was sent to the given address. */
+    public static function assertSentTo(string $email): void
+    {
+        foreach (self::$sent as $mail) {
+            foreach ($mail['to'] as $recipient) {
+                if (strtolower($recipient['address']) === strtolower($email)) return;
+            }
+        }
+        throw new \RuntimeException("Expected mail to be sent to [{$email}], but it was not.");
+    }
+
+    /** Assert that a Mailable of the given class was sent. */
+    public static function assertSent(string $mailableClass, ?callable $callback = null): void
+    {
+        foreach (self::$sent as $mail) {
+            if ($mail['class'] === $mailableClass) {
+                if ($callback === null || (bool)$callback($mail)) return;
+            }
+        }
+        throw new \RuntimeException("Expected [{$mailableClass}] to be sent, but it was not.");
+    }
+
+    /** Assert nothing was sent. */
+    public static function assertNothingSent(): void
+    {
+        if (!empty(self::$sent)) {
+            throw new \RuntimeException(
+                'Expected no mail to be sent, but ' . count(self::$sent) . ' message(s) were captured.'
+            );
+        }
+    }
+
+    /** Return all captured messages. */
+    public static function sent(): array
+    {
+        return self::$sent;
     }
 
     // -----------------------------------------------------------------------
@@ -63,7 +129,7 @@ class Mail
             $instance->addRecipient('to', $recipient['address'], $recipient['name']);
         }
         $mailable->build($instance);
-        return $instance->deliver();
+        return $instance->deliver(get_class($mailable));
     }
 
     // -----------------------------------------------------------------------
@@ -120,10 +186,21 @@ class Mail
         return $this->deliver();
     }
 
-    private function deliver(): bool
+    private function deliver(string $mailableClass = ''): bool
     {
         if (empty($this->to)) {
             throw new \LogicException('Mail must have at least one recipient.');
+        }
+
+        if (self::$fakeMode) {
+            self::$sent[] = [
+                'to'      => $this->to,
+                'subject' => $this->subject,
+                'html'    => $this->html,
+                'text'    => $this->text,
+                'class'   => $mailableClass,
+            ];
+            return true;
         }
 
         $driver = strtolower($_ENV['MAIL_DRIVER'] ?? 'mail');
