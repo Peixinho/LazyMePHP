@@ -22,11 +22,9 @@ class LoggingHelper
         $logData = [];
         foreach ($changes as $field => $change) {
             if (is_array($change) && count($change) === 2 && isset($change[0]) && isset($change[1])) {
-                // Format: [oldValue, newValue] - both values are provided
                 $logData[$field] = $change;
             } else {
-                // Format: just newValue - get old value from database
-                $currentData = $db->Query("SELECT `$field` FROM `$table` WHERE `$pk` = ?", [$pkValue])->FetchArray();
+                $currentData = $db->Query("SELECT \"$field\" FROM \"$table\" WHERE \"$pk\" = ?", [$pkValue])->FetchArray();
                 $oldValue = $currentData[$field] ?? null;
                 $logData[$field] = [$oldValue, $change];
             }
@@ -64,8 +62,7 @@ class LoggingHelper
         $db = LazyMePHP::DB_CONNECTION();
         if (!$db) return;
 
-        // Get current values from database before deletion
-        $currentData = $db->Query("SELECT * FROM `$table` WHERE `$pk` = ?", [$pkValue])->FetchArray();
+        $currentData = $db->Query("SELECT * FROM \"$table\" WHERE \"$pk\" = ?", [$pkValue])->FetchArray();
         
         if (!$currentData) return;
 
@@ -89,8 +86,7 @@ class LoggingHelper
         $db = LazyMePHP::DB_CONNECTION();
         if (!$db) return;
 
-        // Get current value from database
-        $currentData = $db->Query("SELECT `$field` FROM `$table` WHERE `$pk` = ?", [$pkValue])->FetchArray();
+        $currentData = $db->Query("SELECT \"$field\" FROM \"$table\" WHERE \"$pk\" = ?", [$pkValue])->FetchArray();
         
         $oldValue = $currentData[$field] ?? null;
         

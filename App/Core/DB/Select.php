@@ -487,9 +487,7 @@ class Select {
     while (($o = $resultObj->fetchArray()) !== null) {
         $objs = [];
         foreach ($this->tables as $t) {
-            $class = "\\Models\\" . $t["table"];
             $data = [];
-            // If we have selectedFields, only include those fields for this table
             if (!empty($this->selectedFields)) {
                 foreach ($this->selectedFields as $sf) {
                     if ((string)$sf["table"] === $t["table"]) {
@@ -500,17 +498,22 @@ class Select {
                     }
                 }
             } else {
-                // Use all fields from the table
                 foreach ($t["fields"] as $f) {
-                    if (isset($o[$t["alias"] . "_" . $f])) {
-                        $data[$f] = $o[$t["alias"] . "_" . $f];
+                    $key = $t["alias"] . "_" . $f;
+                    if (isset($o[$key])) {
+                        $data[$f] = $o[$key];
                     }
                 }
             }
-            $obj = new $class($data);
-            array_push($objs, ["table" => $t["table"], "object" => $obj]);
+
+            $generatedClass = "\\Models\\" . $t["table"];
+            $obj = class_exists($generatedClass)
+                ? new $generatedClass($data)
+                : new \Core\Model($t["table"], $data);
+
+            $objs[] = ["table" => $t["table"], "object" => $obj];
         }
-        array_push($result, $objs);
+        $result[] = $objs;
     }
     return $result;
   }
@@ -518,23 +521,37 @@ class Select {
   /**
   * getFields
   *
-  * Private method that gets table's fields
+  * Discovers column names for a table, using the Model schema cache (preferred)
+  * or falling back to generated class Set* methods for backward compatibility.
   *
   * @param string $table
   * @param string $alias
   * @return void
   */
   private function getFields(string $table, string $alias): void {
-    $fields = array();
-    foreach(get_class_methods("\\Models\\$table") as $method) {
-      if (substr($method,0,3) == "Set") {
-        $field = lcfirst(substr($method,3));
-        array_push($fields, $field);
-        // Use identifier quoting
-        $this->queryFields .= (!empty($this->queryFields)?",":"") . $this->quoteIdentifier($alias) . "." . $this->quoteIdentifier($field) . " AS " . $this->quoteIdentifier($alias . "_" . $field);
+    $fields = [];
+
+    $generatedClass = "\\Models\\$table";
+    if (class_exists($generatedClass)) {
+      // Backward compat: generated models expose fields via Set* methods
+      foreach (get_class_methods($generatedClass) as $method) {
+        if (str_starts_with($method, 'Set')) {
+          $fields[] = lcfirst(substr($method, 3));
+        }
       }
+    } else {
+      // Use live schema introspection via Model
+      $schema = \Core\Model::schemaFor($table);
+      $fields = array_keys($schema);
     }
-    array_push($this->tables,array("table" => $table, "alias" => $alias, "fields" => $fields));
+
+    foreach ($fields as $field) {
+      $this->queryFields .= (!empty($this->queryFields) ? ',' : '')
+        . $this->quoteIdentifier($alias) . '.' . $this->quoteIdentifier($field)
+        . ' AS ' . $this->quoteIdentifier($alias . '_' . $field);
+    }
+
+    $this->tables[] = ['table' => $table, 'alias' => $alias, 'fields' => $fields];
   }
 
   /**

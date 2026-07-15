@@ -1,230 +1,877 @@
 
 ![LazyMePHP](https://raw.githubusercontent.com/Peixinho/LazyMePHP/main/public/img/logo.png)
 
-LazyMePHP is a small and easy to learn/use PHP framework that I've been using for quite some time, with success, and that has some nice features:
- - MySQL, SQLite and MSSQL support
- - Class Generation based on database tables, one Class per table
- - Basic Form Generation based on database tables, one Form per table
- - RestAPI Generation based on database tables, one API file per table
+LazyMePHP is a PHP 8+ rapid-development framework built around a single idea: **the database schema is the application**. Point it at a database and you get a full CRUD web UI, a GraphQL API, JWT-authenticated REST endpoints, and a developer dashboard — with zero code generation.
 
-The idea behind LazyMePHP is to allow me to be lazy, so in order to help in that task, it only needs to have a proper database set up, with its tables and relations between them.
+- MySQL, SQLite, and MSSQL support
+- Runtime ORM — no generated model files
+- Generic CRUD web UI driven by the live schema
+- GraphQL API auto-built from the schema (`POST /graphql`)
+- JWT authentication with refresh tokens for SPA / API consumers
+- Role-based access control (RBAC)
+- Database migration system
+- Seeder and factory system for test data
+- Audit log for all data mutations
+- Batman developer dashboard with secure login
+- Schema file cache for OPcache-friendly production deployments
+- OpenAPI 3.0 spec auto-generated from live schema (`GET /openapi.json`)
+- Health check endpoint (`GET /health`)
+- Request ID tracing on every response (`X-Request-ID`)
 
-The only limitation is that you **REALLY** need to have a primary key in each table.
+> Only `public/` should be web-accessible.
 
-If the structure of the database needs to be changed (added/removed columns, whatsoever) you can always regenerate all code (with some precautions).
+---
 
-### Don't forget, you should only expose public folder
+## Quick start
 
-# How to use it:
-### Clone this repository as the base project you will be building:
-
-```
-git clone https://github.com/Peixinho/LazyMePHP myAwesomeProject
-
-#optional, but I advise to start your own git repository, for many reasons...
-cd myAwesomeProject && rm -rf .git
-```
-
-### Configuration
-
-Configuration for LazyMePHP is handled through environment variables. This method replaces the old interactive `php LazyMePHP config` script.
-
-1.  **Set up Composer**: If you haven't already, install project dependencies:
-    ```bash
-    composer update # Run from the project root
-    ```
-
-2.  **Create `.env` file**: Copy the example environment file to `.env`:
-    ```bash
-    cp .env.example .env
-    ```
-3.  **Edit `.env`**: Open the `.env` file in the project root and update the variables to match your environment.
-
-Key environment variables:
-- `DB_TYPE`: Your database system. Supported values: `"mysql"`, `"mssql"`, `"sqlite"`.
-- `DB_HOST`: Database host (e.g., `"localhost"`). (Not used for SQLite)
-- `DB_NAME`: Database name. (Not used for SQLite)
-- `DB_USER`: Database username. (Not used for SQLite)
-- `DB_PASSWORD`: Database password. (Not used for SQLite)
-- `DB_FILE_PATH`: Absolute or relative path to your SQLite database file (e.g., `"database/mydb.sqlite"`). **Required if `DB_TYPE="sqlite"`**.
-- `APP_NAME`: Your application's name (e.g., `"MyAwesomeApp"`).
-- `APP_TITLE`: The title for HTML pages (e.g., `"My Awesome App Title"`).
-- `APP_VERSION`: Your application's version (e.g., `"1.0.1"`).
-- `APP_DESCRIPTION`: A short description of your application.
-- `APP_TIMEZONE`: The timezone for your application (e.g., `"UTC"`, `"Europe/Lisbon"`). See PHP supported timezones.
-- `APP_NRESULTS`: Default number of results for paginated lists (e.g., `"100"`).
-- `APP_ENCRYPTION`: A secret key used for data encryption (e.g., `openssl_encrypt`). **Choose a strong, random key.**
-- `APP_EMAIL_SUPPORT`: Email address for support or error notifications (e.g., `"support@example.com"`).
-- `APP_ACTIVITY_LOG`: Set to `"true"` to enable activity logging, `"false"` to disable.
-- `APP_ACTIVITY_AUTH`: Identifier for the user performing actions when activity logging is enabled. This can be a static string or you might set this dynamically in your application based on logged-in user, e.g. `$_SESSION['user_id']`. The `.env` value serves as a default or fallback.
-- `APP_PERFORMANCE_MONITORING`: Set to `"true"` to enable performance monitoring and logging, `"false"` to disable. When enabled, slow operations (>1 second) are logged to the `__LOG_PERFORMANCE` table and can be viewed in the Batman dashboard.
-- `APP_MOD_REWRITE`: Set to `"true"` if URL rewriting (like Apache's mod_rewrite) is enabled, `"false"` otherwise.
-
-# LazyMePHP Auto Generation Tools
-Next, you can run
-```
-php LazyMePHP build
-```
-
-# Be aware before using ...!
-If you are running this tool after initial generation and you've made changes to generated Forms, API or Models (you shouldn't change your generated classes anyway), your changes could be lost, this tool is table based, so if you changed some specific table form or api, don't select it.
-
-After this, you will have a list of your database tables, where you can select what to build and some other options:
--**d** : Changes Table Descriptors
--**c** : Build Models
--**f** : Build Forms
--**a** : Build API
--**e**: Enable Logging
-After this it will list all tables, and you can select all, by using 'a', or select one or a few, comma separated (1,4,5...) and it will build the selected option for you. This is the same for all classes, forms and api.
- - **Class**: is the core heart of LazyMePHP, without it, both Forms and APIs won't work for this table
- - **Form**: it will build some basic form utility for each table selected, that allow you to add, edit and delete data for that table. If you've ran this utiity before, and this Form already exists and you've made changes, don't check this option for this table, otherwise, you will loose all your changes.
- - **API**: it will build a RestAPI for each selected table, that allows you to GET (could be by id, or by list, POST, PUT, DELETE...). If you've ran this utiity before, and this API already exists for this table and you've made changes, don't check this option for this table, otherwise, you will loose all your changes.
- - **CSS Button, Input, Anchor and Table**: Aftert selecting the tables, you could set a css class name for each input, button, anchor and table generated automatically by the FORM option. This option is mainly to make it easier to integrate some frontend framework such as bootstrap or whatever.
- - **Replace includes, RouterForms and RouteAPI**: If you dont make any changes on these files, there isn't any reason to not let it overwrite
- - **Enable Logging**: its a feature that keeps all changed data in 3 tables, so when using this option, it will create 3 tables in your database, and keep all records there. You need to enable this in the .env file aswell (`APP_ACTIVITY_LOG="true"`)
- 
-# Success
-If everything went well, you will have a working index with some basic functionality.
-
-```
+```bash
+git clone https://github.com/Peixinho/LazyMePHP myProject
+cd myProject && rm -rf .git
+composer install
+cp .env.example .env   # edit DB_* and APP_* values
+php LazyMePHP migrate  # create framework tables
 php LazyMePHP serve
 ```
-and navigate to 
-```
-http://localhost:8080
-```
 
-# Basic Usage
-## Example
+Navigate to `http://localhost:8080`. Every table in the database is immediately accessible at `/{table}` with list, create, edit, and delete pages, and via the GraphQL endpoint at `POST /graphql`.
 
-| User          |
-| ------------- |
-| pk Id         |
-| fk CountryId  |
-| Name          |
-| Age           |
+---
 
-| Country       |
-| ------------- |
-| pk CountryId  |
-| CountryName   |
+## Configuration
 
-**having pk Country.CountryId -> fk User.CountryId**
+All settings live in `.env`:
 
-## Forms and Routes
- Every table generated will have a Form that works as follows:
- - Each Table will have a Controller File by default in /src/Controllers/[Table Name].Controller.php
- - Each Table will have 3 template files using BladeOne in /src/Views/[Table Name]/list,edit and template.blade.php
- - The file RoutingForms.php is by default in /src/Controllers/RouterForms.php is the one that defines the Routes to each Controller using simple-php-router, and each Controller requires its View file, but this should be considered boilerplate and they should be edited and placed in src/Routes/Routes.php
+| Variable | Description |
+|---|---|
+| `DB_TYPE` | `mysql`, `mssql`, or `sqlite` |
+| `DB_HOST` | Database host (MySQL / MSSQL) |
+| `DB_NAME` | Database name (MySQL / MSSQL) |
+| `DB_USER` | Database username (MySQL / MSSQL) |
+| `DB_PASSWORD` | Database password (MySQL / MSSQL) |
+| `DB_FILE_PATH` | Path to SQLite file |
+| `APP_NAME` | Application name |
+| `APP_TITLE` | HTML page title |
+| `APP_TIMEZONE` | PHP timezone string (e.g. `Europe/Lisbon`) |
+| `APP_NRESULTS` | Default page size for paginated lists |
+| `APP_ENCRYPTION` | Secret key (≥ 32 chars) — used for JWT signing |
+| `APP_ENV` | `development` enables GraphQL introspection and debug traces |
+| `APP_CORS_ORIGIN` | Exact origin allowed for cross-origin requests (empty = block all) |
+| `APP_ACTIVITY_LOG` | `true` to enable change audit logging |
+| `APP_ACTIVITY_AUTH` | Fallback identifier written to the audit log when no JWT user is present |
+| `AUTH_TABLE` | Table used for JWT login (enables `POST /auth/login`) |
+| `AUTH_USERNAME_COLUMN` | Column checked as the login credential |
+| `AUTH_PASSWORD_COLUMN` | Column holding the bcrypt-hashed password |
+| `AUTH_TOKEN_TTL` | JWT lifetime in seconds (default `3600`) |
+| `AUTH_REFRESH_TTL` | Refresh token lifetime in seconds (default `2592000` = 30 days) |
+| `BATMAN_USERNAME` | Batman dashboard login username (default `admin`) |
+| `BATMAN_SECRET` | Batman dashboard password as a bcrypt hash |
+| `OPENAPI_ENABLED` | Set to `false` to disable the `/openapi.json` endpoint |
 
- ```
-## Models
+---
 
-Every table generated will have a class that works as follows:
- - Each Table will have a Model File by default in /src/Models/[Table Name].php
- - All Models will be in namespace \LazyMePHP\Models
- - All Class columns have getters and setters *Get*[Column Name], *Set*[Column Name]
- - All Models have Save method, if Id is provided when constructing object:
-    ```
-    $user = new User(); $user->Save(); // Will act as an INSERT
-    ...
-    $user = new User(123); $user->Save(); // Will act as an UPDATE
-    ```
- -All classes have a Delete method, if id was provided upon constructing object
- - Foreign members can be built automatically
-    ```
-    // Country
-    $pt = new \LazyMePHP\Models\Country();
-    $pt->SetCountryName('Portugal');
-    $pt->Save();
-    
-    // User
-    $user = new \LazyMePHP\Models\User();
-    $user->SetName('Peter');
-    $user->SetAge('30');
-    $user->SetCountryId($pt->Getid());
-    $user->Save();
-    echo $user->GetId(); // e.g. 123 - id is the primary key in User Table
-    
-    // Retrieving user data and changing it
-    $user = new \LazyMePHP\Models\User(123);
-    echo $user->GetName(); // 'Peter'
-    $user->Setname('John');
-    $user->Save();
-    // Access Foreign members by uing Get[Column Name]Object
-    echo $user->GetCountryIdObject()->GetCountryName();
-    // And changing it
-    $user->GetCountryIdObject()->SetCountry('England'); // Of course, you are changing Country Name in Country Table
-    $user->GetCountryIdObject()->Save();
-    
-    # Not building Foreign members
-    $user = new \LazyMePHP\Models\User(5, false); // this won't query foreign tables
+## How it works
 
-    ```
- - Every class will have a *table*_list class, that allows you to select a list of that class type
- - Every List have a *FindBy*[Foreign Column Name], *FindBy*[Foreign Column Name]*Like*, *OrderBy*[Foreign Column name], *GroupBy*[Foreign Column], *Limit*
-    ```
-    $users = new \LazyMePHP\Models\User_List();
-    $users->FindByNameLike('John');
-    $users->OrderByAge();
-    // As in regular classes, you can or not build foreign tables, by default is building them
-    foreach($users->GetList() as $u) { echo $u->GetName(); echo $u->GetCountryIdObject()->GetCountryName(); }
-    
-    // Not building foreign members
-    foreach($users->GetList(false) as $u) ...
-    
-    ```
- 
+On every request `LazyMePHP::boot($blade)` (called from `App/Routes/Routes.php`):
 
-## API
- Every table generated will have some routes created in src/api/RouteAPI.php, and they make use of the controllers of each table
- - Accessible from /api/[Table Name]/ (.htaccess for apache, didnt bother with others)
+1. Reads the list of tables from the schema cache, or queries the DB directly.
+2. Emits a `X-Request-ID` header for tracing.
+3. Registers 6 CRUD web routes per table via `Core\AutoRouter`.
+4. Registers `POST /graphql` via `Core\GraphQL\Endpoint`.
+5. Registers `POST /auth/login`, `POST /auth/logout`, `POST /auth/refresh`, `GET /auth/me` when `AUTH_TABLE` is set.
+6. Registers `GET /health` (health check) and `GET /openapi.json` (OpenAPI spec).
 
- ```
- # all users
- http://localhost:8080/api/user/ # will output all users information in json format
- 
- # Search specific users based on column filters
- http://localhost:8080/api/User/?FindByNameLike=John&Limit=10 # will output all users information in json format that matches criteria and Limits to 10
- 
- # Specific user
- http://localhost:8080/api/User/123 # will output user 123 information in json format
+No files are generated. Schema introspection happens once per table per process (cached in memory), and optionally pre-warmed to disk for production.
 
-### ohh but this way you expose all data, like passwords and other stuff
- yeap, thats true! However, you can configure it to expose only the columns you want (all by default) by editing the file
- ```
- /App/api/ApiFieldMask.php
-```
-that is generated by the utilities. For each table, an array of columns is created and hardcoded in that file, and if the column name is present inside that array, the data is exposed, otherwise its not shown, and BTW, security is not a responsability of LazyMePHP.
+---
 
-The ApiFieldMask class provides a clean interface for field masking:
+## ORM — `Core\Model`
+
+`Model` introspects the DB schema at runtime and provides full CRUD.
+
 ```php
-// Get allowed fields for a table
-$allowedFields = ApiFieldMask::get('User');
+use Core\Model;
 
-// Apply mask to data
-$maskedData = ApiFieldMask::apply('User', $userData);
+// Create
+$user = new Model('users');
+$user->name  = 'Alice';
+$user->email = 'alice@example.com';
+$user->Save();
+
+// Load by primary key
+$user = new Model('users', 1);
+echo $user->name; // Alice
+
+// Update
+$user->name = 'Alice Smith';
+$user->Save();
+
+// Delete
+$user->Delete();
 ```
 
-We can aswell define a custom mask for each request like in the example:
- ```
-{
- "User": ["name", "age"],
- "Country": ["countryname"]
+### Query builder
+
+```php
+$active = Model::query('users')
+    ->where('active', 1)
+    ->where('age', 18, '>=')
+    ->orderBy('name')
+    ->limit(20)
+    ->get();  // returns Model[]
+
+$count = Model::query('users')->where('active', 1)->count();
+
+$row = Model::query('users')->where('email', $email)->first();
+```
+
+### Pagination
+
+```php
+$result = Model::query('users')
+    ->where('active', 1)
+    ->paginate(perPage: 15, page: 2);
+
+// $result = [
+//   'data'         => Model[],
+//   'total'        => 120,
+//   'per_page'     => 15,
+//   'current_page' => 2,
+//   'last_page'    => 8,
+//   'from'         => 16,
+//   'to'           => 30,
+// ]
+```
+
+### Bulk operations
+
+```php
+// Bulk update every row matching the query
+Model::query('users')
+    ->where('trial', 1)
+    ->update(['active' => 0, 'trial' => 0]);
+
+// Bulk delete matching rows
+Model::query('users')->where('deleted_at', null, '!=')->bulkDelete();
+
+// Bulk insert (returns number of rows inserted)
+Model::insertMany('tags', [
+    ['name' => 'php'],
+    ['name' => 'framework'],
+]);
+```
+
+### Transactions
+
+```php
+use Core\Model;
+
+Model::transaction(function () {
+    $order = new Model('orders');
+    $order->user_id = 1;
+    $order->Save();
+
+    $item = new Model('order_items');
+    $item->order_id = $order->getPrimaryKey();
+    $item->product_id = 42;
+    $item->Save();
+});
+// Automatically rolled back on exception.
+```
+
+### Subclassing (optional)
+
+```php
+namespace Models;
+use Core\Model;
+
+class User extends Model {
+    protected static string $table = 'users';
+}
+
+$user  = new User(1);
+$users = User::query()->where('active', 1)->get();
+```
+
+---
+
+## Model relationships
+
+```php
+class Post extends Model {
+    protected static string $table = 'posts';
+
+    public function author(): ?Model {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function comments(): array {
+        return $this->hasMany(Comment::class, 'post_id');
+    }
+}
+
+// Eager loading (prevents N+1)
+$posts = Post::query()->with('author', 'comments')->get();
+```
+
+Supported: `belongsTo`, `hasMany`, `hasOne`, `belongsToMany`.
+
+---
+
+## Soft deletes
+
+Add `deleted_at DATETIME NULL` to a table, then use the trait:
+
+```php
+use Core\Model;
+use Core\SoftDeletes;
+
+class Post extends Model {
+    use SoftDeletes;
+    protected static string $table = 'posts';
+}
+
+$post->Delete();          // sets deleted_at, row stays in DB
+$post->restore();         // clears deleted_at
+$post->isTrashed();       // true if deleted_at is set
+
+// Queries automatically exclude soft-deleted rows:
+Post::query()->get();                    // only non-deleted
+Post::query()->withTrashed()->get();     // include deleted
+Post::query()->onlyTrashed()->get();     // only deleted
+```
+
+---
+
+## Model validation
+
+```php
+class User extends Model {
+    protected static string $table = 'users';
+
+    protected static array $rules = [
+        'name'  => 'required|min:2|max:100',
+        'email' => 'required|email',
+        'age'   => 'integer|min:0',
+        'role'  => 'in:admin,editor,viewer',
+        'site'  => 'url',
+    ];
+}
+
+$user->name  = '';
+$user->email = 'not-an-email';
+
+if (!$user->passes()) {
+    print_r($user->errors());
+    // ['name' => ['The name field is required.'], 'email' => ['...must be a valid email']]
+}
+
+// Or get all errors at once:
+$errors = $user->validate();
+```
+
+Available rules: `required`, `email`, `integer`, `numeric`, `min:N`, `max:N`, `in:a,b,c`, `url`, `boolean`.
+
+---
+
+## Model events
+
+```php
+use Core\Events\ModelEvents;
+
+// Listen for any save on 'orders'
+ModelEvents::listen('orders', 'created', function (Model $order) {
+    // send confirmation email
+});
+
+// Cancel a delete by returning false
+ModelEvents::listen('orders', 'deleting', function (Model $order) {
+    if ($order->status === 'completed') return false;
+});
+
+// Observer class
+class OrderObserver {
+    public function creating(Model $m): void { /* set defaults */ }
+    public function updated(Model $m): void  { /* clear cache */ }
+}
+
+ModelEvents::registerObserver('orders', new OrderObserver());
+// or on the model class:
+Order::observe('orders', new OrderObserver());
+```
+
+Events fired: `creating`, `created`, `updating`, `updated`, `deleting`, `deleted`, `saving`, `saved`.  
+Returning `false` from `creating`, `updating`, or `deleting` cancels the operation.
+
+---
+
+## Global scopes
+
+Apply automatic query constraints to every query on a model:
+
+```php
+class ActiveUser extends Model {
+    protected static string $table = 'users';
+    protected static array $globalScopes = [];
+}
+
+// Register once (e.g. in a service provider or boot):
+ActiveUser::addGlobalScope('active', fn($q) => $q->where('active', 1));
+
+ActiveUser::query()->get();                   // WHERE active = 1 always applied
+ActiveUser::withoutGlobalScopes()->get();     // bypass all scopes
+ActiveUser::removeGlobalScope('active');      // remove permanently
+```
+
+---
+
+## Local scopes
+
+Define reusable query constraints on the model class:
+
+```php
+class Product extends Model {
+    protected static string $table = 'products';
+
+    public function scopeActive(\Core\ModelQuery $q): void {
+        $q->where('active', 1);
+    }
+
+    public function scopePricedBelow(\Core\ModelQuery $q, float $max): void {
+        $q->where('price', $max, '<');
+    }
+}
+
+Product::query()->active()->pricedBelow(50)->get();
+// or: Product::query()->scope('active')->scope('pricedBelow', 50)->get();
+```
+
+---
+
+## Query caching
+
+```php
+// Cache for 60 seconds (uses APCu when available, in-process array otherwise)
+$users = Model::query('users')
+    ->where('active', 1)
+    ->remember(60)
+    ->get();
+
+// With explicit cache key
+$users = Model::query('users')
+    ->remember(300, 'active-users-list')
+    ->get();
+
+// Clear in-process cache (useful in tests)
+Model::query('users')->clearMemCache();
+```
+
+---
+
+## JWT Authentication
+
+Add these to `.env` to enable auth endpoints:
+
+```env
+AUTH_TABLE=users
+AUTH_USERNAME_COLUMN=email
+AUTH_PASSWORD_COLUMN=password
+AUTH_TOKEN_TTL=3600
+AUTH_REFRESH_TTL=2592000
+```
+
+Hash a password for storage:
+
+```bash
+php LazyMePHP auth:hash mypassword
+```
+
+### Endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/auth/login` | Returns `{access_token, token_type, expires_in, refresh_token, refresh_expires_in}` |
+| `POST` | `/auth/refresh` | Rotates the refresh token and issues a new access token |
+| `POST` | `/auth/logout` | Revokes the provided refresh token |
+| `GET` | `/auth/me` | Returns the authenticated user (requires Bearer token) |
+
+### Refresh tokens
+
+Refresh tokens are opaque 64-character hex strings. The raw token is returned to the client once; only its SHA-256 hash is stored in the database. On every `/auth/refresh` call the old token is immediately revoked and a new pair is issued (rotation).
+
+```json
+POST /auth/login
+→ {
+    "access_token": "<jwt>",
+    "token_type": "Bearer",
+    "expires_in": 3600,
+    "refresh_token": "<64-hex>",
+    "refresh_expires_in": 2592000
+  }
+
+POST /auth/refresh  { "refresh_token": "<64-hex>" }
+→ { "access_token": "<new-jwt>", "refresh_token": "<new-64-hex>", ... }
+```
+
+The refresh endpoint is rate-limited to 20 requests per 5 minutes per IP.
+
+### Protecting routes
+
+```php
+use Core\Auth\JwtMiddleware;
+
+$router->post('/orders', [OrderController::class, 'store'])
+       ->addMiddleware(JwtMiddleware::class);
+```
+
+### Using `Auth` in code
+
+```php
+use Core\Auth\Auth;
+
+// In a protected context (Bearer token already validated by middleware)
+$user = Auth::user();   // array without password column
+$id   = Auth::id();
+$ok   = Auth::check();  // true when a valid Bearer token is present
+```
+
+---
+
+## Role-Based Access Control (RBAC)
+
+Run `php LazyMePHP migrate` to create the RBAC tables (`__AUTH_ROLES`, `__AUTH_ROLE_PERMISSIONS`, `__AUTH_USER_ROLES`).
+
+```php
+use Core\Auth\RBAC;
+
+// Setup
+RBAC::createRole('admin');
+RBAC::createRole('editor');
+RBAC::grantPermission('editor', 'posts.create');
+RBAC::grantPermission('editor', 'posts.update');
+RBAC::assignRole($userId, 'editor');
+
+// Checks
+RBAC::can($userId, 'posts.create');  // true
+RBAC::is($userId, 'editor');         // true
+RBAC::is($userId, 'admin');          // false
+
+RBAC::rolesFor($userId);             // ['editor']
+RBAC::permissionsFor($userId);       // ['posts.create', 'posts.update']
+```
+
+### RBAC middleware
+
+```php
+use Core\Auth\RequiresPermission;
+use Core\Auth\RequiresRole;
+
+// Require a specific permission
+$router->post('/posts', [PostController::class, 'store'])
+       ->addMiddleware(new RequiresPermission('posts.create'));
+
+// Require a role (any of the listed roles)
+$router->get('/admin', [AdminController::class, 'index'])
+       ->addMiddleware(new RequiresRole('admin', 'superuser'));
+
+// Require ALL listed roles
+$router->delete('/nuke', [AdminController::class, 'nuke'])
+       ->addMiddleware((new RequiresRole('admin', 'superuser'))->all());
+```
+
+Both middleware return `401` if the request is unauthenticated, `403` if the role/permission check fails.
+
+---
+
+## API Resources
+
+Shape model output for APIs:
+
+```php
+use Core\Http\ApiResource;
+
+class UserResource extends ApiResource {
+    public function toArray(): array {
+        return [
+            'id'    => $this->model->id,
+            'name'  => $this->model->name,
+            'email' => $this->model->email,
+            // password is omitted
+        ];
+    }
+}
+
+// Single resource
+UserResource::make($user)->respond();        // sets header + outputs JSON
+$json = UserResource::make($user)->toJson();
+
+// Collection
+UserResource::collection($users)->respond();
+
+// With metadata
+UserResource::collection($users)
+    ->withMeta(['total' => 120, 'page' => 2])
+    ->respond();
+```
+
+Response shape:
+
+```json
+{ "data": { "id": 1, "name": "Alice", "email": "alice@example.com" } }
+
+{ "data": [...], "meta": { "total": 120, "page": 2 } }
+```
+
+---
+
+## Seeder system
+
+Seeders populate the database with initial or test data.
+
+```bash
+php LazyMePHP make:seeder UserSeeder    # scaffold App/Seeders/UserSeeder.php
+php LazyMePHP db:seed                   # run all seeders
+php LazyMePHP db:seed --class=UserSeeder
+```
+
+```php
+// App/Seeders/UserSeeder.php
+use Core\Seeder\Seeder;
+
+class UserSeeder extends Seeder {
+    public function run(): void {
+        $this->insert('users', ['name' => 'Admin', 'email' => 'admin@example.com']);
+    }
 }
 ```
-And this way, you can control what data is exposed.
-(It does not override what was predefined in ApiFieldMask)
 
-### Logging
-When this option is enabled (by setting `APP_ACTIVITY_LOG="true"` in your `.env` file), three tables (`__LOG_ACTIVITY`, `__LOG_DATA`, `__LOG_ERRORS`) are added to your database to register database changes.
-The user or process triggering these changes can be identified by the `APP_ACTIVITY_AUTH` environment variable. You can set this in your `.env` file:
-```dotenv
-APP_ACTIVITY_LOG="true"
-APP_ACTIVITY_AUTH="system_user" 
+---
+
+## Model factories
+
+Factories generate model instances for tests and seeding.
+
+```bash
+php LazyMePHP make:factory PostFactory   # scaffold App/Factories/PostFactory.php
 ```
-If you need a dynamic user identifier (e.g., from a session), you would typically handle that within your application logic by potentially overriding or using the value from `LazyMePHP::ACTIVITY_AUTH()` and `LazyMePHP::LOGDATA()` accordingly. The `.env` value provides a default.
-The log viewer is available under the `/logging` path and shows a list of requests with some filtering capabilities.
 
-# License
+```php
+// App/Factories/PostFactory.php
+use Core\Factory\Factory;
+
+class PostFactory extends Factory {
+    protected string $table = 'posts';
+
+    public function definition(): array {
+        static $n = 0; $n++;
+        return [
+            'title'   => "Post {$n}",
+            'body'    => 'Lorem ipsum',
+            'user_id' => 1,
+        ];
+    }
+}
+
+// Usage
+$post  = PostFactory::new()->make();              // unsaved Model
+$post  = PostFactory::new()->create();            // saved to DB
+$posts = PostFactory::new()->count(10)->create(); // 10 saved models
+$post  = PostFactory::new()->state(['user_id' => 5])->create();
+```
+
+---
+
+## Database migrations
+
+Migrations live in `database/migrations/` as plain PHP files:
+
+```php
+// database/migrations/2026_07_14_0001_create_posts.php
+return [
+    'up'   => function ($db): void {
+        $db->query("CREATE TABLE posts (
+            id      INTEGER PRIMARY KEY AUTOINCREMENT,
+            title   TEXT NOT NULL,
+            body    TEXT,
+            user_id INTEGER NOT NULL
+        )");
+    },
+    'down' => function ($db): void {
+        $db->query("DROP TABLE IF EXISTS posts");
+    },
+];
+```
+
+Scaffold a new file:
+
+```bash
+php LazyMePHP make:migration create_posts
+```
+
+Run and manage migrations:
+
+```bash
+php LazyMePHP migrate                  # run all pending migrations
+php LazyMePHP migrate:rollback         # roll back the last batch
+php LazyMePHP migrate:rollback --step=3
+php LazyMePHP migrate:reset            # roll back all migrations
+php LazyMePHP migrate:status           # show which migrations have run
+```
+
+Migration state is tracked in `__migrations`. The schema cache is cleared automatically after every run or rollback.
+
+---
+
+## CRUD web UI
+
+Every table gets these routes automatically:
+
+| Method | Path | Action |
+|---|---|---|
+| GET | `/{table}` | List with pagination and filters |
+| GET | `/{table}/new` | New record form |
+| GET | `/{table}/{id}/edit` | Edit form |
+| POST | `/{table}` | Create |
+| POST | `/{table}/{id}` | Update |
+| POST | `/{table}/{id}/delete` | Delete |
+
+Views are rendered by generic Blade templates in `App/Views/_Crud/`. To override a table's view, create `App/Views/{TableName}/index.blade.php` or `edit.blade.php` — the controller resolves to the table-specific file first, then falls back to the generic template.
+
+---
+
+## Customising behaviour — `Core\CrudController`
+
+Create `App/Controllers/{TableName}.php` to override behaviour for a specific table:
+
+```php
+namespace Controllers;
+use Core\CrudController;
+use Core\Model;
+
+class Users extends CrudController {
+    protected static string $table = 'users';
+
+    protected function foreignKeys(): array {
+        return ['role_id' => 'roles'];
+    }
+
+    protected function extraValidationRules(): array {
+        return [
+            'username' => ['validations' => [\Core\Validations\ValidationsMethod::STRING], 'required' => true],
+        ];
+    }
+
+    protected function beforeSave(Model $obj, array &$data, bool $isUpdate): void {
+        $data['updated_at'] = date('Y-m-d H:i:s');
+    }
+
+    protected function afterSave(Model $obj, bool $isUpdate): void {}
+    protected function beforeDelete(Model $obj): void {}
+
+    public function exposedFields(): array {
+        return ['id', 'name', 'email', 'role_id', 'created_at'];
+    }
+
+    // public static bool $hidden = true; // exclude from auto-wiring
+}
+```
+
+---
+
+## GraphQL API
+
+```
+POST /graphql
+Content-Type: application/json
+```
+
+### Queries
+
+```graphql
+{ usersList(page: 1, limit: 20) { id name email } }
+{ users(id: 1) { id name email } }
+```
+
+### Mutations
+
+```graphql
+mutation { createUsers(input: { name: "Alice", email: "alice@example.com" }) { id } }
+mutation { updateUsers(id: 1, input: { name: "Alice Smith" }) { id name } }
+mutation { deleteUsers(id: 1) }
+```
+
+### Security defaults
+
+| Measure | Value |
+|---|---|
+| Query depth limit | 7 |
+| Query complexity limit | 200 |
+| Introspection | Disabled outside `APP_ENV=development` |
+| Stack traces | Stripped outside `APP_ENV=development` |
+
+---
+
+## OpenAPI spec
+
+A full OpenAPI 3.0 specification is auto-generated from the live schema:
+
+```
+GET /openapi.json
+```
+
+The spec includes CRUD paths for every non-system table (tables without `__` prefix), plus auth endpoints when `AUTH_TABLE` is configured. Disable with `OPENAPI_ENABLED=false` in `.env`.
+
+---
+
+## Health check
+
+```
+GET /health
+```
+
+Returns `200 OK` when the database is reachable, `503 Service Unavailable` otherwise:
+
+```json
+{
+    "status": "ok",
+    "db": { "status": "ok", "type": "sqlite" },
+    "php": "8.3.0",
+    "memory": { "used": "4.2 MB", "peak": "5.1 MB", "limit": "128M" }
+}
+```
+
+---
+
+## Request ID tracing
+
+Every response includes an `X-Request-ID` header. If the incoming request already has a valid `X-Request-ID` (alphanumeric + hyphens, max 36 chars), it is echoed back; otherwise a new UUID-shaped value is generated.
+
+```php
+use Core\Http\RequestId;
+
+$id = RequestId::current(); // access the current request's ID anywhere
+```
+
+---
+
+## Audit logging
+
+Set `APP_ACTIVITY_LOG=true`. The following tables are created automatically:
+
+| Table | Contents |
+|---|---|
+| `__LOG_ACTIVITY` | One row per mutating request (INSERT / UPDATE / DELETE) |
+| `__LOG_DATA` | Per-field before/after values for every change |
+| `__LOG_ERRORS` | Application errors with severity and context |
+| `__LOG_PERFORMANCE` | Slow-operation metrics when monitoring is enabled |
+
+**Only mutating requests are logged** — plain reads produce no audit entry.
+
+Sensitive column names (`password`, `token`, `secret`, `api_key`, `api_secret`, and the value of `AUTH_PASSWORD_COLUMN`) are automatically stripped from `__LOG_DATA`. The authenticated JWT user id is written to `__LOG_ACTIVITY.user` when available.
+
+---
+
+## Batman dashboard
+
+Batman is an internal developer dashboard available at `/batman/`. It shows activity logs, error logs, performance metrics, and per-record change history with before/after diffs.
+
+### Setup
+
+Generate a bcrypt password hash:
+
+```bash
+php -r "echo password_hash('yourpassword', PASSWORD_BCRYPT), PHP_EOL;"
+```
+
+Add to `.env`:
+
+```env
+BATMAN_USERNAME=admin
+BATMAN_SECRET=$2y$12$...   # paste the hash above
+```
+
+Batman authenticates against `BATMAN_SECRET` using `password_verify()` — it does not use database credentials.
+
+---
+
+## Schema cache
+
+Pre-warm in production so no DB introspection happens at request time:
+
+```bash
+php LazyMePHP schema:cache           # cache all tables
+php LazyMePHP schema:cache users     # cache one table
+php LazyMePHP schema:clear           # remove all cache files
+```
+
+Cache files are written to `App/Cache/schema/{table}.php` as plain PHP arrays — OPcache serves them as compiled bytecode.
+
+---
+
+## CLI reference
+
+```
+php LazyMePHP serve                      Start the PHP development server (port 8080)
+
+php LazyMePHP migrate                    Run all pending migrations
+php LazyMePHP migrate:rollback           Roll back the last migration batch
+php LazyMePHP migrate:rollback --step=N
+php LazyMePHP migrate:reset              Roll back all migrations
+php LazyMePHP migrate:status             Show migration run history
+
+php LazyMePHP make:migration <name>      Scaffold a new migration file
+php LazyMePHP make:model <Name>          Scaffold a Model subclass
+php LazyMePHP make:controller            Show how to subclass CrudController
+php LazyMePHP make:seeder <Name>         Scaffold a Seeder class in App/Seeders/
+php LazyMePHP make:factory <Name>        Scaffold a Factory class in App/Factories/
+php LazyMePHP make:observer <Name>       Scaffold a model observer class
+php LazyMePHP make:resource <Name>       Scaffold an ApiResource subclass
+php LazyMePHP make:view                  Show how to override Blade views
+php LazyMePHP make:route                 Show how AutoRouter works
+php LazyMePHP make:api                   Show how to restrict GraphQL field exposure
+
+php LazyMePHP db:seed                    Run all seeders in App/Seeders/
+php LazyMePHP db:seed --class=<Name>     Run a specific seeder class
+
+php LazyMePHP auth:hash <password>       Print a bcrypt hash of <password>
+
+php LazyMePHP schema:cache               Pre-warm schema cache for all tables
+php LazyMePHP schema:cache <table>       Pre-warm schema cache for one table
+php LazyMePHP schema:clear               Remove all schema cache files
+
+php LazyMePHP build                      Run the full build script
+```
+
+---
+
+## Security overview
+
+| Area | Measure |
+|---|---|
+| Sessions | `httponly`, `samesite=Strict`, `secure` in production |
+| CSRF | Token-per-session with rotation; all web form posts validated |
+| CORS | Exact-origin allowlist via `APP_CORS_ORIGIN`; wildcard blocked |
+| JWT | HS256, signed with `APP_ENCRYPTION` (≥ 32 chars enforced) |
+| Refresh tokens | Opaque 64-char hex; SHA-256 hash stored in DB; rotation on every use |
+| RBAC | Role + permission middleware; 401 when unauthenticated, 403 when unauthorised |
+| Batman login | bcrypt `password_verify()` against `BATMAN_SECRET` |
+| Redirects | Path-only redirects; host stripping prevents open redirect |
+| SQL injection | All queries use prepared statement placeholders |
+| Column injection | Filter and sort columns validated against live schema |
+| CSP | `default-src 'self'`; no `unsafe-inline` |
+| GraphQL | Depth 7, complexity 200, introspection off in production |
+| Audit log | Sensitive columns auto-stripped; passwords never logged |
+| Rate limiting | Refresh token endpoint: 20 requests per 5 minutes per IP |
+
+---
+
+## Requirements
+
+- PHP 8.1+
+- Composer
+- MySQL, MSSQL, or SQLite
+
+---
+
+## License
+
 MIT

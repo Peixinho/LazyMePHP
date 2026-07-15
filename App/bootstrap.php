@@ -34,8 +34,8 @@ if (!headers_sent()) {
     // Prevent clickjacking
     header('X-Frame-Options: DENY');
     
-    // Content Security Policy - restrict resource loading
-    header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self';");
+    // Content Security Policy
+    header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';");
     
     // Referrer Policy
     header('Referrer-Policy: strict-origin-when-cross-origin');

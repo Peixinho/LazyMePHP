@@ -71,23 +71,22 @@ final class MSSQL extends ISQL
         self::$instance = null;
     }
 
-    /**
-     * Gets the PDO connection.
-     *
-     * @return PDO PDO instance
-     * @throws DatabaseException If connection fails
-     */
     public function getConnection(): PDO
     {
         $this->connect();
         return $this->connection;
     }
 
-    /**
-     * Establishes a database connection.
-     *
-     * @throws DatabaseException If connection fails
-     */
+    protected function createResult(string $query): IDBObject
+    {
+        return new MSSQLResult($query);
+    }
+
+    protected function slowQueryLabel(): string
+    {
+        return 'db_query_mssql';
+    }
+
     protected function connect(): void
     {
         if ($this->isConnected) {
@@ -112,135 +111,7 @@ final class MSSQL extends ISQL
         }
     }
 
-    /**
-     * Executes a database query and returns a result object.
-     *
-     * @param string $query SQL query string
-     * @param array<string|int, mixed> $params Query parameters (positional or named)
-     * @return IDBObject Query result object
-     * @throws DatabaseException If query execution fails or parameter count mismatches
-     */
-    public function query(string $query, array $params = []): IDBObject
-    {
-        $this->connect();
-        $result = new MSSQLResult($query);
 
-        // Start timing for debug toolbar
-        $startTime = microtime(true);
-
-        try {
-            $stmt = $this->connection->prepare($query);
-            if ($stmt === false) {
-                throw new DatabaseException("Failed to prepare query: $query");
-            }
-
-            // Validate parameter count
-            $paramKeys = array_keys($params);
-            $isPositional = !empty($paramKeys) && is_int($paramKeys[0]);
-            if ($isPositional) {
-                $placeholderCount = substr_count($query, '?');
-                if (count($params) !== $placeholderCount) {
-                    throw new DatabaseException(
-                        "Parameter count mismatch: expected $placeholderCount positional placeholders (?), got " . count($params) . " parameters",
-                        0,
-                        null,
-                        $query,
-                        $params
-                    );
-                }
-            } else {
-                // Extract named placeholders (e.g., :description)
-                preg_match_all('/:([a-zA-Z0-9_]+)/', $query, $matches);
-                $placeholders = array_unique($matches[0]);
-                $expectedCount = count($placeholders);
-                $providedCount = count($params);
-                if ($providedCount > 0 && $expectedCount === 0) {
-                    throw new DatabaseException(
-                        "No named placeholders found in query, but $providedCount parameters provided",
-                        0,
-                        null,
-                        $query,
-                        $params
-                    );
-                }
-                if ($providedCount !== $expectedCount) {
-                    throw new DatabaseException(
-                        "Parameter count mismatch: expected $expectedCount named placeholders, got $providedCount parameters",
-                        0,
-                        null,
-                        $query,
-                        $params
-                    );
-                }
-                // Verify each parameter exists in the query
-                foreach ($paramKeys as $key) {
-                    if (!in_array($key, $placeholders, true)) {
-                        throw new DatabaseException(
-                            "Parameter $key not found in query",
-                            0,
-                            null,
-                            $query,
-                            $params
-                        );
-                    }
-                }
-            }
-
-            // Bind parameters
-            foreach ($params as $key => $value) {
-                $param = $isPositional ? ($key + 1) : $key;
-                $type = \PDO::PARAM_STR;
-                if (is_bool($value)) {
-                    $value = $value ? 1 : 0;
-                    $type = \PDO::PARAM_INT;
-                } elseif (is_int($value) || (is_string($value) && ctype_digit($value))) {
-                    $value = (int)$value;
-                    $type = \PDO::PARAM_INT;
-                } elseif (is_null($value)) {
-                    $type = \PDO::PARAM_NULL;
-                }
-                $stmt->bindValue($param, $value, $type);
-            }
-
-            $stmt->execute();
-            $result->setStatement($stmt);
-            
-            // Log query to debug toolbar (development only)
-            $executionTime = microtime(true) - $startTime;
-            if (class_exists('Core\Debug\DebugToolbar')) {
-                \Core\Debug\DebugToolbar::getInstance()->addQuery($query, $executionTime, $params);
-            }
-            
-            // Log slow queries to performance monitoring
-            if (class_exists('Core\Helpers\PerformanceUtil') && $executionTime > 1.0) {
-                \Core\Helpers\PerformanceUtil::logSlowOperation(
-                    'db_query_mssql',
-                    [
-                        'duration_ms' => $executionTime * 1000,
-                        'memory_bytes' => memory_get_usage(true),
-                        'memory_mb' => memory_get_usage(true) / 1024 / 1024
-                    ]
-                );
-            }
-            
-        } catch (PDOException $e) {
-            // Log query error to debug toolbar (development only)
-            $executionTime = microtime(true) - $startTime;
-            if (class_exists('Core\Debug\DebugToolbar')) {
-                \Core\Debug\DebugToolbar::getInstance()->addQuery($query, $executionTime, $params);
-            }
-            
-            throw new DatabaseException(
-                "Query failed: {$e->getMessage()}",
-                (int)$e->getCode(),
-                $e,
-                $query,
-                $params
-            );
-        }
-
-        return $result;
-    }
 
     /**
      * Returns the ID of the last inserted row.

@@ -10,26 +10,24 @@ declare(strict_types=1);
 
 namespace API;
 
-// Set CORS headers immediately
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, GET, DELETE, PUT, OPTIONS, PATCH');
-header('Access-Control-Allow-Headers: Content-Type, X-CSRF-TOKEN, Authorization, X-Requested-With');
-header('Access-Control-Max-Age: 86400'); // 24 hours
+// CORS — only allow explicitly configured origins; wildcard is not permitted.
+$allowedOrigin = $_ENV['APP_CORS_ORIGIN'] ?? '';
+$requestOrigin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if ($allowedOrigin !== '' && $requestOrigin === $allowedOrigin) {
+    header('Access-Control-Allow-Origin: ' . $allowedOrigin);
+    header('Access-Control-Allow-Credentials: true');
+    header('Access-Control-Allow-Methods: POST, GET, DELETE, PUT, OPTIONS, PATCH');
+    header('Access-Control-Allow-Headers: Content-Type, X-CSRF-TOKEN, Authorization, X-Requested-With');
+    header('Access-Control-Max-Age: 86400');
+}
 
 // Handle preflight OPTIONS requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
+    http_response_code(204);
     exit;
 }
 
-// Configure session for cross-port sharing
-ini_set('session.cookie_domain', 'localhost');
-ini_set('session.cookie_path', '/');
-ini_set('session.cookie_samesite', 'Lax');
-ini_set('session.cookie_secure', '0'); // Allow HTTP for localhost
-ini_set('session.cookie_httponly', '0'); // Allow JavaScript access if needed
-
-// Start session if not already started
+// Start session if not already started (cookie flags are set in Core\Session\Session)
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -137,18 +135,3 @@ if (class_exists('Core\Helpers\PerformanceUtil')) {
  */
 \Core\Helpers\ActivityLogger::logActivity();
 LazyMePHP::DB_CONNECTION()->Close();
-
-// Load environment variables
-$envFile = __DIR__ . '/../../.env';
-if (file_exists($envFile)) {
-    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    foreach ($lines as $line) {
-        if (strpos($line, '=') !== false && strpos($line, '#') !== 0) {
-            list($key, $value) = explode('=', $line, 2);
-            $_ENV[trim($key)] = trim($value);
-            putenv(trim($key) . '=' . trim($value));
-        }
-    }
-}
-
-?>

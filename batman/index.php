@@ -124,13 +124,23 @@ if ($db) {
             $statusData[$status] = ($statusData[$status] ?? 0) + 1;
         }
         
-        // Get last 7 days data for trend chart
-        $trendQuery = "SELECT DATE(date) as day, COUNT(*) as count 
-                      FROM __LOG_ACTIVITY 
-                      WHERE date >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-                      GROUP BY DATE(date) 
-                      ORDER BY day";
-        $trendResult = $db->Query($trendQuery);
+        // Get last 7 days data for trend chart — cross-DB compatible
+        $sevenDaysAgo = date('Y-m-d', strtotime('-7 days'));
+        $dbType = strtolower(LazyMePHP::DB_TYPE() ?? 'mysql');
+        if ($dbType === 'sqlite') {
+            $trendQuery = 'SELECT date("date") as day, COUNT(*) as count
+                          FROM __LOG_ACTIVITY WHERE "date" >= ?
+                          GROUP BY date("date") ORDER BY day';
+        } elseif ($dbType === 'mssql' || $dbType === 'sqlsrv') {
+            $trendQuery = 'SELECT CAST([date] AS DATE) as day, COUNT(*) as count
+                          FROM __LOG_ACTIVITY WHERE [date] >= ?
+                          GROUP BY CAST([date] AS DATE) ORDER BY day';
+        } else {
+            $trendQuery = 'SELECT DATE(date) as day, COUNT(*) as count
+                          FROM __LOG_ACTIVITY WHERE date >= ?
+                          GROUP BY DATE(date) ORDER BY day';
+        }
+        $trendResult = $db->Query($trendQuery, [$sevenDaysAgo]);
         $trendData = [];
         while ($row = $trendResult->FetchArray()) {
             $trendData[$row['day']] = $row['count'];
@@ -919,8 +929,6 @@ $totalPages = ceil($totalActivities / $limit);
         <div class="filters">
             <h3><i class="fas fa-filter"></i> Filters</h3>
             <form method="GET">
-                <input type="hidden" name="debug" value="1">
-                
                 <div class="form-group">
                     <label>Date From</label>
                     <input type="date" name="date_from" value="<?php echo htmlspecialchars($dateFrom); ?>">
@@ -959,16 +967,6 @@ $totalPages = ceil($totalActivities / $limit);
         <!-- Charts Section -->
         <div class="charts-section">
             <h3><i class="fas fa-chart-line"></i> Analytics Dashboard</h3>
-            
-            <!-- Debug info (remove in production) -->
-            <?php if (isset($_GET['debug']) && $_GET['debug'] == '1'): ?>
-                <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 20px; font-family: monospace; font-size: 12px;">
-                    <strong>Debug Info:</strong><br>
-                    Trend Data: <?php echo json_encode($trendData); ?><br>
-                    Method Data: <?php echo json_encode($methodData); ?><br>
-                    Total Activities: <?php echo $totalActivities; ?>
-                </div>
-            <?php endif; ?>
             
             <div class="charts-grid">
                 <div class="chart-container">

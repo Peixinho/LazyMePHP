@@ -5,8 +5,13 @@
  * @author Duarte Peixinho
  */
 
-// Start session if not already started
+// Harden session cookie before starting
 if (session_status() === PHP_SESSION_NONE) {
+    $isProd = ($_ENV['APP_ENV'] ?? 'production') !== 'development';
+    session_set_cookie_params([
+        'lifetime' => 0, 'path' => '/', 'domain' => '',
+        'secure' => $isProd, 'httponly' => true, 'samesite' => 'Strict',
+    ]);
     session_start();
 }
 
@@ -29,50 +34,22 @@ $success = '';
 
 // Handle login form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = $_POST['username'] ?? '';
-    $password = $_POST['password'] ?? '';
-    
-    // Get database credentials from environment
-    $dbUsername = $_ENV['DB_USER'] ?? '';
-    $dbPassword = $_ENV['DB_PASSWORD'] ?? '';
+    $username       = trim($_POST['username'] ?? '');
+    $password       = $_POST['password'] ?? '';
+    $batmanUsername = $_ENV['BATMAN_USERNAME'] ?? 'admin';
+    $batmanSecret   = $_ENV['BATMAN_SECRET']   ?? '';
 
-    if (!empty($username)) {
-        // Check if username matches DB_USER
-        if ($username === $dbUsername) {
-            // If DB_PASSWORD is empty or not set, allow login without password
-            if (empty($dbPassword)) {
-                // Login successful with no password required
-                $_SESSION['user_id'] = 1;
-                $_SESSION['username'] = $username;
-                $_SESSION['user_name'] = 'Database User';
-                $_SESSION['user_email'] = 'db@example.com';
-                $_SESSION['is_logged_in'] = true;
-                
-                // Redirect to batman dashboard
-                header('Location: index.php');
-                exit;
-            } else {
-                // Check password if it's set
-                if ($password === $dbPassword) {
-                    // Login successful with password
-                    $_SESSION['user_id'] = 1;
-                    $_SESSION['username'] = $username;
-                    $_SESSION['user_name'] = 'Database User';
-                    $_SESSION['user_email'] = 'db@example.com';
-                    $_SESSION['is_logged_in'] = true;
-                    
-                    // Redirect to batman dashboard
-                    header('Location: index.php');
-                    exit;
-                } else {
-                    $error = 'Invalid password';
-                }
-            }
-        } else {
-            $error = 'Invalid username';
-        }
+    if ($batmanSecret === '') {
+        $error = 'Batman dashboard is not configured. Set BATMAN_SECRET in your .env file.';
+    } elseif ($username === $batmanUsername && password_verify($password, $batmanSecret)) {
+        $_SESSION['user_id']      = 1;
+        $_SESSION['username']     = htmlspecialchars($username, ENT_QUOTES, 'UTF-8');
+        $_SESSION['user_name']    = 'Admin';
+        $_SESSION['is_logged_in'] = true;
+        header('Location: index.php');
+        exit;
     } else {
-        $error = 'Please enter a username';
+        $error = 'Invalid credentials';
     }
 }
 
@@ -238,7 +215,7 @@ if (isset($_SESSION['is_logged_in']) && $_SESSION['is_logged_in']) {
     <div class="login-container">
         <div class="login-header">
             <h1><i class="fas fa-shield-alt"></i> Batman Dashboard</h1>
-            <p>Enter your database credentials to access the dashboard</p>
+            <p>Enter your Batman dashboard credentials to continue</p>
         </div>
 
         <?php if ($error): ?>
@@ -253,29 +230,19 @@ if (isset($_SESSION['is_logged_in']) && $_SESSION['is_logged_in']) {
             </div>
         <?php endif; ?>
 
-        <?php if (empty($_ENV['DB_PASSWORD'] ?? '')): ?>
-            <div class="password-note">
-                <i class="fas fa-info-circle"></i>
-                <strong>Note:</strong> No password is required for this database connection.
-            </div>
-        <?php endif; ?>
-
         <form method="POST" action="">
             <div class="form-group">
                 <label for="username">
                     <i class="fas fa-user"></i> Username
                 </label>
-                <input type="text" id="username" name="username" value="<?php echo htmlspecialchars($_POST['username'] ?? ''); ?>" required>
+                <input type="text" id="username" name="username" value="<?php echo htmlspecialchars($_POST['username'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required autocomplete="username">
             </div>
 
             <div class="form-group">
                 <label for="password">
                     <i class="fas fa-lock"></i> Password
-                    <?php if (empty($_ENV['DB_PASSWORD'] ?? '')): ?>
-                        <small style="color: #6c757d;">(Optional)</small>
-                    <?php endif; ?>
                 </label>
-                <input type="password" id="password" name="password">
+                <input type="password" id="password" name="password" required autocomplete="current-password">
             </div>
 
             <button type="submit" class="btn-login">

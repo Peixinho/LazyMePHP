@@ -56,15 +56,28 @@ try {
 
 class LazyMeCLI {
     private array $commands = [
-        'serve' => 'Start the PHP development server',
-        'build' => 'Run the build tools for classes, forms, and APIs',
-        'batman' => 'Start the Batman dashboard server',
-        'make:model' => 'Generate a model for a table/view',
-        'make:api' => 'Generate an API for a table',
-        'make:view' => 'Generate views for a table',
-        'make:controller' => 'Generate a controller for a table',
-        'make:route' => 'Generate routes for a table',
-        'make:all' => 'Generate model, views, controller, and routes for a table'
+        'serve'            => 'Start the PHP development server',
+        'build'            => 'Run the build tools for forms and APIs',
+        'batman'           => 'Start the Batman dashboard server',
+        'auth:hash'        => 'Hash a plain-text password for storage',
+        'migrate'          => 'Run all pending migrations',
+        'migrate:rollback' => 'Roll back the last migration batch  [--step=N]',
+        'migrate:reset'    => 'Roll back every migration',
+        'migrate:status'   => 'Show which migrations have run',
+        'make:migration'   => 'Scaffold a new migration file  [name]',
+        'make:api'         => 'GraphQL API is auto-generated — shows how to customise field exposure',
+        'make:view'        => 'Generic Blade views are built-in — shows how to override per-table',
+        'make:controller'  => 'CrudController handles all tables — shows how to subclass',
+        'make:route'       => 'AutoRouter registers routes at runtime — shows how it works',
+        'make:all'         => 'Shows guidance for views, controller, routes, and API for a table',
+        'schema:cache'     => 'Cache DB schema to files (avoids per-request introspection)',
+        'schema:clear'     => 'Remove cached schema files',
+        'db:seed'          => 'Run database seeders  [--class=Name]',
+        'make:seeder'      => 'Scaffold a new seeder file  [name]',
+        'make:factory'     => 'Scaffold a new model factory  [name]',
+        'make:observer'    => 'Scaffold a new model observer  [name]',
+        'make:resource'    => 'Scaffold a new API resource  [name]',
+        'make:model'       => 'Scaffold a new Model subclass  [name]',
     ];
 
     public function run(array $argv): void {
@@ -76,6 +89,14 @@ class LazyMeCLI {
         $command = $argv[1];
         $tableName = $argv[2] ?? null;
 
+        // Parse --step=N and --class=Name options
+        $step       = 1;
+        $classArg   = null;
+        foreach ($argv as $arg) {
+            if (preg_match('/^--step=(\d+)$/', $arg, $m))   { $step     = (int)$m[1]; }
+            if (preg_match('/^--class=(.+)$/',  $arg, $m))   { $classArg = $m[1]; }
+        }
+
         switch($command) {
             case 'serve':
                 $this->serve();
@@ -86,8 +107,32 @@ class LazyMeCLI {
             case 'batman':
                 $this->batman();
                 break;
-            case 'make:model':
-                $this->makeModel($tableName);
+            case 'auth:hash':
+                if (!$tableName) {
+                    echo "Usage: php LazyMePHP auth:hash <password>\n";
+                    exit(1);
+                }
+                echo \Core\Auth\Auth::hashPassword($tableName) . "\n";
+                break;
+            case 'migrate':
+                \Core\Migration\Runner::run();
+                break;
+            case 'migrate:rollback':
+                \Core\Migration\Runner::rollback($step);
+                break;
+            case 'migrate:reset':
+                \Core\Migration\Runner::reset();
+                break;
+            case 'migrate:status':
+                \Core\Migration\Runner::status();
+                break;
+            case 'make:migration':
+                if (!$tableName) {
+                    echo "Usage: php LazyMePHP make:migration <name>\n";
+                    exit(1);
+                }
+                $path = \Core\Migration\Runner::scaffold($tableName);
+                echo "Created: $path\n";
                 break;
             case 'make:view':
                 $this->makeView($tableName);
@@ -103,6 +148,50 @@ class LazyMeCLI {
                 break;
             case 'make:api':
                 $this->makeApi($tableName);
+                break;
+            case 'schema:cache':
+                $this->schemaCache($tableName);
+                break;
+            case 'schema:clear':
+                $this->schemaClear($tableName);
+                break;
+            case 'db:seed':
+                (new \Core\Seeder\Runner())->run($classArg);
+                break;
+            case 'make:seeder':
+                if (!$tableName) {
+                    echo "Usage: php lazymephp make:seeder <Name>\n";
+                    exit(1);
+                }
+                $this->makeSeeder($tableName);
+                break;
+            case 'make:factory':
+                if (!$tableName) {
+                    echo "Usage: php lazymephp make:factory <Name>\n";
+                    exit(1);
+                }
+                $this->makeFactory($tableName);
+                break;
+            case 'make:observer':
+                if (!$tableName) {
+                    echo "Usage: php lazymephp make:observer <Name>\n";
+                    exit(1);
+                }
+                $this->makeObserver($tableName);
+                break;
+            case 'make:resource':
+                if (!$tableName) {
+                    echo "Usage: php lazymephp make:resource <Name>\n";
+                    exit(1);
+                }
+                $this->makeResource($tableName);
+                break;
+            case 'make:model':
+                if (!$tableName) {
+                    echo "Usage: php lazymephp make:model <Name>\n";
+                    exit(1);
+                }
+                $this->makeModel($tableName);
                 break;
             default:
                 echo "Unknown command: $command\n";
@@ -155,34 +244,6 @@ class LazyMeCLI {
         @exec("php -S 0.0.0.0:$port -t ./batman App/Tools/BatmanServer");
     }
 
-    private function makeModel(?string $tableName): void {
-        if (!$tableName) {
-            echo "Error: Table name is required for make:model command.\n";
-            echo "Usage: php LazyMePHP make:model [table_name]\n";
-            exit(1);
-        }
-
-        echo "Generating model for table: $tableName\n";
-        
-        // Get all available tables
-        $allTables = \Tools\Database\_DB_TABLE::GetAllTablesAndViews();
-        
-        if (!in_array($tableName, $allTables)) {
-            echo "Error: Table '$tableName' not found in database.\n";
-            echo "Available tables:\n";
-            foreach ($allTables as $table) {
-                echo "  - $table\n";
-            }
-            exit(1);
-        }
-
-        // Use the existing Models tool
-        $classesPath = __DIR__ . '/App/Models';
-        new \Tools\Models\BuildTableModels($classesPath, [$tableName], []);
-        
-        echo "Model generated successfully!\n";
-    }
-
     private function makeView(?string $tableName): void {
         if (!$tableName) {
             echo "Error: Table name is required for make:view command.\n";
@@ -221,78 +282,15 @@ class LazyMeCLI {
     }
 
     private function makeController(?string $tableName): void {
-        if (!$tableName) {
-            echo "Error: Table name is required for make:controller command.\n";
-            echo "Usage: php LazyMePHP make:controller [table_name]\n";
-            exit(1);
-        }
-
-        echo "Generating controller for table: $tableName\n";
-        
-        // Get all available tables
-        $allTables = \Tools\Database\_DB_TABLE::GetAllTablesAndViews();
-        
-        if (!in_array($tableName, $allTables)) {
-            echo "Error: Table '$tableName' not found in database.\n";
-            echo "Available tables:\n";
-            foreach ($allTables as $table) {
-                echo "  - $table\n";
-            }
-            exit(1);
-        }
-
-        // Create database object for the table
-        $db = new \Tools\Database\_DB_TABLE($tableName);
-        $db->GetFieldsFromDB();
-        
-        if ($db->IsView()) {
-            echo "Error: Cannot generate controllers for database views.\n";
-            exit(1);
-        }
-
-        // Use the new BuildControllers class
-        $controllersPath = __DIR__ . '/App/Controllers';
-        $classesPath = __DIR__ . '/App/Models';
-        new \Tools\Forms\BuildControllers($controllersPath, $classesPath, $db);
-        
-        echo "Controller generated successfully!\n";
+        echo "\n💡 Controllers are now powered by Core\\CrudController — no code generation needed.\n";
+        echo "   Routes use CrudController::forTable() and auto-discover Controllers\\{Table} subclasses.\n";
+        echo "   To add custom behaviour, create App/Controllers/{$tableName}.php extending CrudController.\n\n";
     }
 
     private function makeRoute(?string $tableName): void {
-        if (!$tableName) {
-            echo "Error: Table name is required for make:route command.\n";
-            echo "Usage: php LazyMePHP make:route [table_name]\n";
-            exit(1);
-        }
-
-        echo "Generating routes for table: $tableName\n";
-        
-        // Get all available tables
-        $allTables = \Tools\Database\_DB_TABLE::GetAllTablesAndViews();
-        
-        if (!in_array($tableName, $allTables)) {
-            echo "Error: Table '$tableName' not found in database.\n";
-            echo "Available tables:\n";
-            foreach ($allTables as $table) {
-                echo "  - $table\n";
-            }
-            exit(1);
-        }
-
-        // Create database object for the table
-        $db = new \Tools\Database\_DB_TABLE($tableName);
-        $db->GetFieldsFromDB();
-        
-        if ($db->IsView()) {
-            echo "Error: Cannot generate routes for database views.\n";
-            exit(1);
-        }
-
-        // Use the new BuildRoutes class
-        $routesPath = __DIR__ . '/App/Routes';
-        new \Tools\Forms\BuildRoutes($routesPath, $db);
-        
-        echo "Routes generated successfully!\n";
+        echo "\n\u{1F4A1} Routes are now powered by Core\\AutoRouter — no code generation needed.\n";
+        echo "   AutoRouter::registerAll(\$blade) in App/Routes/Routes.php registers all tables at runtime.\n";
+        echo "   To add table-specific behaviour, create App/Controllers/{$tableName}.php extending CrudController.\n\n";
     }
 
     private function makeAll(?string $tableName): void {
@@ -302,61 +300,107 @@ class LazyMeCLI {
             exit(1);
         }
 
-        echo "Generating model, views, controller, routes, and API for table: $tableName\n";
-        
-        // Get all available tables
+        echo "Generating views, controller, routes, and API for table: $tableName\n";
+
         $allTables = \Tools\Database\_DB_TABLE::GetAllTablesAndViews();
-        
         if (!in_array($tableName, $allTables)) {
             echo "Error: Table '$tableName' not found in database.\n";
-            echo "Available tables:\n";
-            foreach ($allTables as $table) {
-                echo "  - $table\n";
-            }
             exit(1);
         }
 
-        // Generate model
-        $generator = new \Tools\Models\BuildTableModels(__DIR__ . '/App/Models', [$tableName], []);
-        echo "Model generated successfully!\n";
-
-        // Generate view
         $this->makeView($tableName);
-
-        // Generate controller
         $this->makeController($tableName);
-
-        // Generate route
         $this->makeRoute($tableName);
-
-        // Generate API
         $this->makeApi($tableName);
 
         echo "All files generated successfully!\n";
     }
 
     private function makeApi(?string $tableName): void {
-        if (!$tableName) {
-            echo "Error: Table name is required for make:api command.\n";
-            echo "Usage: php LazyMePHP make:api [table_name]\n";
-            exit(1);
+        echo "\n\u{1F4A1} The API is now a GraphQL endpoint at POST /graphql — no code generation needed.\n";
+        echo "   Core\\GraphQL\\SchemaBuilder builds the schema from all tables at runtime.\n";
+        if ($tableName) {
+            echo "   To restrict fields for '$tableName', override exposedFields() in App/Controllers/{$tableName}.php:\n\n";
+            echo "     protected function exposedFields(): array {\n";
+            echo "         return ['id', 'name', ...]; // list fields to expose\n";
+            echo "     }\n\n";
+        }
+    }
+
+    private function schemaCache(?string $tableName): void {
+        if ($tableName) {
+            echo "Caching schema for table: $tableName\n";
+            \Core\Model::warmSchemaCache($tableName);
+            echo "Cached App/Cache/schema/$tableName.php\n";
+            return;
         }
 
-        echo "Generating API for table: $tableName\n";
-        
-        // Check if model exists
-        $modelFile = __DIR__ . "/App/Models/$tableName.php";
-        if (!file_exists($modelFile)) {
-            echo "Error: Model for table '$tableName' not found. Please generate the model first.\n";
-            echo "Run: php LazyMePHP make:model $tableName\n";
-            exit(1);
+        $tables = \Tools\Database\_DB_TABLE::GetAllTablesAndViews();
+        echo "Caching schema for " . count($tables) . " table(s)...\n";
+        foreach ($tables as $table) {
+            \Core\Model::warmSchemaCache($table);
+            echo "  ✓ $table\n";
+        }
+        echo "Done. Schema cached to App/Cache/schema/\n";
+        echo "Run schema:clear or re-run schema:cache after schema changes.\n";
+    }
+
+    private function makeSeeder(string $name): void {
+        $dir  = __DIR__ . '/App/Seeders';
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+        $file = "$dir/{$name}.php";
+        if (file_exists($file)) { echo "Seeder already exists: $file\n"; exit(1); }
+        file_put_contents($file, "<?php\n\nclass {$name} extends \\Core\\Seeder\\Seeder\n{\n    public function run(): void\n    {\n        // \$this->insert('table_name', ['column' => 'value']);\n    }\n}\n");
+        echo "Created: $file\n";
+    }
+
+    private function makeFactory(string $name): void {
+        $dir  = __DIR__ . '/App/Factories';
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+        $file = "$dir/{$name}.php";
+        if (file_exists($file)) { echo "Factory already exists: $file\n"; exit(1); }
+        $table = strtolower(preg_replace('/Factory$/i', '', $name)) . 's';
+        file_put_contents($file, "<?php\n\nclass {$name} extends \\Core\\Factory\\Factory\n{\n    protected string \$table = '{$table}';\n\n    public function definition(): array\n    {\n        static \$n = 0;\n        \$n++;\n        return [\n            // 'name' => \"Item {\$n}\",\n        ];\n    }\n}\n");
+        echo "Created: $file\n";
+    }
+
+    private function makeObserver(string $name): void {
+        $dir  = __DIR__ . '/App/Observers';
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+        $file = "$dir/{$name}.php";
+        if (file_exists($file)) { echo "Observer already exists: $file\n"; exit(1); }
+        file_put_contents($file, "<?php\n\nclass {$name}\n{\n    public function creating(mixed \$model): void {}\n    public function created(mixed \$model): void {}\n    public function updating(mixed \$model): void {}\n    public function updated(mixed \$model): void {}\n    public function deleting(mixed \$model): void {}\n    public function deleted(mixed \$model): void {}\n}\n");
+        echo "Created: $file\n";
+    }
+
+    private function makeResource(string $name): void {
+        $dir  = __DIR__ . '/App/Resources';
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+        $file = "$dir/{$name}.php";
+        if (file_exists($file)) { echo "Resource already exists: $file\n"; exit(1); }
+        file_put_contents($file, "<?php\n\nclass {$name} extends \\Core\\Http\\ApiResource\n{\n    public function toArray(): array\n    {\n        return \$this->model->toArray();\n    }\n}\n");
+        echo "Created: $file\n";
+    }
+
+    private function makeModel(string $name): void {
+        $dir  = __DIR__ . '/App/Models';
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+        $file = "$dir/{$name}.php";
+        if (file_exists($file)) { echo "Model already exists: $file\n"; exit(1); }
+        $table = strtolower($name) . 's';
+        file_put_contents($file, "<?php\n\ndeclare(strict_types=1);\n\nnamespace Models;\n\nuse Core\\Model;\n\nclass {$name} extends Model\n{\n    protected static string \$table = '{$table}';\n\n    // protected static array \$rules = [\n    //     'name' => 'required|max:255',\n    // ];\n}\n");
+        echo "Created: $file\n";
+    }
+
+    private function schemaClear(?string $tableName): void {
+        if ($tableName) {
+            \Core\Model::clearFileSchemaCache($tableName);
+            echo "Cleared schema cache for: $tableName\n";
+            return;
         }
 
-        // Use the existing API tool
-        $apiPath = __DIR__ . '/App/Api';
-        new \Tools\API\BuildTableAPI($apiPath, true, [$tableName]);
-        
-        echo "API generated successfully!\n";
+        \Core\Model::clearFileSchemaCache();
+        echo "Cleared all schema cache files.\n";
     }
 
     private function getPort(int $default): int {

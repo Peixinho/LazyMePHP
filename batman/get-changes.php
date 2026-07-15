@@ -35,9 +35,6 @@ if (!$hasUserSession) {
     echo json_encode([
         'success' => false,
         'error' => 'Authentication required',
-        'code' => 'UNAUTHORIZED',
-        'session_status' => session_status(),
-        'session_data' => $_SESSION
     ], JSON_UNESCAPED_UNICODE);
     exit;
 }
@@ -62,17 +59,17 @@ try {
     }
 
     // Get changes from __LOG_DATA table
-    $query = "SELECT 
-                `table`,
+    $query = 'SELECT
+                "table",
                 pk,
                 method,
                 field,
                 dataBefore,
                 dataAfter
-              FROM __LOG_DATA 
+              FROM __LOG_DATA
               WHERE id_log_activity = ?
-              GROUP BY `table`, field, pk, method
-              ORDER BY field";
+              GROUP BY "table", field, pk, method
+              ORDER BY field';
 
     $result = $db->Query($query, [$logId]);
     $changes = [];
@@ -106,28 +103,13 @@ try {
         'log_id' => $logId
     ];
 
-    // Debug output if requested
-    if (isset($_GET['debug']) && $_GET['debug'] == '1') {
-        error_log("Batman get-changes.php debug - Log ID: $logId, Changes: " . count($changes));
-    }
-
     echo json_encode($response, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
 } catch (Exception $e) {
     http_response_code(500);
-    $errorResponse = [
+    echo json_encode([
         'success' => false,
-        'error' => 'Failed to fetch changes: ' . $e->getMessage(),
-        'file' => $e->getFile(),
-        'line' => $e->getLine(),
-        'log_id' => $logId
-    ];
-    
-    // Debug output if requested
-    if (isset($_GET['debug']) && $_GET['debug'] == '1') {
-        error_log("Batman get-changes.php error - " . $e->getMessage());
-    }
-    
-    echo json_encode($errorResponse, JSON_UNESCAPED_UNICODE);
+        'error' => 'Failed to fetch changes',
+    ], JSON_UNESCAPED_UNICODE);
 }
 ?> 
