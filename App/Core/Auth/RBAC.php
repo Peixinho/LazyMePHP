@@ -29,6 +29,8 @@ class RBAC
 {
     /** @var array<string, array<string, list<string>>> user_id → role_name → permissions */
     private static array $cache = [];
+    /** Connection object id => already ensured. Keyed by connection so a swapped/reset DB re-checks. */
+    private static array $tablesEnsured = [];
 
     // -------------------------------------------------------------------------
     // Query-time checks (uses current Auth::id())
@@ -227,7 +229,11 @@ class RBAC
     /** Creates __AUTH_ROLES / __AUTH_ROLE_PERMISSIONS / __AUTH_USER_ROLES on first use. */
     private static function ensureTables(): void
     {
-        $db   = LazyMePHP::DB_CONNECTION();
+        $db  = LazyMePHP::DB_CONNECTION();
+        $key = spl_object_id($db);
+        if (isset(self::$tablesEnsured[$key])) return;
+        self::$tablesEnsured[$key] = true;
+
         $type = strtolower(LazyMePHP::DB_TYPE() ?? 'sqlite');
 
         $db->query(match ($type) {

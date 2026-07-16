@@ -18,6 +18,8 @@ use Core\LazyMePHP;
 class ActivityLogger
 {
     private static array $logdata = [];
+    /** Connection object id => already ensured. Keyed by connection so a swapped/reset DB re-checks. */
+    private static array $tablesEnsured = [];
 
     /** Columns whose values are never written to the audit log. */
     private static function sensitiveColumns(): array
@@ -142,7 +144,11 @@ class ActivityLogger
 
     private static function ensureTables(): void
     {
-        $db   = LazyMePHP::DB_CONNECTION();
+        $db  = LazyMePHP::DB_CONNECTION();
+        $key = spl_object_id($db);
+        if (isset(self::$tablesEnsured[$key])) return;
+        self::$tablesEnsured[$key] = true;
+
         $type = strtolower(LazyMePHP::DB_TYPE() ?? 'sqlite');
 
         $db->query(match ($type) {

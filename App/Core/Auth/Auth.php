@@ -34,6 +34,14 @@ class Auth
     /** Sentinel so we don't re-query after a failed lookup. */
     private static bool $resolved = false;
 
+    /**
+     * ensure*Table() memoization, keyed by connection object id so a swapped/reset
+     * DB connection (e.g. between tests) re-checks instead of being silently skipped.
+     */
+    private static array $refreshTokensTableEnsured = [];
+    private static array $passwordResetsTableEnsured = [];
+    private static array $emailVerificationsTableEnsured = [];
+
     // -------------------------------------------------------------------------
     // Public API
     // -------------------------------------------------------------------------
@@ -504,7 +512,11 @@ class Auth
 
     private static function ensureRefreshTokensTable(): void
     {
-        $db   = \Core\LazyMePHP::DB_CONNECTION();
+        $db  = \Core\LazyMePHP::DB_CONNECTION();
+        $key = spl_object_id($db);
+        if (isset(self::$refreshTokensTableEnsured[$key])) return;
+        self::$refreshTokensTableEnsured[$key] = true;
+
         $type = strtolower(\Core\LazyMePHP::DB_TYPE() ?? 'sqlite');
         $sql  = match ($type) {
             'mysql'  => "CREATE TABLE IF NOT EXISTS `__AUTH_TOKENS` (
@@ -547,7 +559,11 @@ class Auth
 
     private static function ensurePasswordResetsTable(): void
     {
-        $db   = \Core\LazyMePHP::DB_CONNECTION();
+        $db  = \Core\LazyMePHP::DB_CONNECTION();
+        $key = spl_object_id($db);
+        if (isset(self::$passwordResetsTableEnsured[$key])) return;
+        self::$passwordResetsTableEnsured[$key] = true;
+
         $type = strtolower(\Core\LazyMePHP::DB_TYPE() ?? 'sqlite');
         $sql  = match ($type) {
             'mysql'  => "CREATE TABLE IF NOT EXISTS `__AUTH_PASSWORD_RESETS` (
@@ -578,7 +594,11 @@ class Auth
 
     private static function ensureEmailVerificationsTable(): void
     {
-        $db   = \Core\LazyMePHP::DB_CONNECTION();
+        $db  = \Core\LazyMePHP::DB_CONNECTION();
+        $key = spl_object_id($db);
+        if (isset(self::$emailVerificationsTableEnsured[$key])) return;
+        self::$emailVerificationsTableEnsured[$key] = true;
+
         $type = strtolower(\Core\LazyMePHP::DB_TYPE() ?? 'sqlite');
         $sql  = match ($type) {
             'mysql'  => "CREATE TABLE IF NOT EXISTS `__AUTH_EMAIL_VERIFICATIONS` (

@@ -20,7 +20,8 @@ use Core\LazyMePHP;
  */
 class BroadcastChannel
 {
-    private bool $ensured = false;
+    /** Connection object id => already ensured. Keyed by connection so a swapped/reset DB re-checks. */
+    private static array $ensured = [];
     private int $lastPrune = 0;
 
     public function __construct(private readonly string $channel) {}
@@ -210,10 +211,11 @@ class BroadcastChannel
 
     private function ensureTable(): void
     {
-        if ($this->ensured) return;
-        $this->ensured = true;
+        $db  = LazyMePHP::DB_CONNECTION();
+        $key = spl_object_id($db);
+        if (isset(self::$ensured[$key])) return;
+        self::$ensured[$key] = true;
 
-        $db   = LazyMePHP::DB_CONNECTION();
         $type = strtolower($_ENV['DB_TYPE'] ?? 'sqlite');
 
         $sql = match ($type) {

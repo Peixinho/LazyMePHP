@@ -10,6 +10,9 @@ namespace Core;
  */
 class ErrorHandler
 {
+    /** Connection object id => already ensured. Keyed by connection so a swapped/reset DB re-checks. */
+    private static array $errorsTableEnsured = [];
+
     private const ERROR_CODES = [
         'VALIDATION_ERROR' => 422,
         'NOT_FOUND' => 404,
@@ -722,6 +725,10 @@ class ErrorHandler
     /** Creates __LOG_ERRORS on first use. Shared with Core\Helpers\ErrorUtil. */
     public static function ensureErrorsTable($db): void
     {
+        $key = spl_object_id($db);
+        if (isset(self::$errorsTableEnsured[$key])) return;
+        self::$errorsTableEnsured[$key] = true;
+
         $type = strtolower(\Core\LazyMePHP::DB_TYPE() ?? 'sqlite');
 
         $db->Query(match ($type) {

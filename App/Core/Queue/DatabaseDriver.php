@@ -8,11 +8,14 @@ use Core\LazyMePHP;
 
 /**
  * Queue driver backed by the __queue_jobs table.
- * Run `php LazyMePHP migrate` to create the table.
+ * The table is created lazily on first use — see ensureTable().
  * Run `php LazyMePHP queue:work` to process jobs.
  */
 class DatabaseDriver implements QueueDriver
 {
+    /** Connection object id => already ensured. Keyed by connection so a swapped/reset DB re-checks. */
+    private static array $tableEnsured = [];
+
     public function __construct()
     {
         $this->ensureTable();
@@ -25,6 +28,10 @@ class DatabaseDriver implements QueueDriver
 
     private function ensureTable(): void
     {
+        $key = spl_object_id($this->db());
+        if (isset(self::$tableEnsured[$key])) return;
+        self::$tableEnsured[$key] = true;
+
         $type = strtolower(LazyMePHP::DB_TYPE() ?? 'sqlite');
         $sql  = match ($type) {
             'mysql'  => "CREATE TABLE IF NOT EXISTS `__queue_jobs` (

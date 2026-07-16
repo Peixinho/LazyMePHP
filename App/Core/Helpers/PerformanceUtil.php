@@ -14,6 +14,8 @@ class PerformanceUtil
     private static array $timers = [];
     private static array $memorySnapshots = [];
     private static bool $enabled = true;
+    /** Connection object id => already ensured. Keyed by connection so a swapped/reset DB re-checks. */
+    private static array $tableEnsured = [];
 
     /**
      * Initialize performance monitoring settings
@@ -267,6 +269,10 @@ class PerformanceUtil
     /** Creates __LOG_PERFORMANCE on first use. */
     private static function ensureTable($db): void
     {
+        $key = spl_object_id($db);
+        if (isset(self::$tableEnsured[$key])) return;
+        self::$tableEnsured[$key] = true;
+
         $type = strtolower(LazyMePHP::DB_TYPE() ?? 'sqlite');
 
         $db->Query(match ($type) {

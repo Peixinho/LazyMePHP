@@ -16,7 +16,10 @@ class RateLimiter
 {
     private const RATE_LIMIT_TABLE = '__RATE_LIMITS';
     private const CLEANUP_INTERVAL = 3600; // 1 hour
-    
+
+    /** Connection object id => already ensured. Keyed by connection so a swapped/reset DB re-checks. */
+    private static array $tableEnsured = [];
+
     /**
      * Check if request is allowed based on rate limits
      */
@@ -208,6 +211,10 @@ class RateLimiter
     {
         $db = \Core\LazyMePHP::DB_CONNECTION();
         if (!$db) return;
+
+        $key = spl_object_id($db);
+        if (isset(self::$tableEnsured[$key])) return;
+        self::$tableEnsured[$key] = true;
 
         $type = strtolower(\Core\LazyMePHP::DB_TYPE() ?? 'sqlite');
 
