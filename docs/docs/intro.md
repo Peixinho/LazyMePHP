@@ -62,6 +62,10 @@ On every request `LazyMePHP::boot()` (called from `App/Routes/Routes.php`):
 
 No files are generated. Schema introspection happens once per table per process (cached in memory), and optionally pre-warmed to disk for production.
 
+Web requests are handled by `Core\Http\Kernel::handle()` (called from `public/index.php`, right after this boot sequence): it installs a web-specific error handler, loads every route file under `App/Routes/`, buffers the matched route's output, and wraps it in the shared Blade layout. See [Error Handling](./error-handling.md) for how errors are handled differently on the web/API vs. the CLI.
+
+Every table's generic behavior can be overridden per-table without touching the framework — see [Extending & Customizing](./extending.md) for the full list of extension points (controllers, views, routes, observers, and more).
+
 ## Requirements
 
 - PHP 8.1+

@@ -120,7 +120,7 @@ arr($users)->pluck('email')->all()  // ['a@…', 'b@…']
 
 ### `__()` / `trans()`
 
-Translate a key via the [Translator](./configuration.md).
+Translate a key via the [Translator](./translation.md).
 
 ```php
 __('auth.failed')
