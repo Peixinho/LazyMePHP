@@ -15,7 +15,7 @@ PHP 8.1+ framework built on **"the database schema is the application."** Point 
 - `App/Core/Http/Kernel.php` — web front controller (`public/index.php`).
 - `App/Controllers/`, `App/Views/`, `App/Routes/`, `App/Api/`, `App/Models/`, `App/Observers/`, `App/Console/Commands/` — **all hand-written/scaffolded, not generated**. Must be tracked in git (see Quirks below — `.gitignore` used to blanket-ignore these).
 - `LazyMePHP` (root script) — CLI entry point, `php LazyMePHP <command>`.
-- `docs/` — Docusaurus site. `docs/docs/*.md` is markdown source; `docs/build/` is the **committed, pre-built static HTML** the running app serves at `/docs` via `Core\DocsServer`. Rebuild with `cd docs && npm run build` after editing `docs/docs/*.md` — the app itself never needs npm/Node, only doc authoring does.
+- `docs/` — Docusaurus site. `docs/docs/*.md` is markdown source; `docs/build/` is the **committed, pre-built static HTML** the running app serves at `/docs` via `Core\DocsServer`. Rebuild it with `cd docs && DOCS_BASE_URL=/docs/ npm run build` after editing `docs/docs/*.md` — the `DOCS_BASE_URL` override matters, plain `npm run build` targets public GitHub Pages hosting (`baseUrl=/LazyMePHP/`) instead and will break the in-app viewer if committed. The app itself never needs npm/Node, only doc authoring does. Full explanation: `docs/README.md`.
 
 ## The one pattern that explains most of the framework
 

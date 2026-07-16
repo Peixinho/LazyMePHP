@@ -6,8 +6,14 @@ const config = {
   tagline: 'The database schema is the application.',
   favicon: 'img/favicon.ico',
 
-  url: 'https://peixinho.github.io',
-  baseUrl: '/docs/',
+  // Public hosting (GitHub Pages project site) is the default target — just
+  // `npm run deploy` and it's live at https://peixinho.github.io/LazyMePHP/.
+  // The copy embedded in the running app (served at /docs by Core\Http\Kernel)
+  // needs a different baseUrl since it's mounted under a path prefix instead
+  // of at its own domain root — build that one with:
+  //   DOCS_BASE_URL=/docs/ npm run build
+  url: process.env.DOCS_URL || 'https://peixinho.github.io',
+  baseUrl: process.env.DOCS_BASE_URL || '/LazyMePHP/',
 
   organizationName: 'Peixinho',
   projectName: 'LazyMePHP',
