@@ -25,7 +25,7 @@ function internalTableExists(string $table): bool
     return (bool) $result->fetchArray();
 }
 
-test('internal logging/rate-limit/RBAC migrations create the expected tables on sqlite', function () {
+test('internal system-table migrations create the expected tables on sqlite', function () {
     $files = glob(__DIR__ . '/../../database/migrations/2026_07_16_*.php');
     expect($files)->not->toBeEmpty();
     sort($files);
@@ -44,6 +44,11 @@ test('internal logging/rate-limit/RBAC migrations create the expected tables on 
         '__AUTH_ROLES',
         '__AUTH_ROLE_PERMISSIONS',
         '__AUTH_USER_ROLES',
+        '__AUTH_TOKENS',
+        '__AUTH_PASSWORD_RESETS',
+        '__AUTH_EMAIL_VERIFICATIONS',
+        '__queue_jobs',
+        '__broadcast_messages',
     ];
 
     foreach ($expected as $table) {
@@ -66,4 +71,7 @@ test('down migrations drop the tables they create', function () {
 
     expect(internalTableExists('__LOG_ACTIVITY'))->toBeFalse();
     expect(internalTableExists('__AUTH_ROLES'))->toBeFalse();
+    expect(internalTableExists('__AUTH_TOKENS'))->toBeFalse();
+    expect(internalTableExists('__queue_jobs'))->toBeFalse();
+    expect(internalTableExists('__broadcast_messages'))->toBeFalse();
 });
