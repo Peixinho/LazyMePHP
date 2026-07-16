@@ -166,6 +166,7 @@ UserResource::<span class="fn">fromPaginator</span>($page)-><span class="fn">res
         </div>
 
         <div id="lm-paginate" class="lm-snippet">
+@verbatim
 <pre><span class="cm">// In your controller</span>
 $page = Model::<span class="fn">query</span>(<span class="st">'products'</span>)-><span class="fn">paginate</span>(<span class="nu">20</span>, (int)($_GET[<span class="st">'page'</span>] ?? <span class="nu">1</span>));
 
@@ -177,7 +178,8 @@ $page = Model::<span class="fn">query</span>(<span class="st">'products'</span>)
     &lt;p&gt;{{ $product->name }}&lt;/p&gt;
 @endforeach
 
-@pagination($page)   {{-- renders prev/next/numbered page links --}}</pre>
+@pagination($page)   <span class="cm">// renders prev/next/numbered page links</span></pre>
+@endverbatim
         </div>
 
         <div id="lm-notify" class="lm-snippet">

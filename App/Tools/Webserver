@@ -61,8 +61,14 @@ $contentTypes = [
 // Log initial request
 logDebug("REQUEST_URI: {$_SERVER['REQUEST_URI']}");
 
-// Check if file exists in public directory
-if (file_exists($publicDir . '/' . $_SERVER['REQUEST_URI'])) {
+// Check if a real file (not a directory) exists in the public directory.
+// is_file(), not file_exists(): file_exists() also matches directories, and
+// "/" resolves to $publicDir . '//' — the docroot itself — which always
+// exists. That falsely triggered PHP's built-in "serve as-is" path for every
+// "/" request, bypassing the routing below entirely and, as a side effect,
+// running with cwd=public/ instead of the project root (breaking anything
+// using a relative path, e.g. a relative DB_FILE_PATH in .env).
+if (is_file($publicDir . '/' . $_SERVER['REQUEST_URI'])) {
     logDebug("Serving static file from public: {$_SERVER['REQUEST_URI']}");
     return false; // serve the requested resource as-is
 }
