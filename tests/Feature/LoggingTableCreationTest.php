@@ -1,6 +1,11 @@
 <?php
 
 use Core\LazyMePHP;
+use Core\Helpers\ActivityLogger;
+use Core\Helpers\PerformanceUtil;
+use Core\Security\RateLimiter;
+use Core\Auth\RBAC;
+use Core\ErrorHandler;
 
 beforeEach(function () {
     $_ENV['DB_TYPE'] = 'sqlite';
@@ -25,53 +30,36 @@ function internalTableExists(string $table): bool
     return (bool) $result->fetchArray();
 }
 
-test('internal system-table migrations create the expected tables on sqlite', function () {
-    $files = glob(__DIR__ . '/../../database/migrations/2026_07_16_*.php');
-    expect($files)->not->toBeEmpty();
-    sort($files);
+test('ActivityLogger creates __LOG_ACTIVITY and __LOG_DATA on first use', function () {
+    ActivityLogger::logData('users', ['name' => ['old', 'new']], '1', 'UPDATE');
+    ActivityLogger::logActivity();
 
-    foreach ($files as $file) {
-        $migration = require $file;
-        ($migration['up'])(LazyMePHP::DB_CONNECTION());
-    }
-
-    $expected = [
-        '__LOG_ACTIVITY',
-        '__LOG_DATA',
-        '__LOG_ERRORS',
-        '__LOG_PERFORMANCE',
-        '__RATE_LIMITS',
-        '__AUTH_ROLES',
-        '__AUTH_ROLE_PERMISSIONS',
-        '__AUTH_USER_ROLES',
-        '__AUTH_TOKENS',
-        '__AUTH_PASSWORD_RESETS',
-        '__AUTH_EMAIL_VERIFICATIONS',
-        '__queue_jobs',
-        '__broadcast_messages',
-    ];
-
-    foreach ($expected as $table) {
-        expect(internalTableExists($table))->toBeTrue("Table $table should exist");
-    }
+    expect(internalTableExists('__LOG_ACTIVITY'))->toBeTrue();
+    expect(internalTableExists('__LOG_DATA'))->toBeTrue();
 });
 
-test('down migrations drop the tables they create', function () {
-    $files = glob(__DIR__ . '/../../database/migrations/2026_07_16_*.php');
-    sort($files);
+test('ErrorHandler::ensureErrorsTable creates __LOG_ERRORS on first use', function () {
+    ErrorHandler::ensureErrorsTable(LazyMePHP::DB_CONNECTION());
 
-    foreach ($files as $file) {
-        $migration = require $file;
-        ($migration['up'])(LazyMePHP::DB_CONNECTION());
-    }
-    foreach (array_reverse($files) as $file) {
-        $migration = require $file;
-        ($migration['down'])(LazyMePHP::DB_CONNECTION());
-    }
+    expect(internalTableExists('__LOG_ERRORS'))->toBeTrue();
+});
 
-    expect(internalTableExists('__LOG_ACTIVITY'))->toBeFalse();
-    expect(internalTableExists('__AUTH_ROLES'))->toBeFalse();
-    expect(internalTableExists('__AUTH_TOKENS'))->toBeFalse();
-    expect(internalTableExists('__queue_jobs'))->toBeFalse();
-    expect(internalTableExists('__broadcast_messages'))->toBeFalse();
+test('PerformanceUtil creates __LOG_PERFORMANCE on first use', function () {
+    PerformanceUtil::logSlowOperation('test_op', 123.4);
+
+    expect(internalTableExists('__LOG_PERFORMANCE'))->toBeTrue();
+});
+
+test('Security\RateLimiter creates __RATE_LIMITS on first use', function () {
+    RateLimiter::isAllowed('test_action', 'test_id');
+
+    expect(internalTableExists('__RATE_LIMITS'))->toBeTrue();
+});
+
+test('RBAC creates its three tables on first use', function () {
+    RBAC::createRole('test_role', 'desc');
+
+    expect(internalTableExists('__AUTH_ROLES'))->toBeTrue();
+    expect(internalTableExists('__AUTH_ROLE_PERMISSIONS'))->toBeTrue();
+    expect(internalTableExists('__AUTH_USER_ROLES'))->toBeTrue();
 });

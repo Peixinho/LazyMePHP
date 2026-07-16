@@ -9,7 +9,7 @@ use Core\LazyMePHP;
 /**
  * Role-Based Access Control.
  *
- * Requires three system tables (created via `php lazymephp migrate`):
+ * Uses three system tables, created lazily on first use (see ensureTables()):
  *   __AUTH_ROLES             — (id, name, description)
  *   __AUTH_ROLE_PERMISSIONS  — (role_id, permission)
  *   __AUTH_USER_ROLES        — (user_id, role_id)
@@ -56,6 +56,7 @@ class RBAC
 
     public static function createRole(string $name, string $description = ''): void
     {
+        self::ensureTables();
         $db = LazyMePHP::DB_CONNECTION();
         $db->query(
             'INSERT INTO __AUTH_ROLES (name, description) SELECT ?, ? WHERE NOT EXISTS (SELECT 1 FROM __AUTH_ROLES WHERE name = ?)',
@@ -65,6 +66,7 @@ class RBAC
 
     public static function deleteRole(string $name): void
     {
+        self::ensureTables();
         $db = LazyMePHP::DB_CONNECTION();
         $r  = $db->query('SELECT id FROM __AUTH_ROLES WHERE name = ?', [$name]);
         $row = $r->fetchArray();
@@ -83,6 +85,7 @@ class RBAC
 
     public static function grantPermission(string $roleName, string $permission): void
     {
+        self::ensureTables();
         $roleId = self::roleId($roleName);
         if ($roleId === null) {
             throw new \InvalidArgumentException("Role '$roleName' does not exist.");
@@ -97,6 +100,7 @@ class RBAC
 
     public static function revokePermission(string $roleName, string $permission): void
     {
+        self::ensureTables();
         $roleId = self::roleId($roleName);
         if ($roleId === null) return;
         LazyMePHP::DB_CONNECTION()->query(
@@ -112,6 +116,7 @@ class RBAC
 
     public static function assignRole(mixed $userId, string $roleName): void
     {
+        self::ensureTables();
         $roleId = self::roleId($roleName);
         if ($roleId === null) {
             throw new \InvalidArgumentException("Role '$roleName' does not exist.");
@@ -126,6 +131,7 @@ class RBAC
 
     public static function removeRole(mixed $userId, string $roleName): void
     {
+        self::ensureTables();
         $roleId = self::roleId($roleName);
         if ($roleId === null) return;
         LazyMePHP::DB_CONNECTION()->query(
@@ -160,6 +166,7 @@ class RBAC
     /** List all defined roles. @return list<array{id:int,name:string,description:string}> */
     public static function allRoles(): array
     {
+        self::ensureTables();
         $r    = LazyMePHP::DB_CONNECTION()->query('SELECT id, name, description FROM __AUTH_ROLES ORDER BY name');
         $rows = [];
         while ($row = $r->fetchArray()) {
@@ -193,6 +200,7 @@ class RBAC
         self::$cache[$key] = [];
 
         try {
+            self::ensureTables();
             $db = LazyMePHP::DB_CONNECTION();
             $r  = $db->query(
                 'SELECT r.name AS role_name, p.permission
@@ -214,5 +222,75 @@ class RBAC
         } catch (\Throwable) {
             // Tables may not exist yet — treat as no roles
         }
+    }
+
+    /** Creates __AUTH_ROLES / __AUTH_ROLE_PERMISSIONS / __AUTH_USER_ROLES on first use. */
+    private static function ensureTables(): void
+    {
+        $db   = LazyMePHP::DB_CONNECTION();
+        $type = strtolower(LazyMePHP::DB_TYPE() ?? 'sqlite');
+
+        $db->query(match ($type) {
+            'mysql' => "CREATE TABLE IF NOT EXISTS `__AUTH_ROLES` (
+                `id`          INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                `name`        VARCHAR(100) NOT NULL UNIQUE,
+                `description` VARCHAR(255) NOT NULL DEFAULT ''
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            'mssql' => "IF NOT EXISTS (SELECT * FROM sys.tables WHERE name='__AUTH_ROLES')
+                CREATE TABLE [__AUTH_ROLES] (
+                    [id]          INT IDENTITY(1,1) PRIMARY KEY,
+                    [name]        NVARCHAR(100) NOT NULL UNIQUE,
+                    [description] NVARCHAR(255) NOT NULL DEFAULT ''
+                )",
+            default => "CREATE TABLE IF NOT EXISTS \"__AUTH_ROLES\" (
+                \"id\"          INTEGER PRIMARY KEY AUTOINCREMENT,
+                \"name\"        TEXT NOT NULL UNIQUE,
+                \"description\" TEXT NOT NULL DEFAULT ''
+            )",
+        });
+
+        $db->query(match ($type) {
+            'mysql' => "CREATE TABLE IF NOT EXISTS `__AUTH_ROLE_PERMISSIONS` (
+                `role_id`    INT          NOT NULL,
+                `permission` VARCHAR(255) NOT NULL,
+                PRIMARY KEY (`role_id`, `permission`),
+                FOREIGN KEY (`role_id`) REFERENCES `__AUTH_ROLES`(`id`) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            'mssql' => "IF NOT EXISTS (SELECT * FROM sys.tables WHERE name='__AUTH_ROLE_PERMISSIONS')
+                CREATE TABLE [__AUTH_ROLE_PERMISSIONS] (
+                    [role_id]    INT           NOT NULL,
+                    [permission] NVARCHAR(255) NOT NULL,
+                    PRIMARY KEY ([role_id], [permission]),
+                    FOREIGN KEY ([role_id]) REFERENCES [__AUTH_ROLES]([id]) ON DELETE CASCADE
+                )",
+            default => "CREATE TABLE IF NOT EXISTS \"__AUTH_ROLE_PERMISSIONS\" (
+                \"role_id\"    INTEGER NOT NULL,
+                \"permission\" TEXT    NOT NULL,
+                PRIMARY KEY (\"role_id\", \"permission\"),
+                FOREIGN KEY (\"role_id\") REFERENCES \"__AUTH_ROLES\"(\"id\") ON DELETE CASCADE
+            )",
+        });
+
+        $db->query(match ($type) {
+            'mysql' => "CREATE TABLE IF NOT EXISTS `__AUTH_USER_ROLES` (
+                `user_id` VARCHAR(255) NOT NULL,
+                `role_id` INT          NOT NULL,
+                PRIMARY KEY (`user_id`, `role_id`),
+                FOREIGN KEY (`role_id`) REFERENCES `__AUTH_ROLES`(`id`) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            'mssql' => "IF NOT EXISTS (SELECT * FROM sys.tables WHERE name='__AUTH_USER_ROLES')
+                CREATE TABLE [__AUTH_USER_ROLES] (
+                    [user_id] NVARCHAR(255) NOT NULL,
+                    [role_id] INT           NOT NULL,
+                    PRIMARY KEY ([user_id], [role_id]),
+                    FOREIGN KEY ([role_id]) REFERENCES [__AUTH_ROLES]([id]) ON DELETE CASCADE
+                )",
+            default => "CREATE TABLE IF NOT EXISTS \"__AUTH_USER_ROLES\" (
+                \"user_id\" TEXT    NOT NULL,
+                \"role_id\" INTEGER NOT NULL,
+                PRIMARY KEY (\"user_id\", \"role_id\"),
+                FOREIGN KEY (\"role_id\") REFERENCES \"__AUTH_ROLES\"(\"id\") ON DELETE CASCADE
+            )",
+        });
     }
 }

@@ -152,6 +152,8 @@ class ErrorUtil
             $db = LazyMePHP::DB_CONNECTION();
             if (!$db) return;
 
+            \Core\ErrorHandler::ensureErrorsTable($db);
+
             // Map error type to severity
             $severity = match($errorData['type']) {
                 E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR => 'ERROR',
