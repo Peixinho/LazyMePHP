@@ -16,13 +16,10 @@ use Core\Exceptions\ApiException;
 use Core\LazyMePHP;
 use Pecee\SimpleRouter\SimpleRouter;
 
-require_once __DIR__ . '/../../vendor/autoload.php';
-
-if (file_exists(__DIR__ . '/../../.env')) {
-    \Dotenv\Dotenv::createImmutable(__DIR__ . '/../../')->load();
-}
-
-new LazyMePHP();
+// Shared with the web front controller (public/index.php): composer autoload, .env,
+// error_reporting/timezone, LazyMePHP init, ErrorUtil error/exception handlers, debug
+// toolbar, model-observer auto-discovery, fatal-error shutdown handler.
+require_once __DIR__ . '/../../App/bootstrap.php';
 
 // CORS — only allow explicitly configured origins; wildcard is not permitted.
 $allowedOrigin = $_ENV['APP_CORS_ORIGIN'] ?? '';
