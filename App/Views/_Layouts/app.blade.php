@@ -6,6 +6,7 @@
     <meta name="description" content="@yield('description', '')">
     @csrfMeta
     <title>@yield('title', 'LazyMePHP')</title>
+    <link rel="icon" href="/favicon.ico">
     <link rel="stylesheet" href="/css/css.css">
     <style>
         html, body {

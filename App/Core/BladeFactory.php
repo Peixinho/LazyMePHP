@@ -40,7 +40,7 @@ class BladeFactory
             // Share global settings here if you want
             self::$blade->share('settings', [
                 'appName' => $_ENV['APP_NAME'] ?? 'LazyMePHP',
-                'appLogo' => '/img/logo.png',
+                'appLogo' => '/img/logo.svg',
             ]);
         }
         return self::$blade;

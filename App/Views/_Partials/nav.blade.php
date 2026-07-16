@@ -201,7 +201,7 @@
     <div class="nav-container">
         <div class="nav-brand">
             <a href="/">
-                <img src="/img/logo.png" alt="LazyMePHP" class="nav-logo">
+                <img src="/img/logo.svg" alt="LazyMePHP" class="nav-logo">
             </a>
         </div>
         

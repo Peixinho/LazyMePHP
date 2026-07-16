@@ -1,5 +1,8 @@
 
-![LazyMePHP](https://raw.githubusercontent.com/Peixinho/LazyMePHP/main/public/img/logo.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Peixinho/LazyMePHP/main/public/img/logo-dark.png">
+  <img src="https://raw.githubusercontent.com/Peixinho/LazyMePHP/main/public/img/logo.png" alt="LazyMePHP">
+</picture>
 
 LazyMePHP is a PHP 8+ rapid-development framework built around a single idea: **the database schema is the application**. Point it at a database and you get a full CRUD web UI, a GraphQL API, JWT-authenticated REST endpoints, and a developer dashboard — with zero code generation.
 

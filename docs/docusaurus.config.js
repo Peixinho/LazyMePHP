@@ -43,6 +43,11 @@ const config = {
     ({
       navbar: {
         title: 'LazyMePHP',
+        logo: {
+          alt: 'LazyMePHP',
+          src: 'img/logo.svg',
+          srcDark: 'img/logo-dark.svg',
+        },
         items: [
           {
             type: 'docSidebar',
