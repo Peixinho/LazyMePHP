@@ -727,13 +727,15 @@ Every table gets these routes automatically:
 | POST | `/{table}/{id}` | Update |
 | POST | `/{table}/{id}/delete` | Delete |
 
+These 6 routes are fixed — to add, drop, or reshape routes for a table entirely (not just what happens inside them), create `App/Routes/{table}.php` or scaffold one with `php LazyMePHP make:router <table>`. Its presence fully replaces the standard 6 for that table.
+
 Views are rendered by generic Blade templates in `App/Views/_Crud/`. To override a table's view, create `App/Views/{TableName}/index.blade.php` or `edit.blade.php` — the controller resolves to the table-specific file first, then falls back to the generic template.
 
 ---
 
 ## Customising behaviour — `Core\CrudController`
 
-Create `App/Controllers/{TableName}.php` to override behaviour for a specific table — or scaffold it with `php LazyMePHP make:controller <table>` (add `--hidden` to exclude the table from auto-routing and GraphQL). Routes and the GraphQL API need no separate scaffolding: both are generated at runtime from this same controller.
+Create `App/Controllers/{TableName}.php` to override behaviour for a specific table — or scaffold it with `php LazyMePHP make:controller <table>` (add `--hidden` to exclude the table from auto-routing and GraphQL). The GraphQL API needs no separate scaffolding: it's generated at runtime from this same controller.
 
 ```php
 namespace Controllers;
@@ -1148,6 +1150,7 @@ php LazyMePHP make:model <Name>          Scaffold a Model subclass
 php LazyMePHP make:controller <table>    Scaffold App/Controllers/{Table}.php extending CrudController
 php LazyMePHP make:controller <table> --hidden   ...and exclude it from auto-routing + GraphQL
 php LazyMePHP make:view <table>          Scaffold App/Views/{table}/index.blade.php + edit.blade.php
+php LazyMePHP make:router <table>        Scaffold App/Routes/{table}.php — fully replaces its 6 standard routes
 php LazyMePHP make:all <table>           Scaffold both the controller and the views for a table
 php LazyMePHP make:seeder <Name>         Scaffold a Seeder class in App/Seeders/
 php LazyMePHP make:factory <Name>        Scaffold a Factory class in App/Factories/

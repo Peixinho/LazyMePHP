@@ -19,6 +19,8 @@ Every table in the database gets a full web UI automatically. No code generation
 | POST | `/{table}/{id}` | Update |
 | POST | `/{table}/{id}/delete` | Delete |
 
+These 6 routes are fixed — `CrudController` hooks change what happens *inside* them, not the route set itself. To add, drop, or reshape routes for a table entirely, create `App/Routes/{table}.php` (or scaffold one with `php LazyMePHP make:router <table>`); its presence fully replaces the standard 6 for that table. See [Routing](./routing#overriding-the-auto-wired-routes).
+
 ## Views
 
 Generic Blade templates live in `App/Views/_Crud/`. To override for a specific table, create table-specific files — the controller resolves to these first:

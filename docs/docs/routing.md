@@ -6,7 +6,7 @@ sidebar_position: 3
 
 # Routing
 
-LazyMePHP uses [Pecee Simple Router](https://github.com/skipperbent/simple-php-router) for URL routing. Route files live in `App/Routes/` — every `.php` file in that directory is loaded automatically.
+LazyMePHP uses [Pecee Simple Router](https://github.com/skipperbent/simple-php-router) for URL routing. Every top-level `.php` file directly in `App/Routes/` is loaded automatically at boot (`public/index.php`) — `App/Routes/Routes.php` is where custom routes and `LazyMePHP::boot()` normally live, but any file you add there is picked up the same way.
 
 ## Basic Routes
 
@@ -146,3 +146,35 @@ class SecretAuditLog extends \Core\CrudController
 ```
 
 See [CRUD Web UI](./crud-ui) for full customisation options.
+
+## Overriding the Auto-Wired Routes
+
+The 6 standard routes above cover the common case, but they're fixed — you can't add an extra endpoint or drop one of them through `CrudController` hooks alone, since those only change what happens *inside* a route, not the route set itself.
+
+If a table needs different routes entirely (extra endpoints, a different URL shape, fewer than 6 actions), create `App/Routes/{table}.php`. Its presence completely replaces the standard 6-route registration for that table — `AutoRouter` requires this file instead of registering its own routes when it exists.
+
+```bash
+php LazyMePHP make:router products
+```
+
+This scaffolds `App/Routes/products.php` pre-filled with the current 6 standard routes as an editable copy — delete what you don't need, add what you do:
+
+```php
+<?php
+// App/Routes/products.php
+use Core\CrudController;
+use Pecee\SimpleRouter\SimpleRouter;
+
+$table = 'products';
+
+SimpleRouter::get("/$table", function () use ($table) { /* ... */ });
+// ...
+
+// Add your own routes:
+SimpleRouter::get("/$table/featured", function () {
+    $featured = \Core\Model::query('products')->where('featured', 1)->get();
+    // render view ...
+});
+```
+
+Since every top-level file in `App/Routes/` is loaded at boot regardless (see above), `AutoRouter` uses `require_once` when picking up an override — no risk of routes being registered twice.

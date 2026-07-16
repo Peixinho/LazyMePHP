@@ -27,14 +27,29 @@ use eftec\bladeone\BladeOne;
  *
  * To override behaviour for a specific table, create App/Controllers/TableName.php
  * extending Core\CrudController and implement the desired hooks.
+ *
+ * To replace the routes themselves (different URLs, extra endpoints, dropped
+ * actions), create App/Routes/{table}.php — its presence completely replaces
+ * the standard 6-route registration below for that table. Scaffold a starting
+ * point with `php LazyMePHP make:router <table>`.
  */
 class AutoRouter
 {
     /**
-     * Register the 6 standard CRUD web routes for a single table.
+     * Register the 6 standard CRUD web routes for a single table, unless
+     * App/Routes/{table}.php exists, in which case that file fully replaces them.
      */
     public static function register(string $table, ?BladeOne $blade = null): void
     {
+        // require_once (not require): public/index.php also globs every top-level
+        // App/Routes/*.php file at boot, so this file may already have been loaded
+        // by the time AutoRouter reaches it — require_once keeps it a no-op either way.
+        $override = __DIR__ . "/../Routes/{$table}.php";
+        if (is_file($override)) {
+            require_once $override;
+            return;
+        }
+
         SimpleRouter::get("/$table", function () use ($table): void {
             $request    = new Request();
             $controller = CrudController::forTable($table, $request);

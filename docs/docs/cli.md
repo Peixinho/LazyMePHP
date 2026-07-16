@@ -35,7 +35,8 @@ php LazyMePHP make:model <Name> --table=users    # Model stub with schema-intros
 php LazyMePHP make:controller <table>            # App/Controllers/{Table}.php extending CrudController
 php LazyMePHP make:controller <table> --hidden   # ...and exclude it from auto-routing + GraphQL
 php LazyMePHP make:view <table>                  # App/Views/{table}/index.blade.php + edit.blade.php
-php LazyMePHP make:all <table>                   # both make:controller and make:view for a table
+php LazyMePHP make:router <table>                # App/Routes/{table}.php — fully replaces its 6 standard routes
+php LazyMePHP make:all <table>                   # make:view + make:controller for a table
 php LazyMePHP make:seeder <Name>                 # Seeder stub in App/Seeders/
 php LazyMePHP make:factory <Name>                # Factory stub in App/Factories/
 php LazyMePHP make:observer <Name>               # ModelEvents observer stub (auto-registered on boot)
@@ -46,7 +47,9 @@ php LazyMePHP make:mail <Name>                   # Mailable stub in App/Mail/
 php LazyMePHP make:test <Name>                   # Pest feature test stub in tests/Feature/
 ```
 
-Routes and the GraphQL API need no scaffolding of their own — both are generated at runtime (`Core\AutoRouter`, `Core\GraphQL\SchemaBuilder`) from whichever controller `make:controller`/`make:all` creates. Override `foreignKeys()`, `exposedFields()`, or set `public static bool $hidden = true` on that controller to customise or opt a table out entirely — see [CRUD Web UI](./crud-ui) for the full list of hooks.
+The GraphQL API needs no scaffolding of its own — it's generated at runtime (`Core\GraphQL\SchemaBuilder`) from whichever controller `make:controller`/`make:all` creates. Override `foreignKeys()`, `exposedFields()`, or set `public static bool $hidden = true` on that controller to customise or opt a table out entirely — see [CRUD Web UI](./crud-ui) for the full list of hooks.
+
+Routes are generated at runtime too (`Core\AutoRouter`) and don't need scaffolding for the standard 6 CRUD actions — but if a table needs different routes entirely, `make:router` gives you a real, editable route file that fully replaces the standard set for that table. See [Routing](./routing#overriding-the-auto-wired-routes).
 
 ### Migration name conventions
 

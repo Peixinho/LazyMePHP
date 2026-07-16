@@ -51,7 +51,8 @@ class LazyMeCLI {
         'make:migration'   => 'Scaffold a new migration file  [name]',
         'make:view'        => 'Scaffold App/Views/{table}/index.blade.php + edit.blade.php  [table]',
         'make:controller'  => 'Scaffold a CrudController subclass for a table  [table] [--hidden]',
-        'make:all'         => 'Scaffold both view and controller for a table  [table] [--hidden]',
+        'make:router'      => 'Scaffold App/Routes/{table}.php — fully replaces its 6 standard routes  [table]',
+        'make:all'         => 'Scaffold view + controller for a table  [table] [--hidden]',
         'schema:cache'     => 'Cache DB schema to files (avoids per-request introspection)',
         'schema:clear'     => 'Remove cached schema files',
         'db:seed'          => 'Run database seeders  [--class=Name]',
@@ -167,6 +168,13 @@ class LazyMeCLI {
                     exit(1);
                 }
                 $this->makeController($tableName, $hiddenFlag);
+                break;
+            case 'make:router':
+                if (!$tableName) {
+                    echo "Usage: php lazymephp make:router <table>\n";
+                    exit(1);
+                }
+                $this->makeRouter($tableName);
                 break;
             case 'make:all':
                 if (!$tableName) {
@@ -494,6 +502,85 @@ PHP);
         if ($hidden) {
             echo "  '{$tableName}' is hidden — no CRUD routes or GraphQL exposure will be registered for it.\n";
         }
+    }
+
+    private function makeRouter(string $tableName): void {
+        $dir  = __DIR__ . '/App/Routes';
+        $file = "$dir/{$tableName}.php";
+        if (file_exists($file)) {
+            echo "Router override already exists: $file\n";
+            exit(1);
+        }
+
+        file_put_contents($file, <<<PHP
+<?php
+
+declare(strict_types=1);
+
+// Fully replaces AutoRouter's 6 standard routes for '{$tableName}' — nothing
+// from the standard set runs unless you keep it below. Delete what you don't
+// need, add whatever you do.
+
+use Core\CrudController;
+use Core\Http\Request;
+use Core\LazyMePHP;
+use Core\BladeFactory;
+use Core\Helpers\Helper;
+use Core\Security\CsrfMiddleware;
+use Pecee\SimpleRouter\SimpleRouter;
+
+\$table = '{$tableName}';
+
+SimpleRouter::get("/\$table", function () use (\$table): void {
+    \$request    = new Request();
+    \$controller = CrudController::forTable(\$table, \$request);
+    \$data       = \$controller->index((int)(\$request->get('page') ?? 1), LazyMePHP::NRESULTS());
+    echo BladeFactory::render(\$controller->viewName('index'), array_merge(\$data, [
+        'current' => \$request->get('page') ?? 1,
+        'limit'   => LazyMePHP::NRESULTS(),
+    ]));
+});
+
+SimpleRouter::get("/\$table/new", function () use (\$table): void {
+    \$request    = new Request();
+    \$controller = CrudController::forTable(\$table, \$request);
+    echo BladeFactory::render(\$controller->viewName('edit'), \$controller->edit());
+});
+
+SimpleRouter::get("/\$table/{id}/edit", function (string \$id) use (\$table): void {
+    \$request    = new Request();
+    \$controller = CrudController::forTable(\$table, \$request);
+    echo BladeFactory::render(\$controller->viewName('edit'), \$controller->edit((int)\$id));
+});
+
+SimpleRouter::post("/\$table/{id}", function (string \$id) use (\$table): void {
+    \$request    = new Request();
+    \$controller = CrudController::forTable(\$table, \$request);
+    \$controller->save((int)\$id);
+    Helper::redirect("/\$table");
+})->addMiddleware(CsrfMiddleware::class);
+
+SimpleRouter::post("/\$table", function () use (\$table): void {
+    \$request    = new Request();
+    \$controller = CrudController::forTable(\$table, \$request);
+    \$controller->save();
+    Helper::redirect("/\$table");
+})->addMiddleware(CsrfMiddleware::class);
+
+SimpleRouter::post("/\$table/{id}/delete", function (string \$id) use (\$table): void {
+    \$request    = new Request();
+    \$controller = CrudController::forTable(\$table, \$request);
+    \$controller->delete((int)\$id);
+    Helper::redirect("/\$table");
+})->addMiddleware(CsrfMiddleware::class);
+
+// Add your own routes below:
+// SimpleRouter::get("/\$table/featured", function () { ... });
+
+PHP);
+
+        echo "Created: $file\n";
+        echo "  AutoRouter will now use this file instead of the standard 6 routes for '{$tableName}'.\n";
     }
 
     private function makeAll(string $tableName, bool $hiddenFlag): void {
