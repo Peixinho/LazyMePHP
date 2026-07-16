@@ -141,7 +141,7 @@ class ModelQuery
     public function having(string $column, mixed $value, string $operator = '='): static
     {
         $prefix                = $this->havingClauses ? ' AND ' : '';
-        $this->havingClauses[] = "{$prefix}\"{$column}\" {$operator} ?";
+        $this->havingClauses[] = "{$prefix}{$this->quoteKey($column)} {$operator} ?";
         $this->havingBindings[] = $value;
         return $this;
     }
@@ -224,7 +224,7 @@ class ModelQuery
     public function where(string $column, mixed $value, string $operator = '=', string $logic = 'AND'): static
     {
         $connector = $this->hasCondition ? " $logic " : '';
-        $this->conditions[] = "{$connector}\"{$column}\" {$operator} ?";
+        $this->conditions[] = "{$connector}{$this->quoteKey($column)} {$operator} ?";
         $this->bindings[]   = $value;
         $this->hasCondition = true;
         return $this;
@@ -243,7 +243,7 @@ class ModelQuery
     public function whereNull(string $column, string $logic = 'AND'): static
     {
         $connector = $this->hasCondition ? " $logic " : '';
-        $this->conditions[] = "{$connector}\"{$column}\" IS NULL";
+        $this->conditions[] = "{$connector}{$this->quoteKey($column)} IS NULL";
         $this->hasCondition = true;
         return $this;
     }
@@ -251,7 +251,7 @@ class ModelQuery
     public function whereNotNull(string $column, string $logic = 'AND'): static
     {
         $connector = $this->hasCondition ? " $logic " : '';
-        $this->conditions[] = "{$connector}\"{$column}\" IS NOT NULL";
+        $this->conditions[] = "{$connector}{$this->quoteKey($column)} IS NOT NULL";
         $this->hasCondition = true;
         return $this;
     }
@@ -271,7 +271,7 @@ class ModelQuery
             return $this;
         }
         $placeholders = implode(', ', array_fill(0, count($values), '?'));
-        $this->conditions[] = "{$connector}\"{$column}\" IN ({$placeholders})";
+        $this->conditions[] = "{$connector}{$this->quoteKey($column)} IN ({$placeholders})";
         array_push($this->bindings, ...$values);
         $this->hasCondition = true;
         return $this;
@@ -350,13 +350,13 @@ class ModelQuery
     public function orderBy(string $column, string $direction = 'ASC'): static
     {
         $d = strtoupper($direction) === 'DESC' ? 'DESC' : 'ASC';
-        $this->orderClause .= ($this->orderClause ? ', ' : '') . "\"{$column}\" {$d}";
+        $this->orderClause .= ($this->orderClause ? ', ' : '') . "{$this->quoteKey($column)} {$d}";
         return $this;
     }
 
     public function groupBy(string $column): static
     {
-        $this->groupClause .= ($this->groupClause ? ', ' : '') . "\"{$column}\"";
+        $this->groupClause .= ($this->groupClause ? ', ' : '') . $this->quoteKey($column);
         return $this;
     }
 

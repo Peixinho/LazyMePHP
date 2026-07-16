@@ -386,7 +386,7 @@ class LazyMePHP
 
     // Configure database parameters based on DB_TYPE.
     if (self::$_db_type === 'sqlite') {
-        self::$_db_file = "SQLITE.php"; // DB driver file name for SQLite.
+        self::$_db_file = "SQLite.php"; // DB driver file name for SQLite.
         // Default path for SQLite database file if not specified in .env.
         self::$_db_file_path = $_ENV['DB_FILE_PATH'] ?? __DIR__.'/../../database/database.sqlite'; 
     } elseif (self::$_db_type === 'mssql') {
@@ -397,7 +397,7 @@ class LazyMePHP
         self::$_db_host = $_ENV['DB_HOST'] ?? 'localhost';
         self::$_db_name = $_ENV['DB_NAME'] ?? '';
     } else { // Default to MySQL for any other DB_TYPE or if unspecified.
-        self::$_db_file = "MYSQL.php"; // DB driver file name for MySQL.
+        self::$_db_file = "MySQL.php"; // DB driver file name for MySQL.
         // Load MySQL specific connection details from .env, with defaults.
         self::$_db_user = $_ENV['DB_USER'] ?? '';
         self::$_db_password = $_ENV['DB_PASSWORD'] ?? '';
@@ -413,7 +413,7 @@ class LazyMePHP
     }
 
     // Construct the full path to the database driver file and require it.
-    $db_file_full_path = __DIR__."/../DB/".self::$_db_file;
+    $db_file_full_path = __DIR__."/DB/".self::$_db_file;
     if (file_exists($db_file_full_path)) {
         require_once $db_file_full_path;
         // Optionally, store the full path if needed later, though typically just the name is fine for identification.

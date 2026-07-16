@@ -12,12 +12,13 @@ namespace Core\Security;
 
 use Ahc\Jwt\JWT;
 use Core\Session\Session;
+use Core\Session\SessionStore;
 use Ahc\Jwt\JWTException;
 
 class JWTAuth
 {
   private JWT $jwt;
-  private Session $session;
+  private SessionStore $session;
   private string $secret;
   private string $algo;
   private int $maxAge;

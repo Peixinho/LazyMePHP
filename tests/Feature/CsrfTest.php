@@ -3,12 +3,12 @@
 declare(strict_types=1);
 
 use Core\Security\CsrfProtection;
-use Core\Session\Session;
+use Core\Session\SessionStore;
 
 beforeEach(function () {
     $_ENV['APP_ENV'] = 'testing';
     // Reset the session singleton so each test starts clean
-    $ref = new ReflectionClass(Session::class);
+    $ref = new ReflectionClass(SessionStore::class);
     $ref->getProperty('instance')->setValue(null, null);
 
     // Ensure session is available
