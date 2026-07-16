@@ -40,7 +40,7 @@ All schema variables are passed automatically:
 
 ## Customising behaviour
 
-Create `App/Controllers/{TableName}.php` (matching the table name, PascalCase) to extend the default behaviour:
+Create `App/Controllers/{TableName}.php` (matching the table name, PascalCase) to extend the default behaviour — or scaffold it with `php LazyMePHP make:controller <table>` (add `--hidden` to exclude the table from auto-wiring). `php LazyMePHP make:view <table>` scaffolds the two view files above, and `make:all <table>` does both.
 
 ```php
 namespace Controllers;
@@ -50,7 +50,9 @@ use Core\Model;
 class Users extends CrudController {
     protected static string $table = 'users';
 
-    // Declare FK columns so the UI renders dropdowns
+    // Columns with a real FK constraint render as dropdowns automatically.
+    // Only declare foreignKeys() to override the target table or add a
+    // relationship that has no DB-level constraint:
     protected function foreignKeys(): array {
         return ['role_id' => 'roles'];
     }

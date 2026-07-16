@@ -32,7 +32,10 @@ php LazyMePHP migrate:status               # show migration run history
 php LazyMePHP make:migration <name>              # new migration file (name-inferred stubs)
 php LazyMePHP make:model <Name>                  # Model subclass stub
 php LazyMePHP make:model <Name> --table=users    # Model stub with schema-introspected $fillable
-php LazyMePHP make:controller                    # how to subclass CrudController
+php LazyMePHP make:controller <table>            # App/Controllers/{Table}.php extending CrudController
+php LazyMePHP make:controller <table> --hidden   # ...and exclude it from auto-routing + GraphQL
+php LazyMePHP make:view <table>                  # App/Views/{table}/index.blade.php + edit.blade.php
+php LazyMePHP make:all <table>                   # both make:controller and make:view for a table
 php LazyMePHP make:seeder <Name>                 # Seeder stub in App/Seeders/
 php LazyMePHP make:factory <Name>                # Factory stub in App/Factories/
 php LazyMePHP make:observer <Name>               # ModelEvents observer stub (auto-registered on boot)
@@ -41,10 +44,9 @@ php LazyMePHP make:job <Name>                    # Queue Job stub in App/Jobs/
 php LazyMePHP make:request <Name>                # FormRequest stub in App/Requests/
 php LazyMePHP make:mail <Name>                   # Mailable stub in App/Mail/
 php LazyMePHP make:test <Name>                   # Pest feature test stub in tests/Feature/
-php LazyMePHP make:view                          # explains how to override Blade views
-php LazyMePHP make:route                         # explains how AutoRouter works
-php LazyMePHP make:api                           # explains how to restrict GraphQL fields
 ```
+
+Routes and the GraphQL API need no scaffolding of their own — both are generated at runtime (`Core\AutoRouter`, `Core\GraphQL\SchemaBuilder`) from whichever controller `make:controller`/`make:all` creates. Override `foreignKeys()`, `exposedFields()`, or set `public static bool $hidden = true` on that controller to customise or opt a table out entirely — see [CRUD Web UI](./crud-ui) for the full list of hooks.
 
 ### Migration name conventions
 
@@ -114,12 +116,4 @@ php LazyMePHP route:list
 php LazyMePHP optimize
 # Warms the schema cache for all tables (skips DB introspection on every request)
 # and runs composer dump-autoload --optimize for faster class loading
-```
-
-## Build tool
-
-```bash
-php LazyMePHP build
-# Interactive tool for creating logging tables and viewing table descriptors.
-# Models, forms, and API controllers are driven by Core\Model — no generation needed.
 ```

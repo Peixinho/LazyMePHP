@@ -733,7 +733,7 @@ Views are rendered by generic Blade templates in `App/Views/_Crud/`. To override
 
 ## Customising behaviour — `Core\CrudController`
 
-Create `App/Controllers/{TableName}.php` to override behaviour for a specific table:
+Create `App/Controllers/{TableName}.php` to override behaviour for a specific table — or scaffold it with `php LazyMePHP make:controller <table>` (add `--hidden` to exclude the table from auto-routing and GraphQL). Routes and the GraphQL API need no separate scaffolding: both are generated at runtime from this same controller.
 
 ```php
 namespace Controllers;
@@ -1145,16 +1145,20 @@ php LazyMePHP migrate:status             Show migration run history
 
 php LazyMePHP make:migration <name>      Scaffold a new migration file
 php LazyMePHP make:model <Name>          Scaffold a Model subclass
-php LazyMePHP make:controller            Show how to subclass CrudController
+php LazyMePHP make:controller <table>    Scaffold App/Controllers/{Table}.php extending CrudController
+php LazyMePHP make:controller <table> --hidden   ...and exclude it from auto-routing + GraphQL
+php LazyMePHP make:view <table>          Scaffold App/Views/{table}/index.blade.php + edit.blade.php
+php LazyMePHP make:all <table>           Scaffold both the controller and the views for a table
 php LazyMePHP make:seeder <Name>         Scaffold a Seeder class in App/Seeders/
 php LazyMePHP make:factory <Name>        Scaffold a Factory class in App/Factories/
 php LazyMePHP make:observer <Name>       Scaffold a model observer class
 php LazyMePHP make:resource <Name>       Scaffold an ApiResource subclass
 php LazyMePHP make:job <Name>            Scaffold a queue Job class in App/Jobs/
 php LazyMePHP make:request <Name>        Scaffold a FormRequest in App/Requests/
-php LazyMePHP make:view                  Show how to override Blade views
-php LazyMePHP make:route                 Show how AutoRouter works
-php LazyMePHP make:api                   Show how to restrict GraphQL field exposure
+php LazyMePHP make:mail <Name>           Scaffold a Mailable class in App/Mail/
+php LazyMePHP make:test <Name>           Scaffold a Pest test
+php LazyMePHP make:command <Name>        Scaffold a console command
+php LazyMePHP make:middleware <Name>     Scaffold a middleware class
 
 php LazyMePHP db:seed                    Run all seeders in App/Seeders/
 php LazyMePHP db:seed --class=<Name>     Run a specific seeder class
@@ -1172,8 +1176,6 @@ php LazyMePHP queue:work --tries=3       Max attempts per job before failing
 php LazyMePHP queue:work --stop-when-empty   Exit after draining the queue
 php LazyMePHP queue:size                 Show pending job count
 php LazyMePHP queue:size --queue=<name>  Show pending count for a named queue
-
-php LazyMePHP build                      Run the full build script
 ```
 
 ---

@@ -49,11 +49,9 @@ class LazyMeCLI {
         'migrate:fresh'    => 'Drop all tables and re-run every migration',
         'migrate:status'   => 'Show which migrations have run',
         'make:migration'   => 'Scaffold a new migration file  [name]',
-        'make:api'         => 'GraphQL API is auto-generated — shows how to customise field exposure',
         'make:view'        => 'Scaffold App/Views/{table}/index.blade.php + edit.blade.php  [table]',
         'make:controller'  => 'Scaffold a CrudController subclass for a table  [table] [--hidden]',
-        'make:route'       => 'AutoRouter registers routes at runtime — shows how it works',
-        'make:all'         => 'Scaffolds view + controller, plus guidance for routes and API  [table] [--hidden]',
+        'make:all'         => 'Scaffold both view and controller for a table  [table] [--hidden]',
         'schema:cache'     => 'Cache DB schema to files (avoids per-request introspection)',
         'schema:clear'     => 'Remove cached schema files',
         'db:seed'          => 'Run database seeders  [--class=Name]',
@@ -170,18 +168,12 @@ class LazyMeCLI {
                 }
                 $this->makeController($tableName, $hiddenFlag);
                 break;
-            case 'make:route':
-                $this->makeRoute($tableName);
-                break;
             case 'make:all':
                 if (!$tableName) {
                     echo "Usage: php lazymephp make:all <table> [--hidden]\n";
                     exit(1);
                 }
                 $this->makeAll($tableName, $hiddenFlag);
-                break;
-            case 'make:api':
-                $this->makeApi($tableName);
                 break;
             case 'schema:cache':
                 $this->schemaCache($tableName);
@@ -491,6 +483,9 @@ class {$class} extends CrudController
     // protected function afterSave(Model \$obj, bool \$isUpdate): void {}
     // protected function beforeDelete(Model \$obj): void {}
     // protected function afterDelete(mixed \$id): void {}
+
+    // Restrict which fields the GraphQL schema exposes for this table (default: all):
+    // public function exposedFields(): array { return ['id', 'name']; }
 }
 
 PHP);
@@ -501,28 +496,9 @@ PHP);
         }
     }
 
-    private function makeRoute(?string $tableName): void {
-        echo "\n\u{1F4A1} Routes are now powered by Core\\AutoRouter — no code generation needed.\n";
-        echo "   AutoRouter::registerAll(\$blade) in App/Routes/Routes.php registers all tables at runtime.\n";
-        echo "   To add table-specific behaviour, create App/Controllers/{$tableName}.php extending CrudController.\n\n";
-    }
-
     private function makeAll(string $tableName, bool $hiddenFlag): void {
         $this->makeView($tableName);
         $this->makeController($tableName, $hiddenFlag);
-        $this->makeRoute($tableName);
-        $this->makeApi($tableName);
-    }
-
-    private function makeApi(?string $tableName): void {
-        echo "\n\u{1F4A1} The API is now a GraphQL endpoint at POST /graphql — no code generation needed.\n";
-        echo "   Core\\GraphQL\\SchemaBuilder builds the schema from all tables at runtime.\n";
-        if ($tableName) {
-            echo "   To restrict fields for '$tableName', override exposedFields() in App/Controllers/{$tableName}.php:\n\n";
-            echo "     protected function exposedFields(): array {\n";
-            echo "         return ['id', 'name', ...]; // list fields to expose\n";
-            echo "     }\n\n";
-        }
     }
 
     private function schemaCache(?string $tableName): void {
