@@ -2,52 +2,68 @@
 
 use Core\LazyMePHP;
 
-require_once __DIR__ . '/../../App/Tools/LoggingTableSQL';
-
-test('can create logging tables on sqlite', function () {
-    // Set up test database environment
-    $testDbPath = __DIR__ . '/../../temp_test.db';
-    
-    // Set environment for temporary SQLite file
+beforeEach(function () {
     $_ENV['DB_TYPE'] = 'sqlite';
-    $_ENV['DB_FILE_PATH'] = $testDbPath;
+    $_ENV['DB_FILE_PATH'] = ':memory:';
     $_ENV['APP_ACTIVITY_LOG'] = 'true';
     $_ENV['APP_ENV'] = 'testing';
-    
-    // Reset LazyMePHP to use new config
+
     LazyMePHP::reset();
     new LazyMePHP();
-    
-    $sql = getLoggingTableSQL('sqlite');
-    
-    // Split the SQL into individual statements
-    $statements = array_filter(array_map('trim', explode(';', $sql)));
-    
-    foreach ($statements as $statement) {
-        if (!empty($statement)) {
-            // Execute each statement
-            $result = LazyMePHP::DB_CONNECTION()->Query($statement);
-            expect($result)->toBeTruthy();
-        }
+});
+
+afterEach(function () {
+    LazyMePHP::reset();
+});
+
+function internalTableExists(string $table): bool
+{
+    $result = LazyMePHP::DB_CONNECTION()->query(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+        [$table]
+    );
+    return (bool) $result->fetchArray();
+}
+
+test('internal logging/rate-limit/RBAC migrations create the expected tables on sqlite', function () {
+    $files = glob(__DIR__ . '/../../database/migrations/2026_07_16_*.php');
+    expect($files)->not->toBeEmpty();
+    sort($files);
+
+    foreach ($files as $file) {
+        $migration = require $file;
+        ($migration['up'])(LazyMePHP::DB_CONNECTION());
     }
-    
-    // Verify tables were created by checking if they exist
-    $tables = ['__LOG_ACTIVITY', '__LOG_ACTIVITY_OPTIONS', '__LOG_DATA', '__LOG_ERRORS'];
-    
-    foreach ($tables as $table) {
-        $result = LazyMePHP::DB_CONNECTION()->Query("SELECT name FROM sqlite_master WHERE type='table' AND name=?", [$table]);
-        $found = false;
-        while ($row = $result->FetchObject()) {
-            if ($row->name === $table) {
-                $found = true;
-                break;
-            }
-        }
-        expect($found)->toBeTrue("Table $table should exist");
+
+    $expected = [
+        '__LOG_ACTIVITY',
+        '__LOG_DATA',
+        '__LOG_ERRORS',
+        '__LOG_PERFORMANCE',
+        '__RATE_LIMITS',
+        '__AUTH_ROLES',
+        '__AUTH_ROLE_PERMISSIONS',
+        '__AUTH_USER_ROLES',
+    ];
+
+    foreach ($expected as $table) {
+        expect(internalTableExists($table))->toBeTrue("Table $table should exist");
     }
-    
-    // Clean up
-    if (file_exists($testDbPath)) {
-        unlink($testDbPath);
+});
+
+test('down migrations drop the tables they create', function () {
+    $files = glob(__DIR__ . '/../../database/migrations/2026_07_16_*.php');
+    sort($files);
+
+    foreach ($files as $file) {
+        $migration = require $file;
+        ($migration['up'])(LazyMePHP::DB_CONNECTION());
     }
-}); 
+    foreach (array_reverse($files) as $file) {
+        $migration = require $file;
+        ($migration['down'])(LazyMePHP::DB_CONNECTION());
+    }
+
+    expect(internalTableExists('__LOG_ACTIVITY'))->toBeFalse();
+    expect(internalTableExists('__AUTH_ROLES'))->toBeFalse();
+});

@@ -24,22 +24,6 @@ if (file_exists(__DIR__.'/App/Core/LazyMePHP.php')) {
     exit(1);
 }
 
-// Require the Database and Models files for CLI commands
-if (file_exists(__DIR__.'/App/Tools/Database')) {
-    require_once __DIR__.'/App/Tools/Database';
-} else {
-    echo "Database file not found.\n";
-    exit(1);
-}
-
-// Require the Helper functions for file operations
-if (file_exists(__DIR__.'/App/Tools/Helper')) {
-    require_once __DIR__.'/App/Tools/Helper';
-} else {
-    echo "Helper file not found.\n";
-    exit(1);
-}
-
 // Initialize the APP configuration
 try {
     new Core\LazyMePHP();
@@ -57,7 +41,6 @@ try {
 class LazyMeCLI {
     private array $commands = [
         'serve'            => 'Start the PHP development server',
-        'build'            => 'Run the build tools for forms and APIs',
         'batman'           => 'Start the Batman dashboard server',
         'auth:hash'        => 'Hash a plain-text password for storage',
         'migrate'          => 'Run all pending migrations',
@@ -67,10 +50,10 @@ class LazyMeCLI {
         'migrate:status'   => 'Show which migrations have run',
         'make:migration'   => 'Scaffold a new migration file  [name]',
         'make:api'         => 'GraphQL API is auto-generated — shows how to customise field exposure',
-        'make:view'        => 'Generic Blade views are built-in — shows how to override per-table',
-        'make:controller'  => 'CrudController handles all tables — shows how to subclass',
+        'make:view'        => 'Scaffold App/Views/{table}/index.blade.php + edit.blade.php  [table]',
+        'make:controller'  => 'Scaffold a CrudController subclass for a table  [table] [--hidden]',
         'make:route'       => 'AutoRouter registers routes at runtime — shows how it works',
-        'make:all'         => 'Shows guidance for views, controller, routes, and API for a table',
+        'make:all'         => 'Scaffolds view + controller, plus guidance for routes and API  [table] [--hidden]',
         'schema:cache'     => 'Cache DB schema to files (avoids per-request introspection)',
         'schema:clear'     => 'Remove cached schema files',
         'db:seed'          => 'Run database seeders  [--class=Name]',
@@ -117,6 +100,7 @@ class LazyMeCLI {
         $tableArg      = null;
         $maintenanceMessage = null;
         $maintenanceAllow   = [];
+        $hiddenFlag    = false;
         foreach ($argv as $arg) {
             if (preg_match('/^--step=(\d+)$/',    $arg, $m)) { $step               = (int)$m[1]; }
             if (preg_match('/^--class=(.+)$/',     $arg, $m)) { $classArg           = $m[1]; }
@@ -127,15 +111,12 @@ class LazyMeCLI {
             if (preg_match('/^--message=(.+)$/',   $arg, $m)) { $maintenanceMessage = $m[1]; }
             if (preg_match('/^--allow=(.+)$/',     $arg, $m)) { $maintenanceAllow[] = $m[1]; }
             if ($arg === '--stop-when-empty') { $stopWhenEmpty = true; }
+            if ($arg === '--hidden') { $hiddenFlag = true; }
         }
 
         switch($command) {
             case 'serve':
                 $this->serve();
-                break;
-            case 'build':
-                $this->requireDatabase('build');
-                $this->build();
                 break;
             case 'batman':
                 $this->batman();
@@ -176,16 +157,28 @@ class LazyMeCLI {
                 echo "Created: $path\n";
                 break;
             case 'make:view':
+                if (!$tableName) {
+                    echo "Usage: php lazymephp make:view <table>\n";
+                    exit(1);
+                }
                 $this->makeView($tableName);
                 break;
             case 'make:controller':
-                $this->makeController($tableName);
+                if (!$tableName) {
+                    echo "Usage: php lazymephp make:controller <table> [--hidden]\n";
+                    exit(1);
+                }
+                $this->makeController($tableName, $hiddenFlag);
                 break;
             case 'make:route':
                 $this->makeRoute($tableName);
                 break;
             case 'make:all':
-                $this->makeAll($tableName);
+                if (!$tableName) {
+                    echo "Usage: php lazymephp make:all <table> [--hidden]\n";
+                    exit(1);
+                }
+                $this->makeAll($tableName, $hiddenFlag);
                 break;
             case 'make:api':
                 $this->makeApi($tableName);
@@ -417,26 +410,6 @@ class LazyMeCLI {
         }
     }
 
-    private function build(): void {
-        echo "Running build tools...\n";
-        if (!file_exists(__DIR__.'/App/Tools/build')) {
-            echo "Build script (App/Tools/build) not found.\n";
-            exit(1);
-        }
-        try {
-            require_once __DIR__.'/App/Tools/build';
-        } catch (\Core\DB\DatabaseException $e) {
-            echo "\033[31mDatabase error during build:\033[0m " . $e->getMessage() . "\n";
-            if ($e->getQuery()) {
-                echo "Query: " . $e->getQuery() . "\n";
-            }
-            exit(1);
-        } catch (\Throwable $e) {
-            echo "\033[31mBuild failed:\033[0m " . $e->getMessage() . "\n";
-            exit(1);
-        }
-    }
-
     private function batman(): void {
         require_once __DIR__ . '/App/Tools/ServerOutput';
         $port = $this->getPort(8081);
@@ -449,20 +422,83 @@ class LazyMeCLI {
         @exec("php -S 0.0.0.0:$port -t ./batman App/Tools/BatmanServer");
     }
 
-    private function makeView(?string $tableName): void {
-        echo "\n\u{1F4A1} Views are powered by generic Blade templates in App/Views/_Crud/ — no code generation needed.\n";
-        if ($tableName) {
-            echo "   To override for '{$tableName}', create:\n";
-            echo "     App/Views/{$tableName}/index.blade.php  (list)\n";
-            echo "     App/Views/{$tableName}/edit.blade.php   (create / edit)\n";
-            echo "   All schema variables (\$schema, \$record, \$pk, \$table, etc.) are passed automatically.\n\n";
-        }
+    /** Convert a table_name into a StudlyCase class name. */
+    private function studly(string $value): string {
+        return str_replace(' ', '', ucwords(str_replace(['_', '-'], ' ', $value)));
     }
 
-    private function makeController(?string $tableName): void {
-        echo "\n💡 Controllers are now powered by Core\\CrudController — no code generation needed.\n";
-        echo "   Routes use CrudController::forTable() and auto-discover Controllers\\{Table} subclasses.\n";
-        echo "   To add custom behaviour, create App/Controllers/{$tableName}.php extending CrudController.\n\n";
+    private function isInteractive(): bool {
+        return stream_isatty(STDIN);
+    }
+
+    private function promptYesNo(string $message): bool {
+        echo "$message [y/N]: ";
+        $answer = strtolower(trim((string)fgets(STDIN)));
+        return $answer === 'y' || $answer === 'yes';
+    }
+
+    private function makeView(string $tableName): void {
+        $srcDir = __DIR__ . '/App/Views/_Crud';
+        $dstDir = __DIR__ . "/App/Views/{$tableName}";
+        if (!is_dir($dstDir)) mkdir($dstDir, 0755, true);
+
+        foreach (['index', 'edit'] as $action) {
+            $dst = "{$dstDir}/{$action}.blade.php";
+            if (file_exists($dst)) {
+                echo "Already exists, skipping: $dst\n";
+                continue;
+            }
+            copy("{$srcDir}/{$action}.blade.php", $dst);
+            echo "Created: $dst\n";
+        }
+        echo "These override the generic _Crud templates for '{$tableName}' only — edit freely.\n";
+    }
+
+    private function makeController(string $tableName, bool $hiddenFlag): void {
+        $dir = __DIR__ . '/App/Controllers';
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+
+        $class = $this->studly($tableName);
+        $file  = "$dir/{$class}.php";
+        if (file_exists($file)) {
+            echo "Controller already exists: $file\n";
+            exit(1);
+        }
+
+        $hidden = $hiddenFlag;
+        if (!$hiddenFlag && $this->isInteractive()) {
+            $hidden = $this->promptYesNo("Hide '{$tableName}' from auto-routing and the GraphQL schema?");
+        }
+
+        $hiddenProp = $hidden ? "\n    public static bool \$hidden = true;\n" : '';
+
+        file_put_contents($file, <<<PHP
+<?php
+
+declare(strict_types=1);
+
+namespace Controllers;
+
+use Core\CrudController;
+use Core\Model;
+
+class {$class} extends CrudController
+{
+    protected static string \$table = '{$tableName}';
+{$hiddenProp}
+    // protected function foreignKeys(): array { return ['fk_column' => 'related_table']; }
+    // protected function beforeSave(Model \$obj, array &\$data, bool \$isUpdate): void {}
+    // protected function afterSave(Model \$obj, bool \$isUpdate): void {}
+    // protected function beforeDelete(Model \$obj): void {}
+    // protected function afterDelete(mixed \$id): void {}
+}
+
+PHP);
+
+        echo "Created: $file\n";
+        if ($hidden) {
+            echo "  '{$tableName}' is hidden — no CRUD routes or GraphQL exposure will be registered for it.\n";
+        }
     }
 
     private function makeRoute(?string $tableName): void {
@@ -471,9 +507,9 @@ class LazyMeCLI {
         echo "   To add table-specific behaviour, create App/Controllers/{$tableName}.php extending CrudController.\n\n";
     }
 
-    private function makeAll(?string $tableName): void {
+    private function makeAll(string $tableName, bool $hiddenFlag): void {
         $this->makeView($tableName);
-        $this->makeController($tableName);
+        $this->makeController($tableName, $hiddenFlag);
         $this->makeRoute($tableName);
         $this->makeApi($tableName);
     }

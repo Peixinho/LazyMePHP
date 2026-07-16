@@ -6,10 +6,6 @@ use Core\LazyMePHP;
 use Core\Model;
 use Core\GraphQL\SchemaBuilder;
 
-// The generators use require_once internally for Database/Helper — load them here
-require_once __DIR__ . '/../../App/Tools/Database';
-require_once __DIR__ . '/../../App/Tools/Helper';
-
 describe('Generation Pipeline Test', function () {
     beforeEach(function () {
         $this->testDbPath = sys_get_temp_dir() . '/lazyme_gen_test_' . getmypid() . '.db';
