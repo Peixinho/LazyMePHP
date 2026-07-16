@@ -6,8 +6,9 @@
  *
  * $name (string)
  * $fieldname (string)
- * $defaulValueEmpty (bool)
- * $options (array)
+ * $options (array) — list of ['value' => mixed, 'label' => string]
+ * $selected (mixed) opcional
+ * $defaultValueEmpty (bool) opcional
  * $id (string) opcional
  * $validation (string) opcional
  * $validationfail (string) opcional
@@ -15,19 +16,19 @@
 ?>
 
 <div>
-  <label>{{ \Core\Helpers\Helper::e($fieldname) }}</label>
+  <label for="{{$id or $name}}">{{ \Core\Helpers\Helper::e($fieldname) }}</label>
   <select
-    id="{{$id or $name}}" 
+    id="{{$id or $name}}"
     name="{{$name}}"
-    class="validate"
-    validation="{{ \Core\Helpers\Helper::e($validation ?? '') }}"
-    validation-fail="{{ \Core\Helpers\Helper::e($validationfail ?? '') }}"
+    class="form-control validate"
+    @if (isset($validation)) validation="{{ \Core\Helpers\Helper::e($validation) }}" @endif
+    @if (isset($validationfail)) validation-fail="{{ \Core\Helpers\Helper::e($validationfail) }}" @endif
   >
-    @if ($defaultValueEmpty) 
+    @if ($defaultValueEmpty ?? false)
       <option value="">-</option>
     @endif
     @foreach($options as $o)
-      <option value="{{ \Core\Helpers\Helper::e($o->GetPrimaryKey()) }}" @if (isset($selected) && $selected==$o->GetPrimaryKey()) selected @endif>{{ \Core\Helpers\Helper::e($o->Getdescriptor()) }}</option> 
+      <option value="{{ \Core\Helpers\Helper::e($o['value']) }}" @if (isset($selected) && (string)$selected === (string)$o['value']) selected @endif>{{ \Core\Helpers\Helper::e($o['label']) }}</option>
     @endforeach
   </select>
 </div>

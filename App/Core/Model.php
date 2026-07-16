@@ -469,11 +469,22 @@ class Model implements IDB
                 $result = $db->query("PRAGMA table_info(\"{$this->tableName}\")");
                 while ($row = $result->fetchArray()) {
                     $this->schema[$row['name']] = [
-                        'type'     => strtolower((string)$row['type']),
-                        'nullable' => (int)$row['notnull'] === 0,
-                        'pk'       => (int)$row['pk'] === 1,
-                        'default'  => $row['dflt_value'],
+                        'type'       => strtolower((string)$row['type']),
+                        'nullable'   => (int)$row['notnull'] === 0,
+                        'pk'         => (int)$row['pk'] === 1,
+                        'default'    => $row['dflt_value'],
+                        'references' => null,
                     ];
+                }
+                $fkResult = $db->query("PRAGMA foreign_key_list(\"{$this->tableName}\")");
+                while ($row = $fkResult->fetchArray()) {
+                    $col = $row['from'];
+                    if (isset($this->schema[$col])) {
+                        $this->schema[$col]['references'] = [
+                            'table'  => $row['table'],
+                            'column' => $row['to'],
+                        ];
+                    }
                 }
                 break;
 
@@ -487,11 +498,27 @@ class Model implements IDB
                 );
                 while ($row = $result->fetchArray()) {
                     $this->schema[$row['COLUMN_NAME']] = [
-                        'type'     => strtolower((string)$row['DATA_TYPE']),
-                        'nullable' => $row['IS_NULLABLE'] === 'YES',
-                        'pk'       => $row['COLUMN_KEY'] === 'PRI',
-                        'default'  => $row['COLUMN_DEFAULT'],
+                        'type'       => strtolower((string)$row['DATA_TYPE']),
+                        'nullable'   => $row['IS_NULLABLE'] === 'YES',
+                        'pk'         => $row['COLUMN_KEY'] === 'PRI',
+                        'default'    => $row['COLUMN_DEFAULT'],
+                        'references' => null,
                     ];
+                }
+                $fkResult = $db->query(
+                    "SELECT COLUMN_NAME, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME
+                     FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+                     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND REFERENCED_TABLE_NAME IS NOT NULL",
+                    [LazyMePHP::DB_NAME(), $this->tableName]
+                );
+                while ($row = $fkResult->fetchArray()) {
+                    $col = $row['COLUMN_NAME'];
+                    if (isset($this->schema[$col])) {
+                        $this->schema[$col]['references'] = [
+                            'table'  => $row['REFERENCED_TABLE_NAME'],
+                            'column' => $row['REFERENCED_COLUMN_NAME'],
+                        ];
+                    }
                 }
                 break;
 
@@ -511,11 +538,33 @@ class Model implements IDB
                 );
                 while ($row = $result->fetchArray()) {
                     $this->schema[$row['COLUMN_NAME']] = [
-                        'type'     => strtolower((string)$row['DATA_TYPE']),
-                        'nullable' => $row['IS_NULLABLE'] === 'YES',
-                        'pk'       => (int)$row['IS_PK'] === 1,
-                        'default'  => $row['COLUMN_DEFAULT'],
+                        'type'       => strtolower((string)$row['DATA_TYPE']),
+                        'nullable'   => $row['IS_NULLABLE'] === 'YES',
+                        'pk'         => (int)$row['IS_PK'] === 1,
+                        'default'    => $row['COLUMN_DEFAULT'],
+                        'references' => null,
                     ];
+                }
+                $fkResult = $db->query(
+                    "SELECT ku.COLUMN_NAME, ku2.TABLE_NAME AS REF_TABLE, ku2.COLUMN_NAME AS REF_COLUMN
+                     FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+                     JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE ku
+                       ON tc.CONSTRAINT_NAME = ku.CONSTRAINT_NAME
+                     JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc
+                       ON tc.CONSTRAINT_NAME = rc.CONSTRAINT_NAME
+                     JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE ku2
+                       ON rc.UNIQUE_CONSTRAINT_NAME = ku2.CONSTRAINT_NAME
+                     WHERE tc.CONSTRAINT_TYPE = 'FOREIGN KEY' AND tc.TABLE_NAME = ?",
+                    [$this->tableName]
+                );
+                while ($row = $fkResult->fetchArray()) {
+                    $col = $row['COLUMN_NAME'];
+                    if (isset($this->schema[$col])) {
+                        $this->schema[$col]['references'] = [
+                            'table'  => $row['REF_TABLE'],
+                            'column' => $row['REF_COLUMN'],
+                        ];
+                    }
                 }
                 break;
 

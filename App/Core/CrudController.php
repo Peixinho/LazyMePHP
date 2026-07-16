@@ -116,7 +116,12 @@ abstract class CrudController
         return class_exists($class) && $class::$hidden;
     }
 
-    /** Foreign-key relationships for dropdown loading: ['fk_column' => 'related_table'] */
+    /**
+     * Foreign-key relationships for dropdown loading: ['fk_column' => 'related_table'].
+     * Columns with a real FK constraint in the schema are auto-detected already —
+     * only declare this for relationships without a DB-level constraint, or to
+     * override the auto-detected target table.
+     */
     protected function foreignKeys(): array { return []; }
 
     /** Override or extend the schema-derived validation rules. */
@@ -383,12 +388,57 @@ abstract class CrudController
     // Helpers
     // -------------------------------------------------------------------------
 
+    /**
+     * Column => related table, combining schema-detected FK constraints with
+     * any explicit foreignKeys() declarations (explicit wins on conflicts).
+     */
+    private function resolvedForeignKeys(): array
+    {
+        $auto = [];
+        foreach ($this->tableSchema() as $col => $meta) {
+            if (!empty($meta['references']['table'])) {
+                $auto[$col] = $meta['references']['table'];
+            }
+        }
+        return array_merge($auto, $this->foreignKeys());
+    }
+
+    /** Best-effort human-readable label for a foreign-key option row. */
+    private function fkOptionLabel(Model $row): string
+    {
+        foreach (['name', 'title', 'label', 'username', 'email'] as $candidate) {
+            if (isset($row->$candidate) && $row->$candidate !== '') {
+                return (string) $row->$candidate;
+            }
+        }
+        return (string) $row->getPrimaryKey();
+    }
+
+    /**
+     * Loads dropdown data for foreign-key columns.
+     * Returns:
+     *   - table-keyed raw Model[] lists (for hand-written views), plus
+     *   - 'foreignKeys' => ['col' => ['table' => t, 'options' => [['value'=>,'label'=>], ...]]]
+     *     consumed automatically by the generic _Crud edit view.
+     */
     private function loadForeignKeys(): array
     {
-        $data = [];
-        foreach ($this->foreignKeys() as $fkTable) {
-            $data[$fkTable] = Model::query($fkTable)->get();
+        $data       = [];
+        $foreignKeys = [];
+
+        foreach ($this->resolvedForeignKeys() as $col => $fkTable) {
+            $rows = Model::query($fkTable)->get();
+            $data[$fkTable] = $rows;
+            $foreignKeys[$col] = [
+                'table'   => $fkTable,
+                'options' => array_map(fn(Model $row) => [
+                    'value' => $row->getPrimaryKey(),
+                    'label' => $this->fkOptionLabel($row),
+                ], $rows),
+            ];
         }
+
+        $data['foreignKeys'] = $foreignKeys;
         return $data;
     }
 }

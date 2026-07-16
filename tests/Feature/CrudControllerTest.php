@@ -128,6 +128,56 @@ describe('CrudController', function () {
         });
     });
 
+    describe('foreign keys', function () {
+        beforeEach(function () {
+            $db = LazyMePHP::DB_CONNECTION();
+            $db->query("CREATE TABLE posts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                author_id INTEGER NOT NULL REFERENCES users(id)
+            )");
+            Model::clearSchemaCache();
+        });
+
+        it('auto-detects a schema-declared FK column and loads dropdown options', function () {
+            $data = makeController('posts')->edit();
+
+            expect($data['foreignKeys'])->toHaveKey('author_id');
+            expect($data['foreignKeys']['author_id']['table'])->toBe('users');
+            expect($data['foreignKeys']['author_id']['options'])->toHaveCount(3);
+            expect($data['foreignKeys']['author_id']['options'][0])->toHaveKeys(['value', 'label']);
+        });
+
+        it('picks a human-readable label over the raw id', function () {
+            $data = makeController('posts')->edit();
+            $labels = array_column($data['foreignKeys']['author_id']['options'], 'label');
+            expect($labels)->toContain('Alice', 'Bob', 'Carol');
+        });
+
+        it('renders a <select> for the FK column in the generic edit view', function () {
+            $db = LazyMePHP::DB_CONNECTION();
+            $db->query("INSERT INTO posts (title, author_id) VALUES ('Hello', 1)");
+            $id = $db->getLastInsertedId();
+
+            $controller = makeController('posts');
+            $data = $controller->edit($id);
+            $html = \Core\BladeFactory::render($controller->viewName('edit'), $data);
+
+            expect($html)->toContain('name="author_id"');
+            expect($html)->toContain('<select');
+            expect($html)->toContain('Alice');
+        });
+
+        it('lets an explicit foreignKeys() override the auto-detected target table', function () {
+            $controller = new class('posts', new Request()) extends CrudController {
+                protected function foreignKeys(): array { return ['author_id' => 'users']; }
+                public function exposedFk(): array { return $this->edit(); }
+            };
+            $data = $controller->exposedFk();
+            expect($data['foreignKeys']['author_id']['table'])->toBe('users');
+        });
+    });
+
     describe('forTable() factory', function () {
         it('returns a CrudController for unknown tables', function () {
             $controller = CrudController::forTable('users', new Request());

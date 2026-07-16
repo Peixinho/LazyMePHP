@@ -39,6 +39,7 @@ App/Views/_compiled
 !App/Views/_Error
 !App/Views/_Index
 !App/Views/_Notifications
+!App/Views/_Crud
 
 # Tools and descriptors
 tools/.descriptors
