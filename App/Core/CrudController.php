@@ -87,11 +87,23 @@ abstract class CrudController
      */
     public static function forTable(string $table, Request $request): self
     {
-        $customClass = "Controllers\\$table";
+        $customClass = "Controllers\\" . self::controllerClassName($table);
         if (class_exists($customClass)) {
             return new $customClass($request);
         }
         return new GenericCrudController($table, $request);
+    }
+
+    /**
+     * snake_case table name -> StudlyCase class name, matching what
+     * `php LazyMePHP make:controller <table>` scaffolds (e.g. checklist_tasks -> ChecklistTasks).
+     * A literal "Controllers\\$table" lookup only ever matches single-word table
+     * names, and only by accident on case-insensitive filesystems — this is the
+     * one place both forTable() and isHidden() must resolve a custom class name.
+     */
+    private static function controllerClassName(string $table): string
+    {
+        return str_replace(' ', '', ucwords(str_replace(['_', '-'], ' ', $table)));
     }
 
     // -------------------------------------------------------------------------
@@ -112,7 +124,7 @@ abstract class CrudController
     /** Returns true if the given table's controller has opted out of auto-wiring. */
     public static function isHidden(string $table): bool
     {
-        $class = "Controllers\\$table";
+        $class = "Controllers\\" . self::controllerClassName($table);
         return class_exists($class) && $class::$hidden;
     }
 
