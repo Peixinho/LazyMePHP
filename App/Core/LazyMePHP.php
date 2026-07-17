@@ -479,12 +479,15 @@ class LazyMePHP
           fn(string $t) => !\Core\CrudController::isHidden($t)
       ));
 
-      \Pecee\SimpleRouter\SimpleRouter::post('/graphql', function () use ($visibleTables): void {
+      $graphqlRoute = \Pecee\SimpleRouter\SimpleRouter::post('/graphql', function () use ($visibleTables): void {
           \Core\GraphQL\Endpoint::handle($visibleTables);
       });
 
       if (!empty($_ENV['AUTH_TABLE'] ?? '')) {
           \Core\Auth\AuthEndpoint::register();
+          // GraphQL exposes full read/write access to every visible table — require
+          // a valid Bearer JWT once auth is actually configured (see docs/auth/jwt.md).
+          $graphqlRoute->addMiddleware(\Core\Auth\JwtMiddleware::class);
       }
 
       // Health check — always enabled

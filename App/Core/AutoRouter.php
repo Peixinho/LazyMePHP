@@ -72,26 +72,35 @@ class AutoRouter
             echo BladeFactory::render($controller->viewName('edit'), $controller->edit((int)$id));
         });
 
+        // No ->addMiddleware(CsrfMiddleware::class) here: Kernel::loadRoutes() already
+        // wraps every route from every App/Routes/*.php file in a group with
+        // CsrfMiddleware applied (see routing.md — "you don't need to add it
+        // manually"). Adding it again per-route ran the check twice; since
+        // CsrfProtection::verifyToken() rotates the token on success (one-time use),
+        // the first pass would consume it and the second pass would then compare
+        // the original submitted token against the already-rotated session value
+        // and fail — silently breaking every create/update/delete through the
+        // auto-wired CRUD UI.
         SimpleRouter::post("/$table/{id}", function (string $id) use ($table): void {
             $request    = new Request();
             $controller = CrudController::forTable($table, $request);
             $controller->save((int)$id);
             Helper::redirect("/$table");
-        })->addMiddleware(\Core\Security\CsrfMiddleware::class);
+        });
 
         SimpleRouter::post("/$table", function () use ($table): void {
             $request    = new Request();
             $controller = CrudController::forTable($table, $request);
             $controller->save();
             Helper::redirect("/$table");
-        })->addMiddleware(\Core\Security\CsrfMiddleware::class);
+        });
 
         SimpleRouter::post("/$table/{id}/delete", function (string $id) use ($table): void {
             $request    = new Request();
             $controller = CrudController::forTable($table, $request);
             $controller->delete((int)$id);
             Helper::redirect("/$table");
-        })->addMiddleware(\Core\Security\CsrfMiddleware::class);
+        });
     }
 
     /**

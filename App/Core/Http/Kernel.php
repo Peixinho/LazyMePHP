@@ -62,11 +62,30 @@ class Kernel
             exit;
         }
 
-        echo $blade->run('_Layouts.app', [
-            'pageContent' => $pageContent ?? '',
-        ]);
+        // A route that already set a JSON content-type (GraphQL, OpenAPI, ...) is an
+        // API response, not a page — wrapping it in the HTML layout would make it
+        // invalid JSON. Endpoints that call exit() after echoing (e.g. /auth/*)
+        // already skip this naturally; this covers ones that return normally instead.
+        if (self::isJsonResponse()) {
+            echo $pageContent ?? '';
+        } else {
+            echo $blade->run('_Layouts.app', [
+                'pageContent' => $pageContent ?? '',
+            ]);
+        }
 
         self::afterRequest();
+    }
+
+    /** True when the route handler already sent a JSON content-type header. */
+    private static function isJsonResponse(): bool
+    {
+        foreach (headers_list() as $header) {
+            if (stripos($header, 'Content-Type:') === 0 && stripos($header, 'application/json') !== false) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static function installErrorHandler(): void
@@ -109,12 +128,20 @@ class Kernel
     {
         $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
 
+        $middleware = [
+            SecurityHeadersMiddleware::class,
+            CsrfMiddleware::class,
+        ];
+        // App-specific, not a generic framework default: gates the web UI behind
+        // login (see App\Middleware\AuthMiddleware). Guarded by class_exists so
+        // this file stays a no-op drop-in for apps that don't define it.
+        if (class_exists(\App\Middleware\AuthMiddleware::class)) {
+            $middleware[] = \App\Middleware\AuthMiddleware::class;
+        }
+
         SimpleRouter::group([
             'prefix'     => $basePath,
-            'middleware' => [
-                SecurityHeadersMiddleware::class,
-                CsrfMiddleware::class,
-            ],
+            'middleware' => $middleware,
         ], function () use ($blade): void {
             foreach (glob(__DIR__ . '/../../Routes/*.php') ?: [] as $routeFile) {
                 require_once $routeFile;

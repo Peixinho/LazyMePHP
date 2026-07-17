@@ -23,8 +23,14 @@ class CsrfMiddleware implements IMiddleware
             return;
         }
 
-        $path = $request->getUrl()->getPath();
-        if (str_starts_with($path, '/api/')) {
+        // Pecee's Url::getPath() always carries a trailing slash — rtrim before any exact match.
+        $path = rtrim($request->getUrl()->getPath(), '/') ?: '/';
+        // /api/, /graphql and /auth/ are token-authenticated (or open), not cookie-session-authenticated —
+        // CSRF tokens defend cookie-based auth from cross-site forgery; a Bearer token isn't
+        // auto-attached by the browser the way a cookie is, so it isn't vulnerable the same way,
+        // and requiring one here would just get in the way of real API/GraphQL/auth clients
+        // (/auth/login in particular has to be callable before a client has any token at all).
+        if (str_starts_with($path, '/api/') || str_starts_with($path, '/auth/') || $path === '/graphql') {
             return;
         }
 
