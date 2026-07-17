@@ -19,116 +19,8 @@ if (!isset($_SESSION['is_logged_in']) || !$_SESSION['is_logged_in']) {
     exit;
 }
 
-$apiResponse = null;
 $apiError = null;
-$requestHistory = [];
-$baseUrl = $_POST['base_url'] ?? $_SESSION['api_base_url'] ?? 'http://localhost:8000';
-
-// Handle API request
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['make_request'])) {
-    $baseUrl = $_POST['base_url'] ?? $baseUrl;
-    $_SESSION['api_base_url'] = $baseUrl;
-    
-    $endpoint = $_POST['endpoint'] ?? '';
-    $method = $_POST['method'] ?? 'GET';
-    $headers = $_POST['headers'] ?? '';
-    $body = $_POST['body'] ?? '';
-    $timeout = (int)($_POST['timeout'] ?? 30);
-    
-    if (!empty($endpoint)) {
-        try {
-            // Build full URL
-            $url = rtrim($baseUrl, '/') . '/' . ltrim($endpoint, '/');
-            
-            // Prepare headers
-            $headerArray = [];
-            if (!empty($headers)) {
-                $headerLines = explode("\n", $headers);
-                foreach ($headerLines as $line) {
-                    $line = trim($line);
-                    if (!empty($line) && strpos($line, ':') !== false) {
-                        $headerArray[] = $line;
-                    }
-                }
-            }
-            
-            // Prepare context
-            $context = stream_context_create([
-                'http' => [
-                    'method' => $method,
-                    'header' => implode("\r\n", $headerArray),
-                    'content' => $body,
-                    'timeout' => $timeout,
-                    'ignore_errors' => true
-                ]
-            ]);
-            
-            // Make request
-            $startTime = microtime(true);
-            $response = file_get_contents($url, false, $context);
-            $endTime = microtime(true);
-            $duration = round(($endTime - $startTime) * 1000, 2);
-            
-            // Get response headers
-            $responseHeaders = [];
-            if (isset($http_response_header)) {
-                foreach ($http_response_header as $header) {
-                    $responseHeaders[] = $header;
-                }
-            }
-            
-            // Parse response
-            $apiResponse = [
-                'url' => $url,
-                'method' => $method,
-                'status_code' => $http_response_header[0] ?? 'Unknown',
-                'duration' => $duration . 'ms',
-                'headers' => $responseHeaders,
-                'body' => $response,
-                'body_size' => strlen($response),
-                'timestamp' => date('Y-m-d H:i:s')
-            ];
-            
-            // Store in history (keep last 10)
-            if (!isset($_SESSION['api_history'])) {
-                $_SESSION['api_history'] = [];
-            }
-            array_unshift($_SESSION['api_history'], $apiResponse);
-            $_SESSION['api_history'] = array_slice($_SESSION['api_history'], 0, 10);
-            
-        } catch (Exception $e) {
-            $apiError = "Request failed: " . $e->getMessage();
-        }
-    } else {
-        $apiError = "Please enter an endpoint";
-    }
-}
-
-// Get request history
-$requestHistory = $_SESSION['api_history'] ?? [];
-
-// Generate a simple JWT token for testing (standalone, no framework)
-$jwtToken = '';
-try {
-    // Simple JWT generation without framework dependencies
-    $header = json_encode(['typ' => 'JWT', 'alg' => 'HS256']);
-    $payload = json_encode([
-        'user_id' => 1,
-        'role' => 'admin',
-        'exp' => time() + 3600,
-        'iat' => time()
-    ]);
-    
-    $base64Header = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($header));
-    $base64Payload = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($payload));
-    
-    $signature = hash_hmac('sha256', $base64Header . "." . $base64Payload, 'test-secret-key', true);
-    $base64Signature = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($signature));
-    
-    $jwtToken = $base64Header . "." . $base64Payload . "." . $base64Signature;
-} catch (Exception $e) {
-    $jwtToken = 'JWT generation failed: ' . $e->getMessage();
-}
+$baseUrl = $_SESSION['api_base_url'] ?? 'http://localhost:8080';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -354,17 +246,6 @@ try {
             grid-column: 1 / -1;
         }
 
-        .url-preview {
-            background: rgba(102, 126, 234, 0.1);
-            border: 1px solid #667eea;
-            border-radius: 8px;
-            padding: 10px;
-            margin-top: 10px;
-            font-family: 'Courier New', monospace;
-            font-size: 13px;
-            color: #667eea;
-        }
-
         .response-section {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
@@ -426,71 +307,6 @@ try {
             overflow-y: auto;
             border: 1px solid rgba(255, 255, 255, 0.2);
             color: #e2e8f0;
-        }
-
-        .history-section {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 30px;
-            margin-bottom: 30px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-        }
-
-        .history-section h2 {
-            color: #2c3e50;
-            font-size: 1.8em;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .history-section h2 i {
-            color: #667eea;
-        }
-
-        .history-item {
-            background: rgba(248, 249, 250, 0.9);
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-left: 4px solid #667eea;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .history-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-        }
-
-        .history-item h4 {
-            color: #2c3e50;
-            margin-bottom: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .history-item .method {
-            background: #667eea;
-            color: white;
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 0.8em;
-            font-weight: 600;
-        }
-
-        .history-item .url {
-            color: #7f8c8d;
-            font-size: 0.9em;
-            margin-bottom: 5px;
-        }
-
-        .history-item .status {
-            color: #667eea;
-            font-size: 0.8em;
         }
 
         .error-message {
@@ -626,11 +442,6 @@ try {
             letter-spacing: 0.5px;
         }
 
-        .method-get { background: #10b981; color: white; }
-        .method-post { background: #3b82f6; color: white; }
-        .method-put { background: #f59e0b; color: white; }
-        .method-delete { background: #ef4444; color: white; }
-        .method-patch { background: #8b5cf6; color: white; }
         .method-query { background: #3b82f6; color: white; }
         .method-mutation { background: #ef4444; color: white; }
 
@@ -783,81 +594,6 @@ try {
             border-left: 4px solid #3b82f6;
         }
 
-        .response-content.compact {
-            max-height: 150px;
-            overflow-y: auto;
-            font-size: 0.9em;
-            padding: 8px;
-            background: rgba(0, 0, 0, 0.05);
-            border-radius: 4px;
-            margin: 5px 0;
-        }
-
-        .request-info-compact {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        .info-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px;
-            background: rgba(0, 0, 0, 0.05);
-            border-radius: 4px;
-        }
-
-        .info-item .label {
-            font-weight: 600;
-            color: #666;
-            min-width: 80px;
-        }
-
-        .info-item .value {
-            font-family: monospace;
-            word-break: break-all;
-        }
-
-        .request-sections {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-
-        .section-item h4 {
-            margin: 0 0 8px 0;
-            font-size: 0.9em;
-            color: #666;
-        }
-
-        .btn-toggle {
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 5px;
-            margin-left: 10px;
-            color: #666;
-            transition: transform 0.2s;
-        }
-
-        .btn-toggle:hover {
-            color: #333;
-        }
-
-        .btn-toggle.collapsed {
-            transform: rotate(-90deg);
-        }
-
-        .request-details-content {
-            transition: max-height 0.3s ease;
-            overflow: hidden;
-        }
-
-        .request-details-content.collapsed {
-            max-height: 0;
-        }
     </style>
 </head>
 <body>
@@ -890,19 +626,19 @@ try {
         </div>
 
         <div class="nav-tabs">
-            <a href="/index.php" class="nav-tab">
+            <a href="index.php" class="nav-tab">
                 <i class="fas fa-activity"></i> Activity Logs
             </a>
-            <a href="/errors.php" class="nav-tab">
+            <a href="errors.php" class="nav-tab">
                 <i class="fas fa-exclamation-triangle"></i> Error Logs
             </a>
-            <a href="/debug.php" class="nav-tab">
+            <a href="debug.php" class="nav-tab">
                 <i class="fas fa-bug"></i> Debug Dashboard
             </a>
-            <a href="/test.php" class="nav-tab">
+            <a href="test.php" class="nav-tab">
                 <i class="fas fa-vial"></i> Testing Tools
             </a>
-            <a href="/api-client.php" class="nav-tab active">
+            <a href="api-client.php" class="nav-tab active">
                 <i class="fas fa-code"></i> API Client
             </a>
         </div>
@@ -919,7 +655,7 @@ try {
                 <h3><i class="fas fa-link"></i> Base URL</h3>
                 <div class="form-group">
                     <label for="base-url">API Base URL</label>
-                    <input type="url" id="base-url" name="base_url" value="<?php echo htmlspecialchars($baseUrl); ?>" placeholder="http://localhost:8000" required>
+                    <input type="url" id="base-url" name="base_url" value="<?php echo htmlspecialchars($baseUrl); ?>" placeholder="http://localhost:8080" required>
                 </div>
             </div>
         </div>
@@ -940,9 +676,32 @@ try {
                 <div class="routes-grid" id="graphql-operations-list"></div>
             </div>
 
+            <div class="base-url-section">
+                <h3><i class="fas fa-key"></i> Log In (only needed if AUTH_TABLE is configured on the target app)</h3>
+                <p class="section-hint" style="margin-bottom: 15px;">Posts to <code>POST {base URL}/auth/login</code> and drops the returned <code>access_token</code> straight into the Bearer Token field below.</p>
+                <form id="graphql-login-form">
+                    <div class="form-grid" style="grid-template-columns: 1fr 1fr 150px;">
+                        <div class="form-group">
+                            <label for="graphql-login-email">Email / Username</label>
+                            <input type="text" id="graphql-login-email" name="email" placeholder="admin@example.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="graphql-login-password">Password</label>
+                            <input type="password" id="graphql-login-password" name="password">
+                        </div>
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-secondary" id="graphql-login-btn" style="height: 47px;">
+                                <i class="fas fa-sign-in-alt"></i> Log In
+                            </button>
+                        </div>
+                    </div>
+                </form>
+                <div id="graphql-login-message"></div>
+            </div>
+
             <form id="graphql-form">
                 <div class="form-group full-width">
-                    <label for="graphql-token">Bearer Token (only needed if AUTH_TABLE is configured on the target app)</label>
+                    <label for="graphql-token">Bearer Token</label>
                     <input type="text" id="graphql-token" name="token" placeholder="eyJhbGciOi...">
                 </div>
 
@@ -962,100 +721,11 @@ try {
             </form>
         </div>
 
-        <!-- API Request Form -->
-        <div class="api-client-section">
-            <h2><i class="fas fa-paper-plane"></i> Legacy REST Route Tester</h2>
-            <p class="section-hint">For the handful of plain web routes registered outside the GraphQL schema (see <strong>API Discovery</strong> below). Most data no longer lives here — use the GraphQL panel above instead.</p>
-
-            <form id="api-form">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="endpoint">Endpoint</label>
-                        <input type="text" id="endpoint" name="endpoint" placeholder="api/users" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="method">Method</label>
-                        <select id="method" name="method">
-                            <option value="GET">GET</option>
-                            <option value="POST">POST</option>
-                            <option value="PUT">PUT</option>
-                            <option value="DELETE">DELETE</option>
-                            <option value="PATCH">PATCH</option>
-                            <option value="HEAD">HEAD</option>
-                            <option value="OPTIONS">OPTIONS</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="timeout">Timeout (s)</label>
-                        <input type="number" id="timeout" name="timeout" value="30" min="1" max="300">
-                    </div>
-                </div>
-
-                <div class="form-group full-width">
-                    <label for="headers">Headers (one per line, format: Key: Value)</label>
-                    <textarea id="headers" name="headers" placeholder="Content-Type: application/json&#10;Authorization: Bearer your-token-here&#10;Accept: application/json"></textarea>
-                </div>
-
-                <div class="form-group full-width">
-                    <label for="body">Request Body</label>
-                    <textarea id="body" name="body" placeholder='{"key": "value", "number": 123}'></textarea>
-                </div>
-
-                <button type="submit" class="btn btn-primary" id="submit-btn">
-                    <i class="fas fa-paper-plane"></i> Send Request
-                </button>
-            </form>
-        </div>
-
         <!-- API Response -->
         <div id="response-container" style="display: none;">
             <div class="response-section">
                 <h2><i class="fas fa-reply"></i> Response</h2>
-                
-                <!-- Request Details Section -->
-                <div id="request-details" style="display: none;">
-                    <h3>
-                        <i class="fas fa-paper-plane"></i> Request Details
-                        <button type="button" class="btn-toggle" onclick="toggleRequestDetails()">
-                            <i class="fas fa-chevron-down"></i>
-                        </button>
-                    </h3>
-                    <div id="request-details-content" class="request-details-content">
-                        <div class="request-info-compact">
-                            <div class="info-item">
-                                <span class="label">URL:</span>
-                                <span class="value" id="request-url">-</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="label">Method:</span>
-                                <span class="value" id="request-method">-</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="label">Status:</span>
-                                <span class="value" id="request-status">-</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="label">Duration:</span>
-                                <span class="value" id="request-duration">-</span>
-                            </div>
-                        </div>
-                        
-                        <div class="request-sections">
-                            <div class="section-item">
-                                <h4>Headers</h4>
-                                <div class="response-content compact" id="request-headers">-</div>
-                            </div>
-                            
-                            <div class="section-item">
-                                <h4>Body</h4>
-                                <div class="response-content compact" id="request-body-sent">-</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
+
                 <div class="response-info">
                     <div class="info-card">
                         <h4>Status</h4>
@@ -1086,134 +756,9 @@ try {
             </div>
         </div>
 
-        <!-- API Discovery Section (legacy REST routes only — see GraphQL Explorer above for the real data API) -->
-        <div class="discovery-section">
-            <h2><i class="fas fa-search"></i> Legacy Route Discovery</h2>
-            <div class="discovery-info">
-                <div class="form-group">
-                    <label for="api_path">Path to Scan for SimpleRouter/@route Definitions</label>
-                    <div style="display: flex; gap: 10px; align-items: center;">
-                        <input type="text" id="api_path" name="api_path" placeholder="e.g., App/Routes" value="App/Routes" style="flex: 1;">
-                        <button type="button" class="btn btn-secondary" onclick="discoverRoutes()">
-                            <i class="fas fa-search"></i> Discover Routes
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <div id="discovered-routes" style="display: none;">
-                <h3>Discovered Routes</h3>
-                <div class="routes-grid" id="routes-list">
-                    <!-- Routes will be populated here -->
-                </div>
-            </div>
-        </div>
-
-        <!-- Request History -->
-        <?php if (!empty($requestHistory)): ?>
-        <div class="history-section">
-            <h2><i class="fas fa-history"></i> Request History</h2>
-            
-            <?php foreach ($requestHistory as $index => $request): ?>
-            <div class="history-item" onclick="loadFromHistory(<?php echo $index; ?>)">
-                <h4>
-                    <span><?php echo htmlspecialchars($request['method']); ?></span>
-                    <span class="method"><?php echo htmlspecialchars($request['method']); ?></span>
-                </h4>
-                <div class="url"><?php echo htmlspecialchars($request['url']); ?></div>
-                <div class="status"><?php echo htmlspecialchars($request['status_code']); ?> • <?php echo htmlspecialchars($request['duration']); ?> • <?php echo htmlspecialchars($request['timestamp']); ?></div>
-            </div>
-            <?php endforeach; ?>
-        </div>
-        <?php endif; ?>
     </div>
 
     <script>
-        // Load request from history
-        function loadRequestFromHistory() {
-            const savedRequest = localStorage.getItem('apiRequestHistory');
-            if (savedRequest) {
-                const request = JSON.parse(savedRequest);
-                document.getElementById('base-url').value = request.baseUrl || '';
-                document.getElementById('method').value = request.method || 'GET';
-                document.getElementById('endpoint').value = request.endpoint || '';
-                document.getElementById('headers').value = request.headers || '';
-                document.getElementById('body').value = request.body || '';
-                document.getElementById('timeout').value = request.timeout || '30';
-            }
-        }
-
-        // Save request to history
-        function saveRequestToHistory() {
-            const request = {
-                baseUrl: document.getElementById('base-url').value,
-                method: document.getElementById('method').value,
-                endpoint: document.getElementById('endpoint').value,
-                headers: document.getElementById('headers').value,
-                body: document.getElementById('body').value,
-                timeout: document.getElementById('timeout').value
-            };
-            localStorage.setItem('apiRequestHistory', JSON.stringify(request));
-        }
-
-        // Discover routes
-        function discoverRoutes() {
-            const baseUrl = document.getElementById('base-url').value;
-            const apiPath = document.getElementById('api_path').value;
-            
-            if (!baseUrl) {
-                alert('Please enter a base URL first');
-                return;
-            }
-
-            fetch('discover-routes.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    path: apiPath
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                const container = document.getElementById('discovered-routes');
-                const routesList = document.getElementById('routes-list');
-                
-                container.style.display = 'block';
-                routesList.innerHTML = '';
-                
-                if (data.success && data.routes && data.routes.length > 0) {
-                    data.routes.forEach(route => {
-                        const card = document.createElement('div');
-                        card.className = 'route-card';
-                        card.innerHTML = `
-                            <div class="route-method method-${route.method.toLowerCase()}">${route.method}</div>
-                            <div class="route-path">${route.path}</div>
-                            <div class="route-description">${route.description || 'No description'}</div>
-                        `;
-                        card.onclick = () => fillRequestFromRoute(route);
-                        routesList.appendChild(card);
-                    });
-                } else {
-                    routesList.innerHTML = `<p>${data.message || 'No routes discovered'}</p>`;
-                }
-            })
-            .catch(error => {
-                console.error('Error discovering routes:', error);
-                const container = document.getElementById('discovered-routes');
-                const routesList = document.getElementById('routes-list');
-                container.style.display = 'block';
-                routesList.innerHTML = '<p>Error discovering routes: ' + error.message + '</p>';
-            });
-        }
-
-        // Fill request form from route
-        function fillRequestFromRoute(route) {
-            document.getElementById('method').value = route.method;
-            document.getElementById('endpoint').value = route.path.replace(/^\//, '');
-        }
-
         // Discover the GraphQL schema (introspected server-side, not over HTTP)
         function discoverGraphqlSchema() {
             fetch('discover-graphql.php', { method: 'POST' })
@@ -1261,7 +806,86 @@ try {
             document.getElementById('graphql-variables').value = JSON.stringify(op.sampleVariables, null, 2);
         }
 
-        // Submit a GraphQL request against POST {baseUrl}/graphql
+        // Remember the base URL + token across page loads (this page never round-trips
+        // through PHP anymore — everything is a browser fetch() — so this is client-only).
+        function saveGraphqlSession() {
+            localStorage.setItem('batmanGraphqlSession', JSON.stringify({
+                baseUrl: document.getElementById('base-url').value,
+                token: document.getElementById('graphql-token').value,
+            }));
+        }
+
+        function restoreGraphqlSession() {
+            const saved = localStorage.getItem('batmanGraphqlSession');
+            if (!saved) return;
+            try {
+                const session = JSON.parse(saved);
+                if (session.baseUrl) document.getElementById('base-url').value = session.baseUrl;
+                if (session.token) document.getElementById('graphql-token').value = session.token;
+            } catch (e) { /* ignore corrupt storage */ }
+        }
+
+        // Log in via Batman's own server-side proxy (proxy.php) — Batman's PHP
+        // backend calls {baseUrl}/auth/login itself (server-to-server, like
+        // Postman), so this never needs the target app's CORS configured. The
+        // browser only ever talks to this same-origin proxy.php.
+        function submitGraphqlLogin(event) {
+            event.preventDefault();
+
+            const baseUrl = document.getElementById('base-url').value.trim();
+            const email = document.getElementById('graphql-login-email').value.trim();
+            const password = document.getElementById('graphql-login-password').value;
+            const messageEl = document.getElementById('graphql-login-message');
+            const loginBtn = document.getElementById('graphql-login-btn');
+
+            if (!baseUrl) {
+                alert('Please enter a base URL');
+                return;
+            }
+            if (!email || !password) {
+                alert('Please enter both email/username and password');
+                return;
+            }
+
+            const originalText = loginBtn.innerHTML;
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = 'Logging in...';
+            messageEl.innerHTML = '';
+
+            fetch('proxy.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'login', baseUrl, email, password }),
+            })
+                .then(response => response.json())
+                .then(proxied => {
+                    if (!proxied.success) {
+                        messageEl.innerHTML = `<div class="error-message" style="margin-top: 15px;"><i class="fas fa-exclamation-triangle"></i> ${proxied.message}</div>`;
+                        return;
+                    }
+
+                    const data = JSON.parse(proxied.body || '{}');
+                    if (proxied.status >= 200 && proxied.status < 300 && data.access_token) {
+                        document.getElementById('graphql-token').value = data.access_token;
+                        saveGraphqlSession();
+                        messageEl.innerHTML = '<div class="success-message" style="margin-top: 15px;"><i class="fas fa-check-circle"></i> Logged in — token filled in below.</div>';
+                    } else {
+                        const reason = data.error || data.message || `Login failed (HTTP ${proxied.status})`;
+                        messageEl.innerHTML = `<div class="error-message" style="margin-top: 15px;"><i class="fas fa-exclamation-triangle"></i> ${reason}</div>`;
+                    }
+                })
+                .catch(error => {
+                    messageEl.innerHTML = `<div class="error-message" style="margin-top: 15px;"><i class="fas fa-exclamation-triangle"></i> ${error.message}</div>`;
+                })
+                .finally(() => {
+                    loginBtn.disabled = false;
+                    loginBtn.innerHTML = originalText;
+                });
+        }
+
+        // Send a GraphQL query/mutation via Batman's server-side proxy (proxy.php)
+        // rather than fetching {baseUrl}/graphql directly from the browser — see
+        // submitGraphqlLogin's comment for why.
         function submitGraphqlRequest(event) {
             event.preventDefault();
 
@@ -1289,32 +913,38 @@ try {
                 }
             }
 
+            saveGraphqlSession();
+
             const submitBtn = document.getElementById('graphql-submit-btn');
             const originalText = submitBtn.textContent;
             submitBtn.textContent = 'Sending...';
             submitBtn.disabled = true;
 
-            const graphqlHeaders = { 'Content-Type': 'application/json' };
-            if (token) {
-                graphqlHeaders['Authorization'] = 'Bearer ' + token;
-            }
-
-            fetch(baseUrl.replace(/\/$/, '') + '/graphql', {
+            fetch('proxy.php', {
                 method: 'POST',
-                headers: graphqlHeaders,
-                body: JSON.stringify({ query, variables }),
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'query', baseUrl, token, query, variables }),
             })
-                .then(response => {
-                    const contentType = response.headers.get('content-type') || '';
-                    return response.text().then(text => ({
-                        status: response.status,
-                        statusText: response.statusText,
-                        headers: Object.fromEntries(response.headers.entries()),
-                        content_type: contentType,
-                        body: text,
-                    }));
+                .then(response => response.json())
+                .then(proxied => {
+                    if (!proxied.success) {
+                        displayApiResponse({
+                            status: 0,
+                            statusText: 'Error',
+                            headers: {},
+                            content_type: 'text/plain',
+                            body: proxied.message,
+                        });
+                        return;
+                    }
+                    displayApiResponse({
+                        status: proxied.status,
+                        statusText: '',
+                        headers: proxied.headers || {},
+                        content_type: (proxied.headers && (proxied.headers['Content-Type'] || proxied.headers['content-type'])) || 'application/json',
+                        body: proxied.body,
+                    });
                 })
-                .then(displayApiResponse)
                 .catch(error => {
                     displayApiResponse({
                         status: 0,
@@ -1328,103 +958,6 @@ try {
                     submitBtn.textContent = originalText;
                     submitBtn.disabled = false;
                 });
-        }
-
-        // Submit API request
-        function submitApiRequest(event) {
-            event.preventDefault();
-            
-            const baseUrl = document.getElementById('base-url').value.trim();
-            const method = document.getElementById('method').value;
-            const endpoint = document.getElementById('endpoint').value.trim();
-            const headers = document.getElementById('headers').value;
-            const body = document.getElementById('body').value;
-            const timeout = parseInt(document.getElementById('timeout').value) || 30;
-
-            if (!baseUrl) {
-                alert('Please enter a base URL');
-                return;
-            }
-
-            if (!endpoint) {
-                alert('Please enter an endpoint');
-                return;
-            }
-
-            // Save to history
-            saveRequestToHistory();
-
-            // Show loading state
-            const submitBtn = document.querySelector('button[type="submit"]');
-            const originalText = submitBtn.textContent;
-            submitBtn.textContent = 'Sending...';
-            submitBtn.disabled = true;
-
-            // Parse headers
-            const headerObj = {};
-            if (headers.trim()) {
-                headers.split('\n').forEach(line => {
-                    const [key, ...valueParts] = line.split(':');
-                    if (key && valueParts.length > 0) {
-                        headerObj[key.trim()] = valueParts.join(':').trim();
-                    }
-                });
-            }
-
-            // Add default headers
-            if (!headerObj['Content-Type']) {
-                headerObj['Content-Type'] = 'application/json';
-            }
-
-            // Build full URL
-            const cleanEndpoint = endpoint.replace(/^\//, '');
-            const fullUrl = baseUrl.replace(/\/$/, '') + '/' + cleanEndpoint;
-
-            // Prepare request body
-            let requestBody = null;
-            if (method !== 'GET' && body.trim()) {
-                try {
-                    // Try to parse as JSON
-                    requestBody = JSON.parse(body);
-                } catch (e) {
-                    // If not valid JSON, send as is
-                    requestBody = body;
-                }
-            }
-
-            // Make the request
-            fetch(fullUrl, {
-                method: method,
-                headers: headerObj,
-                body: method === 'GET' ? null : (typeof requestBody === 'object' ? JSON.stringify(requestBody) : requestBody),
-                signal: AbortSignal.timeout(timeout * 1000)
-            })
-            .then(response => {
-                const contentType = response.headers.get('content-type') || '';
-                return response.text().then(text => ({
-                    status: response.status,
-                    statusText: response.statusText,
-                    headers: Object.fromEntries(response.headers.entries()),
-                    content_type: contentType,
-                    body: text
-                }));
-            })
-            .then(response => {
-                displayApiResponse(response);
-            })
-            .catch(error => {
-                displayApiResponse({
-                    status: 0,
-                    statusText: 'Error',
-                    headers: {},
-                    content_type: 'text/plain',
-                    body: error.message
-                });
-            })
-            .finally(() => {
-                submitBtn.textContent = originalText;
-                submitBtn.disabled = false;
-            });
         }
 
         // Display API response
@@ -1495,13 +1028,13 @@ try {
             }
         }
 
-        // Load request from history on page load
         document.addEventListener('DOMContentLoaded', function() {
-            loadRequestFromHistory();
-            
-            // Add form submit handler
-            document.getElementById('api-form').addEventListener('submit', submitApiRequest);
+            restoreGraphqlSession();
+
             document.getElementById('graphql-form').addEventListener('submit', submitGraphqlRequest);
+            document.getElementById('graphql-login-form').addEventListener('submit', submitGraphqlLogin);
+            document.getElementById('base-url').addEventListener('change', saveGraphqlSession);
+            document.getElementById('graphql-token').addEventListener('change', saveGraphqlSession);
 
             // Add textarea auto-resize
             const textareas = document.querySelectorAll('textarea');
@@ -1512,31 +1045,6 @@ try {
                 });
             });
         });
-
-        // Toggle request details visibility
-        function toggleRequestDetails() {
-            const details = document.getElementById('request-details');
-            const button = document.querySelector('.btn-toggle');
-            
-            if (details.style.display === 'none') {
-                details.style.display = 'block';
-                button.textContent = 'Hide Details';
-            } else {
-                details.style.display = 'none';
-                button.textContent = 'Show Details';
-            }
-        }
-
-        // Clear history
-        function clearHistory() {
-            localStorage.removeItem('apiRequestHistory');
-            document.getElementById('base-url').value = '';
-            document.getElementById('method').value = 'GET';
-            document.getElementById('endpoint').value = '';
-            document.getElementById('headers').value = '';
-            document.getElementById('body').value = '';
-            document.getElementById('timeout').value = '30';
-        }
     </script>
 </body>
 </html> 

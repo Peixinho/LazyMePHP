@@ -482,6 +482,14 @@ class LazyMePHP
       $graphqlRoute = \Pecee\SimpleRouter\SimpleRouter::post('/graphql', function () use ($visibleTables): void {
           \Core\GraphQL\Endpoint::handle($visibleTables);
       });
+      // Registered separately (not ->addMiddleware(JwtMiddleware) on $graphqlRoute below) so a
+      // CORS preflight never needs a Bearer token — browsers never send one on OPTIONS anyway.
+      // Pecee only runs a route's middleware once path AND method both match, so without this
+      // the POST-only route above never sees an OPTIONS request and Core\Http\CorsMiddleware
+      // (which does the real header-setting) never runs for it.
+      \Pecee\SimpleRouter\SimpleRouter::options('/graphql', function (): void {
+          http_response_code(204);
+      });
 
       if (!empty($_ENV['AUTH_TABLE'] ?? '')) {
           \Core\Auth\AuthEndpoint::register();

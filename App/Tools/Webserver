@@ -61,14 +61,25 @@ $contentTypes = [
 // Log initial request
 logDebug("REQUEST_URI: {$_SERVER['REQUEST_URI']}");
 
-// Check if a real file (not a directory) exists in the public directory.
+// Check if a real STATIC (non-.php) file exists in the public directory.
 // is_file(), not file_exists(): file_exists() also matches directories, and
 // "/" resolves to $publicDir . '//' — the docroot itself — which always
 // exists. That falsely triggered PHP's built-in "serve as-is" path for every
 // "/" request, bypassing the routing below entirely and, as a side effect,
 // running with cwd=public/ instead of the project root (breaking anything
 // using a relative path, e.g. a relative DB_FILE_PATH in .env).
-if (is_file($publicDir . '/' . $_SERVER['REQUEST_URI'])) {
+//
+// .php files are excluded from this fast path for the same cwd reason: PHP's
+// built-in server runs a directly-matched file (the "return false" path)
+// with cwd=public/, not the project root — public/index.php is a real file,
+// so a literal request for "/index.php" used to hit exactly this, breaking
+// the relative DB_FILE_PATH the same way "/" once did. Routing every .php
+// request through the "include" below instead keeps cwd at the project root.
+$requestPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '/';
+if (
+    strtolower(pathinfo($requestPath, PATHINFO_EXTENSION)) !== 'php'
+    && is_file($publicDir . '/' . $requestPath)
+) {
     logDebug("Serving static file from public: {$_SERVER['REQUEST_URI']}");
     return false; // serve the requested resource as-is
 }
@@ -88,8 +99,15 @@ while (true) {
     }
 }
 
-// Get file path
-$filePath = realpath(ltrim($_SERVER["REQUEST_URI"], '/'));
+// Get file path — resolved against $publicDir ONLY, never getcwd() (the project
+// root). Batman (batman/), App/, vendor/, the LazyMePHP CLI script, .env, etc.
+// must never be reachable through this dev server, exactly like a real
+// production webserver whose docroot is public/. Batman is a standalone tool
+// with its own dedicated server (php LazyMePHP batman) and must not be
+// servable from here — this used to resolve against getcwd(), which let
+// /batman/index.php (and in fact any file anywhere in the project) be served
+// or executed through this router.
+$filePath = realpath($publicDir . '/' . ltrim($requestPath, '/'));
 if ($filePath && is_dir($filePath)) {
     // attempt to find an index file
     foreach (['index.php', 'index.html'] as $indexFile) {
@@ -102,8 +120,7 @@ if ($filePath && is_dir($filePath)) {
 // Security checks and file serving
 if ($filePath && is_file($filePath)) {
     // Security checks
-    if (strpos($filePath, getcwd() . DIRECTORY_SEPARATOR) === 0 &&
-        $filePath != getcwd() . DIRECTORY_SEPARATOR . 'serve.php' &&
+    if (strpos($filePath, $publicDir . DIRECTORY_SEPARATOR) === 0 &&
         substr(basename($filePath), 0, 1) != '.'
     ) {
         if (strtolower(substr($filePath, -4)) == '.php') {
@@ -123,11 +140,7 @@ if ($filePath && is_file($filePath)) {
     }
 } else {
     // Route handling
-    if (substr($_SERVER["REQUEST_URI"], 0, 4) == "/api") {
-        // Route through API router
-        logDebug("Routing to API: {$_SERVER['REQUEST_URI']}");
-        include $publicDir . DIRECTORY_SEPARATOR . 'api/index.php';
-    } elseif (substr($_SERVER["REQUEST_URI"], 0, 5) == "/docs") {
+    if (substr($_SERVER["REQUEST_URI"], 0, 5) == "/docs") {
         // Handle docs directory
         handleDocsRoute();
     } else {

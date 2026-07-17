@@ -31,7 +31,7 @@ $hasUserSession = isset($_SESSION['is_logged_in']) && $_SESSION['is_logged_in'];
 
 // Require login in all cases
 if (!$hasUserSession) {
-    header('Location: /login.php');
+    header('Location: login.php');
     exit;
 }
 
@@ -877,19 +877,19 @@ $totalPages = ceil($totalActivities / $limit);
         </div>
 
         <div class="nav-tabs">
-            <a href="/index.php" class="nav-tab active">
+            <a href="index.php" class="nav-tab active">
                 <i class="fas fa-activity"></i> Activity Logs
             </a>
-            <a href="/errors.php" class="nav-tab">
+            <a href="errors.php" class="nav-tab">
                 <i class="fas fa-exclamation-triangle"></i> Error Logs
             </a>
-            <a href="/debug.php" class="nav-tab">
+            <a href="debug.php" class="nav-tab">
                 <i class="fas fa-bug"></i> Debug Dashboard
             </a>
-            <a href="/test.php" class="nav-tab">
+            <a href="test.php" class="nav-tab">
                 <i class="fas fa-vial"></i> Testing Tools
             </a>
-            <a href="/api-client.php" class="nav-tab">
+            <a href="api-client.php" class="nav-tab">
                 <i class="fas fa-code"></i> API Client
             </a>
         </div>
@@ -1442,7 +1442,7 @@ $totalPages = ceil($totalActivities / $limit);
                     basePath += '/';
                 }
                 
-                const url = window.location.origin + '/batman/get-changes.php?log_id=' + logId + '&debug=1';
+                const url = window.location.origin + basePath + 'get-changes.php?log_id=' + logId + '&debug=1';
                 
                 console.log('Pathname:', pathname);
                 console.log('Base path:', basePath);

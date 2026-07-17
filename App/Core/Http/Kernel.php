@@ -129,6 +129,9 @@ class Kernel
         $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
 
         $middleware = [
+            // Runs first so an OPTIONS preflight for /graphql or /auth/* gets
+            // answered (or rejected) before CSRF/security-header logic even sees it.
+            CorsMiddleware::class,
             SecurityHeadersMiddleware::class,
             CsrfMiddleware::class,
         ];

@@ -6,7 +6,9 @@ sidebar_position: 14
 
 # Batman Dashboard
 
-Batman is an internal developer dashboard available at `/batman/`. It shows activity logs, error logs, performance metrics, and per-record change history with before/after diffs.
+Batman is an internal developer dashboard, run standalone with `php LazyMePHP batman` (its own dev server, on its own port — never the same process as `php LazyMePHP serve`). It shows activity logs, error logs, performance metrics, and per-record change history with before/after diffs.
+
+Batman is **not** reachable through the app's own dev server (`App/Tools/Webserver` only ever resolves requests against `public/` — nothing under `batman/`, or anywhere else in the project, is servable through it). Run the dashboard, use it, then stop it; it isn't meant to run continuously alongside the app.
 
 ## Setup
 
@@ -32,14 +34,18 @@ Batman authenticates against `BATMAN_SECRET` using `password_verify()` — it do
 - **Performance metrics** — slow operations flagged by the monitoring layer
 - **Record diffs** — before/after field values for every change, sensitive columns excluded
 
-## API Explorer
+## GraphQL Explorer
 
-The data API is a single `POST /graphql` endpoint whose schema is built at runtime from the DB schema (`Core\GraphQL\SchemaBuilder`) — there's no route file to grep for it. `api-client.php` has a **GraphQL API** panel that:
+The data API is a single `POST /graphql` endpoint whose schema is built at runtime from the DB schema (`Core\GraphQL\SchemaBuilder`) — there's no route file to grep for it, so `api-client.php` doesn't try to; it's GraphQL-only (an older REST-route regex scanner was removed once the app finished migrating to GraphQL).
 
-- Calls `discover-graphql.php`, which boots the app the same way `LazyMePHP::boot()` does and introspects the built schema in-process (not over HTTP) to list every query and mutation currently exposed, each with a ready-to-run sample query and variables payload.
-- Sends `POST {baseUrl}/graphql` with `{ query, variables }`, and an optional Bearer token field for instances with `AUTH_TABLE` configured (the endpoint is behind `JwtMiddleware` in that case).
+- **Discover Schema** calls `discover-graphql.php`, which boots the app the same way `LazyMePHP::boot()` does and introspects the built schema in-process (not over HTTP) to list every query and mutation currently exposed, each as a clickable card that fills in a ready-to-run sample query and variables payload.
+- **Log In** and **Send Query** go through `proxy.php` — Batman's own server-side PHP proxy — rather than the browser calling `{baseUrl}/auth/login` or `{baseUrl}/graphql` directly.
 
-The **Legacy Route Discovery** section below it only regex-scans a directory (default `App/Routes`) for `SimpleRouter::get()` / `@route` style definitions — it predates the GraphQL migration and won't find anything under the old `App/Api` path since that directory no longer exists.
+### Why a server-side proxy, not a direct browser fetch
+
+Batman runs on its own dev server/port, always a different origin than the app it's testing. A direct browser `fetch()` from Batman's page to a different origin is subject to CORS — a restriction browsers place on *JavaScript*, not on servers. `proxy.php` makes Batman behave like Postman or curl instead: the browser only ever calls this same-origin endpoint; `proxy.php` itself (via cURL, server-to-server) makes the actual request to `{baseUrl}/auth/login` or `{baseUrl}/graphql`. CORS never enters into a server-to-server HTTP call, so this works against any reachable instance with zero configuration on the target app's side — no `APP_CORS_ORIGIN` needed for Batman's own use.
+
+`Core\Http\CorsMiddleware` (`APP_CORS_ORIGIN` in `.env`) still exists and matters for a *real* browser-based frontend (an actual SPA) calling `/graphql` or `/auth/*` directly — that's a legitimate case where the calling JS truly runs in a browser at some fixed, known origin worth allowlisting. It just isn't what Batman needs.
 
 ## Security
 

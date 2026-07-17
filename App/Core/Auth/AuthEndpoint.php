@@ -24,8 +24,24 @@ use Pecee\SimpleRouter\SimpleRouter;
  */
 class AuthEndpoint
 {
+    /** Paths registered below — kept in sync manually since Pecee needs an explicit OPTIONS route per path (see Core\Http\CorsMiddleware's docblock for why). */
+    private const ROUTES = [
+        '/auth/login', '/auth/refresh', '/auth/logout', '/auth/me',
+        '/auth/forgot-password', '/auth/reset-password', '/auth/verify-email',
+    ];
+
     public static function register(): void
     {
+        // A CORS preflight for any of these never carries a Bearer token (browsers
+        // don't send one on OPTIONS), so these are registered without JwtMiddleware —
+        // Core\Http\CorsMiddleware (in the route group already) does the real work
+        // and always exits before this empty body would run.
+        foreach (self::ROUTES as $path) {
+            SimpleRouter::options($path, function (): void {
+                http_response_code(204);
+            });
+        }
+
         SimpleRouter::post('/auth/login', function (): void {
             header('Content-Type: application/json');
 

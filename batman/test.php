@@ -686,19 +686,19 @@ function testSystemHealth() {
         </div>
 
         <div class="nav-tabs">
-            <a href="/index.php" class="nav-tab">
+            <a href="index.php" class="nav-tab">
                 <i class="fas fa-activity"></i> Activity Logs
             </a>
-            <a href="/errors.php" class="nav-tab">
+            <a href="errors.php" class="nav-tab">
                 <i class="fas fa-exclamation-triangle"></i> Error Logs
             </a>
-            <a href="/debug.php" class="nav-tab">
+            <a href="debug.php" class="nav-tab">
                 <i class="fas fa-bug"></i> Debug Dashboard
             </a>
-            <a href="/test.php" class="nav-tab active">
+            <a href="test.php" class="nav-tab active">
                 <i class="fas fa-vial"></i> Testing Tools
             </a>
-            <a href="/api-client.php" class="nav-tab">
+            <a href="api-client.php" class="nav-tab">
                 <i class="fas fa-code"></i> API Client
             </a>
         </div>
