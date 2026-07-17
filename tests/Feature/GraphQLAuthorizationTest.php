@@ -40,6 +40,31 @@ namespace Controllers {
             return ['Manager'];
         }
     }
+
+    /**
+     * Row-level ("edit your own, not anyone else's") authorization —
+     * requiredRolesForWrite() alone can't express this: it has no idea which
+     * record is being touched, only that a write to the table was attempted.
+     * authorizeRecord() runs after that table-level check passes, with the
+     * actual target record already loaded.
+     */
+    class DemoAccounts extends \Core\CrudController
+    {
+        protected static string $table = 'demo_accounts';
+
+        public function requiredRolesForWrite(): array
+        {
+            return []; // any authenticated user may attempt a write — narrowed below
+        }
+
+        public function authorizeRecord(string $operation, \Core\Model $record): bool
+        {
+            if (\Core\Auth\RBAC::is('Manager')) {
+                return true; // managers may touch anyone's record
+            }
+            return (string) \Core\Auth\Auth::id() === (string) $record->getPrimaryKey();
+        }
+    }
 }
 
 namespace {
@@ -69,6 +94,9 @@ namespace {
         $db->query("INSERT INTO demo_rooms (name) VALUES ('Room A')");
         $db->query('CREATE TABLE demo_locked_rooms (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)');
         $db->query("INSERT INTO demo_locked_rooms (name) VALUES ('Vault')");
+        $db->query('CREATE TABLE demo_accounts (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)');
+        $db->query("INSERT INTO demo_accounts (id, name) VALUES (1, 'Alice')"); // row 1 "belongs to" user 1
+        $db->query("INSERT INTO demo_accounts (id, name) VALUES (2, 'Bob')");   // row 2 "belongs to" user 2
 
         RBAC::createRole('Staff', '');
         RBAC::createRole('Manager', '');
@@ -95,7 +123,7 @@ namespace {
     function gqlAs(int $userId, string $query): array
     {
         actingAsJwt($userId);
-        $schema = SchemaBuilder::build(['demo_rooms', 'demo_locked_rooms']);
+        $schema = SchemaBuilder::build(['demo_rooms', 'demo_locked_rooms', 'demo_accounts']);
         return GQL::executeQuery($schema, $query)->toArray();
     }
 
@@ -133,6 +161,44 @@ namespace {
 
             $managerRead = gqlAs(2, '{ demoLockedRoomsList { id name } }');
             expect($managerRead)->not->toHaveKey('errors');
+        });
+    });
+
+    describe('Row-level authorization via authorizeRecord()', function () {
+        it('lets a user update their own record', function () {
+            $result = gqlAs(1, 'mutation { updateDemoAccounts(id: 1, input: { name: "Alice Updated" }) { id name } }');
+            expect($result)->not->toHaveKey('errors');
+            expect($result['data']['updateDemoAccounts']['name'])->toBe('Alice Updated');
+        });
+
+        it('blocks a user from updating someone else\'s record', function () {
+            $result = gqlAs(1, 'mutation { updateDemoAccounts(id: 2, input: { name: "Hijacked" }) { id name } }');
+            expect($result)->toHaveKey('errors');
+            expect($result['errors'][0]['message'])->toContain('Forbidden');
+
+            // and the record is untouched
+            $check = gqlAs(2, '{ demoAccounts(id: 2) { name } }');
+            expect($check['data']['demoAccounts']['name'])->toBe('Bob');
+        });
+
+        it('blocks a user from deleting someone else\'s record', function () {
+            $result = gqlAs(1, 'mutation { deleteDemoAccounts(id: 2) }');
+            expect($result)->toHaveKey('errors');
+            expect($result['errors'][0]['message'])->toContain('Forbidden');
+        });
+
+        it('lets a Manager write to any record, bypassing the ownership check', function () {
+            $result = gqlAs(2, 'mutation { updateDemoAccounts(id: 1, input: { name: "Fixed by Manager" }) { id name } }');
+            expect($result)->not->toHaveKey('errors');
+            expect($result['data']['updateDemoAccounts']['name'])->toBe('Fixed by Manager');
+        });
+
+        it('requiredRolesForWrite() being empty means any authenticated user reaches authorizeRecord() at all', function () {
+            // No role is required table-wide — user 1 isn't a Manager and has no
+            // special role, yet still gets past the table-level check and is
+            // narrowed only by authorizeRecord()'s ownership rule.
+            $ownRecord = gqlAs(1, 'mutation { updateDemoAccounts(id: 1, input: { name: "Still mine" }) { id } }');
+            expect($ownRecord)->not->toHaveKey('errors');
         });
     });
 }

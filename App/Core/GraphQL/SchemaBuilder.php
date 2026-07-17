@@ -34,6 +34,9 @@ use Core\Http\Request;
  * To restrict which fields are exposed, override exposedFields() in Controllers\{Table}.
  * To restrict which roles may query/mutate a table at all, override requiredRoles()
  * (or requiredRolesForRead()/requiredRolesForWrite() when they need to differ).
+ * To restrict access to a specific record (e.g. "edit your own, not anyone
+ * else's"), override authorizeRecord() — table-level role checks can't express
+ * that, since they never see which record is being touched.
  */
 class SchemaBuilder
 {
@@ -70,7 +73,14 @@ class SchemaBuilder
                     'resolve' => function ($root, array $args) use ($table, $readRoles): ?Model {
                         self::authorize($readRoles, $table);
                         $m = new Model($table, $args['id']);
-                        return $m->getPrimaryKey() !== null ? $m : null;
+                        if ($m->getPrimaryKey() === null) {
+                            return null;
+                        }
+                        $controller = CrudController::forTable($table, new Request());
+                        if (!$controller->authorizeRecord('read', $m)) {
+                            throw new \GraphQL\Error\UserError("Forbidden: you may not view this $table record");
+                        }
+                        return $m;
                     },
                 ];
             }
@@ -119,8 +129,15 @@ class SchemaBuilder
                     ],
                     'resolve' => function ($root, array $args) use ($table, $writeRoles): Model {
                         self::authorize($writeRoles, $table);
+                        $existing = new Model($table, $args['id']);
+                        if ($existing->getPrimaryKey() === null) {
+                            throw new \GraphQL\Error\UserError("Record not found in $table");
+                        }
                         $controller = CrudController::forTable($table, new Request());
-                        $result     = $controller->saveData($args['input'], $args['id']);
+                        if (!$controller->authorizeRecord('update', $existing)) {
+                            throw new \GraphQL\Error\UserError("Forbidden: you may not update this $table record");
+                        }
+                        $result = $controller->saveData($args['input'], $args['id']);
                         if ($result === false) {
                             throw new \GraphQL\Error\UserError("Validation failed for $table");
                         }
@@ -138,6 +155,9 @@ class SchemaBuilder
                             throw new \GraphQL\Error\UserError("Record not found in $table");
                         }
                         $controller = CrudController::forTable($table, new Request());
+                        if (!$controller->authorizeRecord('delete', $obj)) {
+                            throw new \GraphQL\Error\UserError("Forbidden: you may not delete this $table record");
+                        }
                         $controller->delete($args['id']);
                         return true;
                     },

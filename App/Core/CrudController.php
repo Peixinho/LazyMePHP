@@ -184,6 +184,34 @@ abstract class CrudController
     public function requiredRolesForWrite(): array { return $this->requiredRoles(); }
 
     /**
+     * Extra per-record GraphQL authorization, checked after the table-level
+     * requiredRolesFor*() check passes — for the single-record query, update,
+     * and delete operations, where one specific $record is already loaded.
+     * Not called for the list query (many records, no single one to check)
+     * or create (no existing record yet — restrict who may create at all via
+     * requiredRolesForWrite() instead). Return true to allow.
+     *
+     * This is what a "users can edit their own record, but not each other's"
+     * rule looks like — requiredRolesForWrite() alone can't express it, since
+     * it has no access to *which* record is being touched:
+     *
+     *   class Users extends CrudController {
+     *       public function requiredRolesForWrite(): array {
+     *           return []; // any authenticated user may attempt a write —
+     *                      // authorizeRecord() below narrows it to their own
+     *       }
+     *
+     *       public function authorizeRecord(string $operation, Model $record): bool {
+     *           if (\Core\Auth\RBAC::is('Gestor')) return true; // managers may touch anyone
+     *           return (string) \Core\Auth\Auth::id() === (string) $record->getPrimaryKey();
+     *       }
+     *   }
+     *
+     * $operation is one of 'read', 'update', 'delete'.
+     */
+    public function authorizeRecord(string $operation, Model $record): bool { return true; }
+
+    /**
      * Called before the record is saved.
      * Modify $data to change what gets written; set properties on $obj directly
      * for anything that bypasses validation.

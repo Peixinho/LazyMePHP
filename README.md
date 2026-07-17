@@ -776,6 +776,14 @@ class Users extends CrudController {
         return ['admin'];
     }
 
+    // Restrict access to a *specific* record (e.g. "edit your own, not anyone
+    // else's") — requiredRoles() can't express this, it never sees which
+    // record is targeted. Checked for the single-record query, update, and
+    // delete; not called for the list query or create.
+    public function authorizeRecord(string $operation, Model $record): bool {
+        return (string) \Core\Auth\Auth::id() === (string) $record->getPrimaryKey();
+    }
+
     // public static bool $hidden = true; // exclude from auto-wiring
 }
 ```
@@ -837,6 +845,22 @@ class Rooms extends CrudController {
 ```
 
 Both default to `requiredRoles()`, so overriding neither keeps the single-list behavior above.
+
+For row-level rules ("edit your own record, not anyone else's") — which table-level role lists can't express at all, since they never see *which* record is targeted — override `authorizeRecord()` instead. It runs after the table-level check, with the actual target record already loaded, for the single-record query, update, and delete (not the list query or create):
+
+```php
+class Users extends CrudController {
+    public function requiredRolesForWrite(): array {
+        return []; // any authenticated user may attempt a write — narrowed below
+    }
+    public function authorizeRecord(string $operation, Model $record): bool {
+        if (RBAC::is('admin')) return true; // admins may touch anyone
+        return (string) Auth::id() === (string) $record->getPrimaryKey();
+    }
+}
+```
+
+There's no per-table way to replace the GraphQL resolvers themselves — `requiredRoles*()` and `authorizeRecord()` are the extension points, and mutations still call your controller's `beforeSave()`/`afterSave()` either way, so business logic has its usual home.
 
 ---
 

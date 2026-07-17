@@ -75,6 +75,29 @@ class Rooms extends CrudController {
 }
 ```
 
+### Row-level authorization ("edit your own record, not anyone else's")
+
+`requiredRolesFor*()` operates at the table level — it can't tell *which* record a query or mutation targets, only that one was attempted. A "users can update their own profile but not each other's" rule needs the actual target record, which is only available inside the resolver, after it's already loaded — so this can't be expressed as a role list at all. It doesn't need a resolver override either (see below); it's a third, separate hook: `CrudController::authorizeRecord(string $operation, Model $record): bool`, checked for the single-record query, update, and delete — after the table-level check passes, with the real record already loaded:
+
+```php
+class Users extends CrudController {
+    public function requiredRolesForWrite(): array {
+        return []; // any authenticated user may attempt a write — narrowed below
+    }
+
+    public function authorizeRecord(string $operation, Model $record): bool {
+        if (RBAC::is('Gestor')) return true; // managers may touch anyone
+        return (string) Auth::id() === (string) $record->getPrimaryKey();
+    }
+}
+```
+
+Not called for the list query (many records, no single one to check against) or `create` (no existing record yet — gate who may create at all via `requiredRolesForWrite()` instead, and use `beforeSave()` to force something like a user's own ID onto a new record rather than trusting the input).
+
+### Can you just override the GraphQL mutation directly?
+
+Not per-table, and intentionally so. `SchemaBuilder` builds the resolvers once, framework-side — there's no per-app resolver-replacement hook, the same way there's no way to replace `AutoRouter`'s route registration wholesale short of the `App/Routes/{table}.php` escape hatch (see [Extending & Customizing](./extending)). The three hooks above (`requiredRoles*()`, `authorizeRecord()`) exist specifically so you don't need to: everything a per-record or per-role rule needs to express is reachable through them, and mutations still route through your controller's `beforeSave()`/`afterSave()`/`saveData()` either way, so business logic already has its usual home.
+
 This declaration only governs GraphQL. If your app also restricts the same table's web routes via its own middleware (path-prefix rules, typically), that's a separate declaration today — nothing stops you from having your middleware call the same table's `requiredRoles()` too, so the rule lives in one place, but the framework doesn't do that wiring for you. See [Extending & Customizing](./extending).
 
 ## Content Security Policy

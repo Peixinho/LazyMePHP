@@ -91,6 +91,14 @@ class Users extends CrudController {
         return ['admin'];
     }
 
+    // Restrict access to a *specific* record, e.g. users editing only their
+    // own — requiredRoles() can't express this, it never sees which record
+    // is targeted. Checked for the single-record query, update, and delete;
+    // not called for the list query or create.
+    public function authorizeRecord(string $operation, Model $record): bool {
+        return (string) \Core\Auth\Auth::id() === (string) $record->getPrimaryKey();
+    }
+
     // Set to true to exclude this table from the auto-wired UI
     // public static bool $hidden = true;
 }
