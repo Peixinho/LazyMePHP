@@ -21,7 +21,7 @@ sidebar_position: 16
 | SQL injection | All queries use prepared statement placeholders |
 | Column injection | Filter and sort columns validated against live schema |
 | CSP | `default-src 'self'`; no `unsafe-inline` |
-| GraphQL | Depth 7, complexity 200, introspection off in production; per-table role authorization via `requiredRoles()` |
+| GraphQL & CRUD UI | Depth 7, complexity 200, introspection off in production; per-table role authorization via `requiredRoles()` — one declaration governs both surfaces |
 | Audit log | Sensitive columns auto-stripped; passwords never logged |
 | Rate limiting | Refresh endpoint: 20 req / 5 min / IP; configurable per route |
 
@@ -48,9 +48,9 @@ CSRF tokens are generated per-session and rotated on every POST. The token is va
 3. Only the SHA-256 hash of the raw token is persisted in `__auth_refresh_tokens`.
 4. On every `/auth/refresh` call, the provided token is hashed and compared. The old token is immediately revoked whether or not the hash matches — stolen tokens cannot be replayed.
 
-## GraphQL authorization
+## GraphQL & web CRUD UI authorization
 
-`JwtMiddleware` only answers "is there a valid Bearer token" — GraphQL deliberately lets one request touch several tables at once (`{ usersList { id } roomsList { id } }`), so there's no single URL/route to attach a per-table role check to the way there is for a web route. Per-table authorization is enforced instead in `Core\GraphQL\SchemaBuilder`, at the resolver level, via `Core\CrudController::requiredRoles()`:
+A table's access rules are declared **once**, on its controller, and are enforced identically for GraphQL and the auto-wired web CRUD routes (`/table`, `/table/new`, `/table/{id}/edit`, etc.) — there is no separate "web roles" vs "API roles" config to keep in sync. Both `Core\GraphQL\SchemaBuilder` and `Core\AutoRouter` call the same `Core\Auth\Gate`, which checks `Core\CrudController::requiredRoles()`:
 
 ```php
 class Users extends CrudController {
@@ -60,7 +60,20 @@ class Users extends CrudController {
 }
 ```
 
-Empty (the default) means no restriction beyond authentication — every table keeps working exactly as before unless you opt in. When non-empty, every query and mutation for that table checks `Core\Auth\RBAC::is($role)` — which resolves via `Core\Auth\Auth::id()`, the same JWT identity `JwtMiddleware` already validated — and throws a `GraphQL\Error\UserError` ("Forbidden: ...") if the caller has none of the required roles.
+Empty (the default) means no restriction beyond authentication — every table keeps working exactly as before unless you opt in. When non-empty, `Gate::checkRoles()` checks `Core\Auth\RBAC::is($role)` for the current identity and throws (`GraphQL\Error\UserError` for GraphQL, a 401/403 HTTP response for the web routes) if the caller has none of the required roles.
+
+Neither GraphQL nor the web CRUD routes have a URL of their own to attach a per-table role-restricting middleware to the usual way: one GraphQL request can touch several tables at once (`{ usersList { id } roomsList { id } }`), and `AutoRouter` registers all 6 CRUD routes generically for every table from one method. Declaring the rule on the controller instead means it's checked at the one place both surfaces already go through — `CrudController::forTable()`.
+
+### One identity, two transports
+
+`RBAC::is()`/`can()` resolve the current user via `RBAC::currentUserId()`, which tries a pluggable `RBAC::$identityResolver` first, then falls back to `Core\Auth\Auth::id()` (JWT). An app with a separate session-based web login (a common pattern — see [Sessions](./session)) wires its own identity function once, so the *same* `requiredRoles()` declaration governs a Bearer-token GraphQL call and a plain browser page load:
+
+```php
+// App/Routes/Routes.php, once at boot:
+RBAC::$identityResolver = fn() => Tools\Auth::id(); // however your app tracks "who's logged in"
+```
+
+Without this, a table with `requiredRoles()` set would work correctly via GraphQL (JWT) but reject every session-authenticated web user, since `RBAC::is()` would only ever see a JWT identity. This is the only piece of wiring an app needs to add — everything else (the role check itself, `authorizeRecord()`, GraphQL and the CRUD UI) is automatic once it's in place.
 
 `requiredRoles()` applies the same list to both reading and writing. When they need to differ — e.g. any authenticated user can browse a table but only a manager role can create/update/delete it — override `requiredRolesForRead()` / `requiredRolesForWrite()` instead; both default to `requiredRoles()`, so overriding neither keeps the combined behavior above:
 
@@ -77,7 +90,7 @@ class Rooms extends CrudController {
 
 ### Row-level authorization ("edit your own record, not anyone else's")
 
-`requiredRolesFor*()` operates at the table level — it can't tell *which* record a query or mutation targets, only that one was attempted. A "users can update their own profile but not each other's" rule needs the actual target record, which is only available inside the resolver, after it's already loaded — so this can't be expressed as a role list at all. It doesn't need a resolver override either (see below); it's a third, separate hook: `CrudController::authorizeRecord(string $operation, Model $record): bool`, checked for the single-record query, update, and delete — after the table-level check passes, with the real record already loaded:
+`requiredRolesFor*()` operates at the table level — it can't tell *which* record a query or mutation targets, only that one was attempted. A "users can update their own profile but not each other's" rule needs the actual target record, which is only available once it's already loaded — so this can't be expressed as a role list at all. It's a third, separate hook: `CrudController::authorizeRecord(string $operation, Model $record): bool`, checked after the table-level check passes, with the real record already loaded — for GraphQL's single-record query/update/delete, and for the web UI's edit page, update, and delete routes:
 
 ```php
 class Users extends CrudController {
@@ -92,13 +105,13 @@ class Users extends CrudController {
 }
 ```
 
-Not called for the list query (many records, no single one to check against) or `create` (no existing record yet — gate who may create at all via `requiredRolesForWrite()` instead, and use `beforeSave()` to force something like a user's own ID onto a new record rather than trusting the input).
+Not called for the list query/page (many records, no single one to check against) or `create` (no existing record yet — gate who may create at all via `requiredRolesForWrite()` instead, and use `beforeSave()` to force something like a user's own ID onto a new record rather than trusting the input).
 
-### Can you just override the GraphQL mutation directly?
+### Can you just override the GraphQL mutation, or the web route, directly?
 
-Not per-table, and intentionally so. `SchemaBuilder` builds the resolvers once, framework-side — there's no per-app resolver-replacement hook, the same way there's no way to replace `AutoRouter`'s route registration wholesale short of the `App/Routes/{table}.php` escape hatch (see [Extending & Customizing](./extending)). The three hooks above (`requiredRoles*()`, `authorizeRecord()`) exist specifically so you don't need to: everything a per-record or per-role rule needs to express is reachable through them, and mutations still route through your controller's `beforeSave()`/`afterSave()`/`saveData()` either way, so business logic already has its usual home.
+Not per-table, and intentionally so. `SchemaBuilder` builds the GraphQL resolvers once, framework-side, and `AutoRouter` registers the 6 web CRUD routes once, generically, for every table — neither has a per-app replacement hook (short of the `App/Routes/{table}.php` escape hatch, which replaces the whole route set for one table; see [Extending & Customizing](./extending)). The three hooks above (`requiredRoles*()`, `authorizeRecord()`) exist specifically so you don't need one: everything a per-record or per-role rule needs to express is reachable through them, and both mutations and web-form saves still route through your controller's `beforeSave()`/`afterSave()`/`saveData()` either way, so business logic already has its usual home.
 
-This declaration only governs GraphQL. If your app also restricts the same table's web routes via its own middleware (path-prefix rules, typically), that's a separate declaration today — nothing stops you from having your middleware call the same table's `requiredRoles()` too, so the rule lives in one place, but the framework doesn't do that wiring for you. See [Extending & Customizing](./extending).
+This one declaration governs **both** surfaces — `Core\Auth\Gate` is the single enforcement point both `SchemaBuilder` and `AutoRouter` call. There's no separate "web roles" config that could drift out of sync with the GraphQL one. The only thing an app must wire itself is *identity resolution* if it authenticates the web UI differently than GraphQL — see "One identity, two transports" above.
 
 ## Content Security Policy
 

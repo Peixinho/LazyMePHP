@@ -150,24 +150,29 @@ abstract class CrudController
     public function exposedFields(): array { return []; }
 
     /**
-     * Roles allowed to query AND mutate this table via GraphQL — shorthand for
-     * "the same restriction on both read and write." Empty array (default) =
-     * no restriction beyond whatever JwtMiddleware already enforces (a valid
-     * Bearer token, if AUTH_TABLE is configured) — matching today's behaviour
-     * for tables that don't opt in.
+     * Roles allowed to query AND mutate this table via GraphQL, AND to use its
+     * auto-wired web CRUD routes (list/new/edit/create/update/delete) — one
+     * declaration governs both. Empty array (default) = no restriction beyond
+     * whatever JwtMiddleware already enforces (a valid Bearer token, if
+     * AUTH_TABLE is configured) — matching today's behaviour for tables that
+     * don't opt in.
      *
-     * GraphQL has no web route of its own to attach role-restricting
-     * middleware to (Core\Http\Kernel::loadRoutes() registers it directly, and
-     * an app's own auth middleware typically exempts /graphql entirely — a
-     * plain HTML page navigation and a Bearer-token API call are different
-     * enough that one middleware rarely fits both). Declaring the requirement
-     * here instead means the same rule governs both a web route AND GraphQL:
-     * checked against Core\Auth\RBAC, which resolves via Core\Auth\Auth::id() —
-     * the same JWT identity JwtMiddleware already validated.
+     * Neither GraphQL nor AutoRouter's web routes have a URL of their own to
+     * attach a per-table role-restricting middleware to (one GraphQL request
+     * can touch several tables at once; AutoRouter::register() wires all 6
+     * routes generically for every table). Declaring the requirement here
+     * instead means Core\Auth\Gate — called by both Core\GraphQL\SchemaBuilder
+     * and Core\AutoRouter — checks the same rule for both surfaces:
      *
      *   public function requiredRoles(): array {
      *       return ['Gestor'];
      *   }
+     *
+     * The check goes through Core\Auth\RBAC::is(), which resolves the current
+     * user via RBAC::$identityResolver first, then Core\Auth\Auth::id() (JWT).
+     * If the web UI authenticates differently than GraphQL (a session-based
+     * login, typically), wire $identityResolver once at boot or this
+     * declaration will only ever work for the JWT side.
      *
      * When reading and writing need different roles (e.g. TAS can browse a
      * table but not create/edit/delete it), don't override this — override
@@ -177,19 +182,20 @@ abstract class CrudController
      */
     public function requiredRoles(): array { return []; }
 
-    /** Roles allowed to run the single-record and list queries. Defaults to requiredRoles(). */
+    /** Roles allowed to run the single-record/list queries and the list/edit web pages. Defaults to requiredRoles(). */
     public function requiredRolesForRead(): array { return $this->requiredRoles(); }
 
-    /** Roles allowed to run create/update/delete mutations. Defaults to requiredRoles(). */
+    /** Roles allowed to run create/update/delete mutations and the matching web routes. Defaults to requiredRoles(). */
     public function requiredRolesForWrite(): array { return $this->requiredRoles(); }
 
     /**
-     * Extra per-record GraphQL authorization, checked after the table-level
-     * requiredRolesFor*() check passes — for the single-record query, update,
-     * and delete operations, where one specific $record is already loaded.
-     * Not called for the list query (many records, no single one to check)
-     * or create (no existing record yet — restrict who may create at all via
-     * requiredRolesForWrite() instead). Return true to allow.
+     * Extra per-record authorization (GraphQL and the web CRUD routes alike),
+     * checked after the table-level requiredRolesFor*() check passes — for the
+     * single-record query/edit page, update, and delete operations, where one
+     * specific $record is already loaded. Not called for the list query/page
+     * (many records, no single one to check) or create (no existing record
+     * yet — restrict who may create at all via requiredRolesForWrite()
+     * instead). Return true to allow.
      *
      * This is what a "users can edit their own record, but not each other's"
      * rule looks like — requiredRolesForWrite() alone can't express it, since

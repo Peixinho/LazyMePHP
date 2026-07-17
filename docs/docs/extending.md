@@ -21,8 +21,8 @@ This page is the map of every place that pattern shows up. Each row links to the
 | Customize one table's CRUD behavior | `App\Controllers\{Table}` extends `Core\CrudController` | `CrudController::forTable()` — [CRUD Web UI](./crud-ui) |
 | Override a table's list/edit page | `App/Views/{table}/index.blade.php`, `edit.blade.php` | `CrudController::viewName()` — [CRUD Web UI](./crud-ui) |
 | Replace a table's auto-wired routes | `App/Routes/{table}.php` | `Core\AutoRouter::register()` — [Routing](./routing#overriding-the-auto-wired-routes) |
-| Restrict a table's GraphQL access to specific roles | `requiredRoles()`, or `requiredRolesForRead()`/`requiredRolesForWrite()` if they differ | `Core\GraphQL\SchemaBuilder::authorize()` — [Security](./security#graphql-authorization) |
-| Restrict GraphQL access to a specific record (e.g. "your own, not anyone else's") | `authorizeRecord(string $operation, Model $record): bool` | `Core\GraphQL\SchemaBuilder` — [Security](./security#row-level-authorization-edit-your-own-record-not-anyone-elses) |
+| Restrict a table's GraphQL AND web CRUD routes to specific roles — one declaration, both surfaces | `requiredRoles()`, or `requiredRolesForRead()`/`requiredRolesForWrite()` if they differ | `Core\Auth\Gate::checkRoles()`, called by both `Core\GraphQL\SchemaBuilder` and `Core\AutoRouter` — [Security](./security#graphql--web-crud-ui-authorization) |
+| Restrict access to a specific record (e.g. "your own, not anyone else's") | `authorizeRecord(string $operation, Model $record): bool` | `Core\Auth\Gate::checkRecord()`, same callers — [Security](./security#row-level-authorization-edit-your-own-record-not-anyone-elses) |
 | React to model create/update/delete | `App/Observers/{Name}.php` with `protected static string $table` | Auto-discovered in `App/bootstrap.php` — [Model Events](./orm/events) |
 | Add a custom CLI command | `App/Console/Commands/{Name}.php` extends `Core\Console\Command` | `LazyMeCLI::runUserCommand()` — [CLI Reference](./cli) |
 | Add cross-cutting request logic | `App/Http/Middleware/{Name}.php` implements `IMiddleware` | Attached per-route/group — [Middleware](./middleware) |

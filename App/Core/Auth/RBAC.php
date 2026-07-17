@@ -21,9 +21,12 @@ use Core\LazyMePHP;
  *   RBAC::grantPermission('admin', 'posts:delete');
  *   RBAC::assignRole($userId, 'admin');
  *
- *   // Enforcement (uses Auth::id() internally)
+ *   // Enforcement (uses currentUserId() internally — $identityResolver, then Auth::id())
  *   if (RBAC::can('posts:delete')) { ... }
  *   if (RBAC::is('admin')) { ... }
+ *
+ * Core\Auth\Gate builds on is() to enforce Core\CrudController::requiredRoles*()/
+ * authorizeRecord() identically for GraphQL and the auto-wired web CRUD routes.
  */
 class RBAC
 {
@@ -32,14 +35,41 @@ class RBAC
     /** Connection object id => already ensured. Keyed by connection so a swapped/reset DB re-checks. */
     private static array $tablesEnsured = [];
 
+    /**
+     * Resolves "who is the current user" for is()/can() and Gate — tried before
+     * falling back to Auth::id() (JWT). Wire this once at bootstrap when the app
+     * also has a non-JWT identity mechanism (e.g. a session-based web login), so
+     * a single requiredRoles() declaration on a controller governs both GraphQL
+     * and the auto-wired web CRUD routes instead of needing two separate checks:
+     *
+     *   RBAC::$identityResolver = fn() => Tools\Auth::id();
+     *
+     * Same fallback-chain shape as Core\Helpers\ActivityLogger::$userResolver.
+     */
+    public static $identityResolver = null;
+
     // -------------------------------------------------------------------------
-    // Query-time checks (uses current Auth::id())
+    // Query-time checks (uses currentUserId())
     // -------------------------------------------------------------------------
+
+    /** Current user ID via $identityResolver first, then Auth::id() (JWT). */
+    public static function currentUserId(): mixed
+    {
+        if (self::$identityResolver !== null) {
+            try {
+                $id = (self::$identityResolver)();
+                if ($id !== null) return $id;
+            } catch (\Throwable) {
+                // fall through to JWT
+            }
+        }
+        return Auth::id();
+    }
 
     /** True when the currently authenticated user has the given permission. */
     public static function can(string $permission): bool
     {
-        $userId = Auth::id();
+        $userId = self::currentUserId();
         if ($userId === null) return false;
         return in_array($permission, self::permissionsFor($userId), true);
     }
@@ -47,7 +77,7 @@ class RBAC
     /** True when the currently authenticated user has the given role. */
     public static function is(string $role): bool
     {
-        $userId = Auth::id();
+        $userId = self::currentUserId();
         if ($userId === null) return false;
         return in_array($role, self::rolesFor($userId), true);
     }

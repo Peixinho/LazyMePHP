@@ -766,10 +766,11 @@ class Users extends CrudController {
         return ['id', 'name', 'email', 'role_id', 'created_at'];
     }
 
-    // Restricts this table's GraphQL queries/mutations to callers with the
-    // given role(s) — checked via Core\Auth\RBAC::is(). Empty (the default)
-    // means no restriction beyond authentication. Applies to both reading
-    // and writing; override requiredRolesForRead()/requiredRolesForWrite()
+    // Restricts this table's GraphQL queries/mutations AND its web CRUD
+    // routes to callers with the given role(s) — one declaration, checked by
+    // Core\Auth\Gate for both surfaces. Empty (the default) means no
+    // restriction beyond authentication. Applies to both reading and
+    // writing; override requiredRolesForRead()/requiredRolesForWrite()
     // instead when a table needs those to differ (e.g. anyone can browse,
     // only 'admin' can create/update/delete).
     public function requiredRoles(): array {
@@ -778,8 +779,8 @@ class Users extends CrudController {
 
     // Restrict access to a *specific* record (e.g. "edit your own, not anyone
     // else's") — requiredRoles() can't express this, it never sees which
-    // record is targeted. Checked for the single-record query, update, and
-    // delete; not called for the list query or create.
+    // record is targeted. Checked for the single-record query/edit page,
+    // update, and delete; not called for the list query/page or create.
     public function authorizeRecord(string $operation, Model $record): bool {
         return (string) \Core\Auth\Auth::id() === (string) $record->getPrimaryKey();
     }
@@ -821,9 +822,9 @@ mutation { deleteUsers(id: 1) }
 | Introspection | Disabled outside `APP_ENV=development` |
 | Stack traces | Stripped outside `APP_ENV=development` |
 | Authentication | `JwtMiddleware` rejects requests with no valid Bearer token when `AUTH_TABLE` is configured |
-| Authorization | Per-table, via `CrudController::requiredRoles()` — see below |
+| Authorization | Per-table, via `CrudController::requiredRoles()` — enforced identically for GraphQL and the web CRUD routes, see below |
 
-A JWT Bearer token is all `JwtMiddleware` can check — it runs before the query is even parsed, and one GraphQL request can touch several tables at once, so there's no single route to attach a per-table role check to. Per-table restriction is opt-in on the table's controller instead:
+A JWT Bearer token is all `JwtMiddleware` can check — it runs before the query is even parsed, and one GraphQL request can touch several tables at once, so there's no single route to attach a per-table role check to (the same is true of `Core\AutoRouter`, which registers all 6 web CRUD routes generically for every table). Per-table restriction is opt-in on the table's controller instead, and governs both surfaces at once:
 
 ```php
 class Users extends CrudController {
@@ -833,7 +834,7 @@ class Users extends CrudController {
 }
 ```
 
-Every query/mutation for that table then checks `Core\Auth\RBAC::is($role)` and throws a `GraphQL\Error\UserError` if the caller has none of the required roles.
+Every query/mutation for that table — and every web CRUD route — then goes through `Core\Auth\Gate::checkRoles()`, which checks `Core\Auth\RBAC::is($role)` and throws (`GraphQL\Error\UserError` for GraphQL, a 401/403 response for the web routes) if the caller has none of the required roles. `RBAC::is()` resolves the current user via `RBAC::$identityResolver` first (wire this to your app's own session/login mechanism if it's not JWT), then falls back to `Core\Auth\Auth::id()` (JWT) — see [Security](docs/docs/security.md#one-identity-two-transports).
 
 `requiredRoles()` applies the same list to both reading and writing. Override `requiredRolesForRead()` / `requiredRolesForWrite()` instead when a table needs those to differ — e.g. any authenticated user can browse it, only a manager role can change it:
 
@@ -846,7 +847,7 @@ class Rooms extends CrudController {
 
 Both default to `requiredRoles()`, so overriding neither keeps the single-list behavior above.
 
-For row-level rules ("edit your own record, not anyone else's") — which table-level role lists can't express at all, since they never see *which* record is targeted — override `authorizeRecord()` instead. It runs after the table-level check, with the actual target record already loaded, for the single-record query, update, and delete (not the list query or create):
+For row-level rules ("edit your own record, not anyone else's") — which table-level role lists can't express at all, since they never see *which* record is targeted — override `authorizeRecord()` instead. It runs after the table-level check, with the actual target record already loaded, for the single-record query/edit page, update, and delete (not the list query/page or create):
 
 ```php
 class Users extends CrudController {
@@ -860,7 +861,7 @@ class Users extends CrudController {
 }
 ```
 
-There's no per-table way to replace the GraphQL resolvers themselves — `requiredRoles*()` and `authorizeRecord()` are the extension points, and mutations still call your controller's `beforeSave()`/`afterSave()` either way, so business logic has its usual home.
+There's no per-table way to replace the GraphQL resolvers or the web CRUD routes themselves — `requiredRoles*()` and `authorizeRecord()` are the extension points, checked by `Core\Auth\Gate` for both, and mutations/form saves still call your controller's `beforeSave()`/`afterSave()` either way, so business logic has its usual home.
 
 ---
 
@@ -1257,7 +1258,7 @@ php LazyMePHP queue:size --queue=<name>  Show pending count for a named queue
 | SQL injection | All queries use prepared statement placeholders |
 | Column injection | Filter and sort columns validated against live schema |
 | CSP | `default-src 'self'`; no `unsafe-inline` |
-| GraphQL | Depth 7, complexity 200, introspection off in production; per-table role authorization via `requiredRoles()` |
+| GraphQL & CRUD UI | Depth 7, complexity 200, introspection off in production; per-table role authorization via `requiredRoles()` — one declaration governs both surfaces |
 | Audit log | Sensitive columns auto-stripped; passwords never logged |
 | Rate limiting | Refresh token endpoint: 20 requests per 5 minutes per IP |
 

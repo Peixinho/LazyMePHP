@@ -14,6 +14,8 @@ use Core\Http\Request;
 use Core\LazyMePHP;
 use Core\CrudController;
 use Core\Helpers\Helper;
+use Core\Auth\Gate;
+use Core\Auth\AuthorizationException;
 use Pecee\SimpleRouter\SimpleRouter;
 use eftec\bladeone\BladeOne;
 
@@ -32,6 +34,11 @@ use eftec\bladeone\BladeOne;
  * actions), create App/Routes/{table}.php — its presence completely replaces
  * the standard 6-route registration below for that table. Scaffold a starting
  * point with `php LazyMePHP make:router <table>`.
+ *
+ * Every route here also enforces CrudController::requiredRoles*()/authorizeRecord()
+ * via Core\Auth\Gate — the same declaration Core\GraphQL\SchemaBuilder enforces
+ * for GraphQL. A table's access rules live in one place and govern both surfaces;
+ * there's no separate "web roles" config to keep in sync.
  */
 class AutoRouter
 {
@@ -53,6 +60,7 @@ class AutoRouter
         SimpleRouter::get("/$table", function () use ($table): void {
             $request    = new Request();
             $controller = CrudController::forTable($table, $request);
+            self::enforce($controller, $controller->requiredRolesForRead(), $table);
             $data       = $controller->index((int)($request->get('page') ?? 1), LazyMePHP::NRESULTS());
             echo BladeFactory::render($controller->viewName('index'), array_merge($data, [
                 'current' => $request->get('page') ?? 1,
@@ -63,12 +71,15 @@ class AutoRouter
         SimpleRouter::get("/$table/new", function () use ($table): void {
             $request    = new Request();
             $controller = CrudController::forTable($table, $request);
+            self::enforce($controller, $controller->requiredRolesForWrite(), $table);
             echo BladeFactory::render($controller->viewName('edit'), $controller->edit());
         });
 
         SimpleRouter::get("/$table/{id}/edit", function (string $id) use ($table): void {
             $request    = new Request();
             $controller = CrudController::forTable($table, $request);
+            $record     = new Model($table, $id);
+            self::enforce($controller, $controller->requiredRolesForWrite(), $table, $record, 'update');
             echo BladeFactory::render($controller->viewName('edit'), $controller->edit((int)$id));
         });
 
@@ -84,6 +95,8 @@ class AutoRouter
         SimpleRouter::post("/$table/{id}", function (string $id) use ($table): void {
             $request    = new Request();
             $controller = CrudController::forTable($table, $request);
+            $record     = new Model($table, $id);
+            self::enforce($controller, $controller->requiredRolesForWrite(), $table, $record, 'update');
             $controller->save((int)$id);
             Helper::redirect("/$table");
         });
@@ -91,6 +104,7 @@ class AutoRouter
         SimpleRouter::post("/$table", function () use ($table): void {
             $request    = new Request();
             $controller = CrudController::forTable($table, $request);
+            self::enforce($controller, $controller->requiredRolesForWrite(), $table);
             $controller->save();
             Helper::redirect("/$table");
         });
@@ -98,9 +112,37 @@ class AutoRouter
         SimpleRouter::post("/$table/{id}/delete", function (string $id) use ($table): void {
             $request    = new Request();
             $controller = CrudController::forTable($table, $request);
+            $record     = new Model($table, $id);
+            self::enforce($controller, $controller->requiredRolesForWrite(), $table, $record, 'delete');
             $controller->delete((int)$id);
             Helper::redirect("/$table");
         });
+    }
+
+    /**
+     * Enforces CrudController::requiredRolesForRead()/requiredRolesForWrite()
+     * and, when $record is given (and exists), authorizeRecord() — the exact
+     * same check Core\GraphQL\SchemaBuilder runs for GraphQL, so a table's
+     * access rules are declared once on its controller and apply identically
+     * to both surfaces. Emits 401/403 and exits on failure.
+     */
+    private static function enforce(
+        CrudController $controller,
+        array $roles,
+        string $table,
+        ?Model $record = null,
+        string $recordOp = '',
+    ): void {
+        try {
+            Gate::checkRoles($roles, $table);
+            if ($record !== null && $record->getPrimaryKey() !== null) {
+                Gate::checkRecord($controller, $recordOp, $record, $table);
+            }
+        } catch (AuthorizationException $e) {
+            http_response_code($e->status);
+            echo $e->getMessage();
+            exit;
+        }
     }
 
     /**

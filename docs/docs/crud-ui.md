@@ -82,19 +82,21 @@ class Users extends CrudController {
         return ['id', 'name', 'email', 'role_id', 'created_at'];
     }
 
-    // Restrict this table's GraphQL queries/mutations to specific roles —
-    // empty (default) means no restriction beyond authentication. Applies to
-    // both reading and writing; override requiredRolesForRead()/
-    // requiredRolesForWrite() instead when they need to differ. See
-    // Security > GraphQL authorization for how this is enforced.
+    // Restrict this table's queries/mutations AND its web CRUD routes to
+    // specific roles — one declaration governs both surfaces (Core\Auth\Gate
+    // enforces it for GraphQL and for Core\AutoRouter alike). Empty (default)
+    // means no restriction beyond authentication. Applies to both reading and
+    // writing; override requiredRolesForRead()/requiredRolesForWrite()
+    // instead when they need to differ. See Security > GraphQL & web CRUD UI
+    // authorization for how this is enforced.
     public function requiredRoles(): array {
         return ['admin'];
     }
 
     // Restrict access to a *specific* record, e.g. users editing only their
     // own — requiredRoles() can't express this, it never sees which record
-    // is targeted. Checked for the single-record query, update, and delete;
-    // not called for the list query or create.
+    // is targeted. Checked for the single-record query/edit page, update,
+    // and delete; not called for the list query/page or create.
     public function authorizeRecord(string $operation, Model $record): bool {
         return (string) \Core\Auth\Auth::id() === (string) $record->getPrimaryKey();
     }

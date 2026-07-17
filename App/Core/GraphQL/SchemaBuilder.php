@@ -17,6 +17,8 @@ use GraphQL\Type\Schema;
 use Core\Model;
 use Core\CrudController;
 use Core\Http\Request;
+use Core\Auth\Gate;
+use Core\Auth\AuthorizationException;
 
 /**
  * Builds a GraphQL schema at runtime from the DB schema, with no code generation.
@@ -77,9 +79,7 @@ class SchemaBuilder
                             return null;
                         }
                         $controller = CrudController::forTable($table, new Request());
-                        if (!$controller->authorizeRecord('read', $m)) {
-                            throw new \GraphQL\Error\UserError("Forbidden: you may not view this $table record");
-                        }
+                        self::authorizeRecord($controller, 'read', $m, $table);
                         return $m;
                     },
                 ];
@@ -134,9 +134,7 @@ class SchemaBuilder
                             throw new \GraphQL\Error\UserError("Record not found in $table");
                         }
                         $controller = CrudController::forTable($table, new Request());
-                        if (!$controller->authorizeRecord('update', $existing)) {
-                            throw new \GraphQL\Error\UserError("Forbidden: you may not update this $table record");
-                        }
+                        self::authorizeRecord($controller, 'update', $existing, $table);
                         $result = $controller->saveData($args['input'], $args['id']);
                         if ($result === false) {
                             throw new \GraphQL\Error\UserError("Validation failed for $table");
@@ -155,9 +153,7 @@ class SchemaBuilder
                             throw new \GraphQL\Error\UserError("Record not found in $table");
                         }
                         $controller = CrudController::forTable($table, new Request());
-                        if (!$controller->authorizeRecord('delete', $obj)) {
-                            throw new \GraphQL\Error\UserError("Forbidden: you may not delete this $table record");
-                        }
+                        self::authorizeRecord($controller, 'delete', $obj, $table);
                         $controller->delete($args['id']);
                         return true;
                     },
@@ -179,23 +175,21 @@ class SchemaBuilder
      */
     private static function authorize(array $requiredRoles, string $table): void
     {
-        if (empty($requiredRoles)) {
-            return;
+        try {
+            Gate::checkRoles($requiredRoles, $table);
+        } catch (AuthorizationException $e) {
+            throw new \GraphQL\Error\UserError($e->getMessage());
         }
+    }
 
-        if (!\Core\Auth\Auth::check()) {
-            throw new \GraphQL\Error\UserError("Unauthorized: $table requires authentication.");
+    /** @throws \GraphQL\Error\UserError When CrudController::authorizeRecord() returns false. */
+    private static function authorizeRecord(CrudController $controller, string $operation, Model $record, string $table): void
+    {
+        try {
+            Gate::checkRecord($controller, $operation, $record, $table);
+        } catch (AuthorizationException $e) {
+            throw new \GraphQL\Error\UserError($e->getMessage());
         }
-
-        foreach ($requiredRoles as $role) {
-            if (\Core\Auth\RBAC::is($role)) {
-                return;
-            }
-        }
-
-        throw new \GraphQL\Error\UserError(
-            "Forbidden: $table requires one of these roles: " . implode(', ', $requiredRoles)
-        );
     }
 
     // -------------------------------------------------------------------------
