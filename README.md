@@ -766,6 +766,13 @@ class Users extends CrudController {
         return ['id', 'name', 'email', 'role_id', 'created_at'];
     }
 
+    // Restricts this table's GraphQL queries/mutations to callers with the
+    // given role(s) — checked via Core\Auth\RBAC::is(). Empty (the default)
+    // means no restriction beyond authentication.
+    public function requiredRoles(): array {
+        return ['admin'];
+    }
+
     // public static bool $hidden = true; // exclude from auto-wiring
 }
 ```
@@ -802,6 +809,20 @@ mutation { deleteUsers(id: 1) }
 | Query complexity limit | 200 |
 | Introspection | Disabled outside `APP_ENV=development` |
 | Stack traces | Stripped outside `APP_ENV=development` |
+| Authentication | `JwtMiddleware` rejects requests with no valid Bearer token when `AUTH_TABLE` is configured |
+| Authorization | Per-table, via `CrudController::requiredRoles()` — see below |
+
+A JWT Bearer token is all `JwtMiddleware` can check — it runs before the query is even parsed, and one GraphQL request can touch several tables at once, so there's no single route to attach a per-table role check to. Per-table restriction is opt-in on the table's controller instead:
+
+```php
+class Users extends CrudController {
+    public function requiredRoles(): array {
+        return ['admin']; // empty (default) = no restriction beyond authentication
+    }
+}
+```
+
+Every query/mutation for that table then checks `Core\Auth\RBAC::is($role)` and throws a `GraphQL\Error\UserError` if the caller has none of the required roles.
 
 ---
 
@@ -1198,7 +1219,7 @@ php LazyMePHP queue:size --queue=<name>  Show pending count for a named queue
 | SQL injection | All queries use prepared statement placeholders |
 | Column injection | Filter and sort columns validated against live schema |
 | CSP | `default-src 'self'`; no `unsafe-inline` |
-| GraphQL | Depth 7, complexity 200, introspection off in production |
+| GraphQL | Depth 7, complexity 200, introspection off in production; per-table role authorization via `requiredRoles()` |
 | Audit log | Sensitive columns auto-stripped; passwords never logged |
 | Rate limiting | Refresh token endpoint: 20 requests per 5 minutes per IP |
 

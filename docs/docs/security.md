@@ -21,7 +21,7 @@ sidebar_position: 16
 | SQL injection | All queries use prepared statement placeholders |
 | Column injection | Filter and sort columns validated against live schema |
 | CSP | `default-src 'self'`; no `unsafe-inline` |
-| GraphQL | Depth 7, complexity 200, introspection off in production |
+| GraphQL | Depth 7, complexity 200, introspection off in production; per-table role authorization via `requiredRoles()` |
 | Audit log | Sensitive columns auto-stripped; passwords never logged |
 | Rate limiting | Refresh endpoint: 20 req / 5 min / IP; configurable per route |
 
@@ -47,6 +47,22 @@ CSRF tokens are generated per-session and rotated on every POST. The token is va
 2. The raw token is returned to the client **once** in the login response — it is never stored server-side in plain text.
 3. Only the SHA-256 hash of the raw token is persisted in `__auth_refresh_tokens`.
 4. On every `/auth/refresh` call, the provided token is hashed and compared. The old token is immediately revoked whether or not the hash matches — stolen tokens cannot be replayed.
+
+## GraphQL authorization
+
+`JwtMiddleware` only answers "is there a valid Bearer token" — GraphQL deliberately lets one request touch several tables at once (`{ usersList { id } roomsList { id } }`), so there's no single URL/route to attach a per-table role check to the way there is for a web route. Per-table authorization is enforced instead in `Core\GraphQL\SchemaBuilder`, at the resolver level, via `Core\CrudController::requiredRoles()`:
+
+```php
+class Users extends CrudController {
+    public function requiredRoles(): array {
+        return ['Gestor'];
+    }
+}
+```
+
+Empty (the default) means no restriction beyond authentication — every table keeps working exactly as before unless you opt in. When non-empty, every query and mutation for that table checks `Core\Auth\RBAC::is($role)` — which resolves via `Core\Auth\Auth::id()`, the same JWT identity `JwtMiddleware` already validated — and throws a `GraphQL\Error\UserError` ("Forbidden: ...") if the caller has none of the required roles.
+
+This declaration only governs GraphQL. If your app also restricts the same table's web routes via its own middleware (path-prefix rules, typically), that's a separate declaration today — nothing stops you from having your middleware call the same table's `requiredRoles()` too, so the rule lives in one place, but the framework doesn't do that wiring for you. See [Extending & Customizing](./extending).
 
 ## Content Security Policy
 

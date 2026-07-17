@@ -83,4 +83,18 @@ describe('Global scopes', function () {
 
         ActivePost::removeGlobalScope('title_filter');
     });
+
+    it('applies the global scope to a direct-by-id lookup, not just query()', function () {
+        // Regression test: new Model($table, $id) — which Model::find() and
+        // GraphQL's single-record query both use — loaded via a raw SELECT that
+        // bypassed global scopes entirely, so a record a scope was meant to hide
+        // (soft-deleted, another tenant's, inactive, ...) could still be fetched
+        // directly by id even though ->query()->get() would never include it.
+        ActivePost::addGlobalScope('active', fn(ModelQuery $q) => $q->where('active', 1));
+
+        $draft = ActivePost::withoutGlobalScopes()->where('title', 'Draft')->first();
+
+        expect(ActivePost::find('scope_posts', $draft->getPrimaryKey()))->toBeNull();
+        expect(ActivePost::find('scope_posts', 1)->title)->toBe('Pub A');
+    });
 });

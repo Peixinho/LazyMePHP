@@ -82,6 +82,13 @@ class Users extends CrudController {
         return ['id', 'name', 'email', 'role_id', 'created_at'];
     }
 
+    // Restrict this table's GraphQL queries/mutations to specific roles —
+    // empty (default) means no restriction beyond authentication. See
+    // Security > GraphQL authorization for how this is enforced.
+    public function requiredRoles(): array {
+        return ['admin'];
+    }
+
     // Set to true to exclude this table from the auto-wired UI
     // public static bool $hidden = true;
 }

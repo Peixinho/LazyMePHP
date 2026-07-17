@@ -32,6 +32,7 @@ use Core\Http\Request;
  *     delete{Table}(id: ID!): Boolean
  *
  * To restrict which fields are exposed, override exposedFields() in Controllers\{Table}.
+ * To restrict which roles may query/mutate a table at all, override requiredRoles().
  */
 class SchemaBuilder
 {
@@ -44,6 +45,7 @@ class SchemaBuilder
             $schema     = Model::schemaFor($table);
             $controller = CrudController::forTable($table, new Request());
             $exposed    = $controller->exposedFields();
+            $requiredRoles = $controller->requiredRoles();
 
             if (!empty($exposed)) {
                 $schema = array_intersect_key($schema, array_flip($exposed));
@@ -63,7 +65,8 @@ class SchemaBuilder
                 $queryFields[$gqlName] = [
                     'type'    => $objType,
                     'args'    => ['id' => ['type' => Type::nonNull(Type::id())]],
-                    'resolve' => function ($root, array $args) use ($table): ?Model {
+                    'resolve' => function ($root, array $args) use ($table, $requiredRoles): ?Model {
+                        self::authorize($requiredRoles, $table);
                         $m = new Model($table, $args['id']);
                         return $m->getPrimaryKey() !== null ? $m : null;
                     },
@@ -77,7 +80,8 @@ class SchemaBuilder
                     'page'  => ['type' => Type::int(), 'defaultValue' => 1],
                     'limit' => ['type' => Type::int(), 'defaultValue' => 20],
                 ],
-                'resolve' => function ($root, array $args) use ($table): array {
+                'resolve' => function ($root, array $args) use ($table, $requiredRoles): array {
+                    self::authorize($requiredRoles, $table);
                     return Model::query($table)
                         ->limit($args['limit'], ($args['page'] - 1) * $args['limit'])
                         ->get();
@@ -94,7 +98,8 @@ class SchemaBuilder
                 $mutationFields['create' . $typeName] = [
                     'type'    => $objType,
                     'args'    => ['input' => ['type' => Type::nonNull($inputType)]],
-                    'resolve' => function ($root, array $args) use ($table): Model {
+                    'resolve' => function ($root, array $args) use ($table, $requiredRoles): Model {
+                        self::authorize($requiredRoles, $table);
                         $controller = CrudController::forTable($table, new Request());
                         $result     = $controller->saveData($args['input']);
                         if ($result === false) {
@@ -110,7 +115,8 @@ class SchemaBuilder
                         'id'    => ['type' => Type::nonNull(Type::id())],
                         'input' => ['type' => Type::nonNull($inputType)],
                     ],
-                    'resolve' => function ($root, array $args) use ($table): Model {
+                    'resolve' => function ($root, array $args) use ($table, $requiredRoles): Model {
+                        self::authorize($requiredRoles, $table);
                         $controller = CrudController::forTable($table, new Request());
                         $result     = $controller->saveData($args['input'], $args['id']);
                         if ($result === false) {
@@ -123,7 +129,8 @@ class SchemaBuilder
                 $mutationFields['delete' . $typeName] = [
                     'type'    => Type::boolean(),
                     'args'    => ['id' => ['type' => Type::nonNull(Type::id())]],
-                    'resolve' => function ($root, array $args) use ($table): bool {
+                    'resolve' => function ($root, array $args) use ($table, $requiredRoles): bool {
+                        self::authorize($requiredRoles, $table);
                         $obj = new Model($table, $args['id']);
                         if ($obj->getPrimaryKey() === null) {
                             throw new \GraphQL\Error\UserError("Record not found in $table");
@@ -142,6 +149,31 @@ class SchemaBuilder
         }
 
         return new Schema($def);
+    }
+
+    /**
+     * @param list<string> $requiredRoles From CrudController::requiredRoles() — empty means no restriction.
+     * @throws \GraphQL\Error\UserError When authentication or role membership is missing.
+     */
+    private static function authorize(array $requiredRoles, string $table): void
+    {
+        if (empty($requiredRoles)) {
+            return;
+        }
+
+        if (!\Core\Auth\Auth::check()) {
+            throw new \GraphQL\Error\UserError("Unauthorized: $table requires authentication.");
+        }
+
+        foreach ($requiredRoles as $role) {
+            if (\Core\Auth\RBAC::is($role)) {
+                return;
+            }
+        }
+
+        throw new \GraphQL\Error\UserError(
+            "Forbidden: $table requires one of these roles: " . implode(', ', $requiredRoles)
+        );
     }
 
     // -------------------------------------------------------------------------

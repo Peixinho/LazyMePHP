@@ -682,19 +682,23 @@ class Model implements IDB
     // Hydration
     // -------------------------------------------------------------------------
 
+    /**
+     * Goes through ModelQuery (not a raw SELECT) so registered global/universal
+     * scopes apply here too — otherwise `new Model($table, $id)` (used by e.g.
+     * GraphQL's single-record query) could fetch a row that a scope meant to
+     * hide (soft-deleted, another tenant's, inactive, ...), while the
+     * scope-respecting `Model::query($table)->get()` list path would not.
+     */
     private function loadByPrimaryKey(mixed $value): void
     {
         if ($this->primaryKey === null) return;
 
-        $db = LazyMePHP::DB_CONNECTION();
-        $result = $db->query(
-            "SELECT * FROM \"{$this->tableName}\" WHERE \"{$this->primaryKey}\" = ?",
-            [$value]
-        );
-        $row = $result->fetchArray();
-        if ($row !== null) {
-            $this->data  = $row;
-            $this->exists = true;
+        $found = (new ModelQuery($this->tableName, static::class))
+            ->where($this->primaryKey, $value)
+            ->first();
+
+        if ($found !== null) {
+            $this->hydrateFromArray($found->toArray());
         }
     }
 

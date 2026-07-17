@@ -150,6 +150,27 @@ abstract class CrudController
     public function exposedFields(): array { return []; }
 
     /**
+     * Roles allowed to query or mutate this table via GraphQL. Empty array
+     * (default) = no restriction beyond whatever JwtMiddleware already
+     * enforces (a valid Bearer token, if AUTH_TABLE is configured) — matching
+     * today's behaviour for tables that don't opt in.
+     *
+     * GraphQL has no web route of its own to attach role-restricting
+     * middleware to (Core\Http\Kernel::loadRoutes() registers it directly, and
+     * an app's own auth middleware typically exempts /graphql entirely — a
+     * plain HTML page navigation and a Bearer-token API call are different
+     * enough that one middleware rarely fits both). Declaring the requirement
+     * here instead means the same rule governs both a web route AND GraphQL:
+     * checked against Core\Auth\RBAC, which resolves via Core\Auth\Auth::id() —
+     * the same JWT identity JwtMiddleware already validated.
+     *
+     *   public function requiredRoles(): array {
+     *       return ['Gestor'];
+     *   }
+     */
+    public function requiredRoles(): array { return []; }
+
+    /**
      * Called before the record is saved.
      * Modify $data to change what gets written; set properties on $obj directly
      * for anything that bypasses validation.

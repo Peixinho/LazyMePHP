@@ -21,10 +21,10 @@ This page is the map of every place that pattern shows up. Each row links to the
 | Customize one table's CRUD behavior | `App\Controllers\{Table}` extends `Core\CrudController` | `CrudController::forTable()` — [CRUD Web UI](./crud-ui) |
 | Override a table's list/edit page | `App/Views/{table}/index.blade.php`, `edit.blade.php` | `CrudController::viewName()` — [CRUD Web UI](./crud-ui) |
 | Replace a table's auto-wired routes | `App/Routes/{table}.php` | `Core\AutoRouter::register()` — [Routing](./routing#overriding-the-auto-wired-routes) |
+| Restrict a table's GraphQL access to specific roles | `requiredRoles(): array` on the table's controller | `Core\GraphQL\SchemaBuilder::authorize()` — [Security](./security#graphql-authorization) |
 | React to model create/update/delete | `App/Observers/{Name}.php` with `protected static string $table` | Auto-discovered in `App/bootstrap.php` — [Model Events](./orm/events) |
 | Add a custom CLI command | `App/Console/Commands/{Name}.php` extends `Core\Console\Command` | `LazyMeCLI::runUserCommand()` — [CLI Reference](./cli) |
 | Add cross-cutting request logic | `App/Http/Middleware/{Name}.php` implements `IMiddleware` | Attached per-route/group — [Middleware](./middleware) |
-| Hand-write a REST endpoint outside GraphQL | Any file in `App/Api/*.php` | `require_once`'d by `public/api/index.php` |
 | Add a typed model class (optional) | `App/Models/{Name}.php` extends `Core\Model` | Only needed for `$fillable`/factories — `make:model` |
 
 ## Why file/class existence instead of a build step
@@ -42,4 +42,4 @@ Some tables shouldn't be exposed at all — internal audit tables, join tables, 
 
 ## Version control
 
-Because none of `App/Controllers`, `App/Views`, `App/Routes`, `App/Api`, or `App/Models` are generated output, they must be tracked in git like any other source — a fresh clone or deploy needs them to exist. If files you create under these directories aren't showing up in `git status`, check `.gitignore` hasn't reverted to blanket-ignoring them.
+Because none of `App/Controllers`, `App/Views`, `App/Routes`, or `App/Models` are generated output, they must be tracked in git like any other source — a fresh clone or deploy needs them to exist. If files you create under these directories aren't showing up in `git status`, check `.gitignore` hasn't reverted to blanket-ignoring them.

@@ -17,12 +17,12 @@ beforeEach(function () {
     new LazyMePHP();
 
     $db = LazyMePHP::DB_CONNECTION();
-    $db->query("CREATE TABLE users (
+    $db->query("CREATE TABLE demo_users (
         id    INTEGER PRIMARY KEY AUTOINCREMENT,
         name  TEXT    NOT NULL,
         email TEXT    NOT NULL
     )");
-    $db->query("INSERT INTO users (name, email) VALUES ('Alice', 'alice@test.com')");
+    $db->query("INSERT INTO demo_users (name, email) VALUES ('Alice', 'alice@test.com')");
 });
 
 afterEach(function () {
@@ -38,7 +38,7 @@ function callGraphqlEndpoint(string $body): array
     http_response_code(200);
 
     ob_start();
-    Endpoint::handle(['users'], $body);
+    Endpoint::handle(['demo_users'], $body);
     $raw = ob_get_clean();
 
     return ['status' => http_response_code(), 'body' => json_decode($raw, true)];
@@ -55,31 +55,31 @@ describe('GraphQL Endpoint', function () {
         $_ENV['APP_ENV'] = 'production';
 
         $res = callGraphqlEndpoint(json_encode([
-            'query' => '{ usersList { id name } }',
+            'query' => '{ demoUsersList { id name } }',
         ]));
 
         expect($res['status'])->toBe(200);
         expect($res['body'])->not->toHaveKey('errors');
-        expect($res['body']['data']['usersList'][0]['name'])->toBe('Alice');
+        expect($res['body']['data']['demoUsersList'][0]['name'])->toBe('Alice');
     });
 
     it('executes a valid query without error', function () {
         $res = callGraphqlEndpoint(json_encode([
-            'query' => '{ usersList { id name } }',
+            'query' => '{ demoUsersList { id name } }',
         ]));
 
         expect($res['status'])->toBe(200);
         expect($res['body'])->not->toHaveKey('errors');
-        expect($res['body']['data']['usersList'])->toHaveCount(1);
+        expect($res['body']['data']['demoUsersList'])->toHaveCount(1);
     });
 
     it('passes variables through to the query', function () {
         $res = callGraphqlEndpoint(json_encode([
-            'query'     => 'query($id: ID!) { users(id: $id) { name } }',
+            'query'     => 'query($id: ID!) { demoUsers(id: $id) { name } }',
             'variables' => ['id' => 1],
         ]));
 
-        expect($res['body']['data']['users']['name'])->toBe('Alice');
+        expect($res['body']['data']['demoUsers']['name'])->toBe('Alice');
     });
 
     it('rejects a query that exceeds MAX_COMPLEXITY via aliased field fan-out', function () {
@@ -92,7 +92,7 @@ describe('GraphQL Endpoint', function () {
         }
 
         $res = callGraphqlEndpoint(json_encode([
-            'query' => '{ usersList { ' . $aliases . '} }',
+            'query' => '{ demoUsersList { ' . $aliases . '} }',
         ]));
 
         expect($res['body'])->toHaveKey('errors');
@@ -139,7 +139,7 @@ describe('GraphQL Endpoint', function () {
         $_ENV['APP_ENV'] = 'production';
 
         $res = callGraphqlEndpoint(json_encode([
-            'query' => 'mutation { deleteUsers(id: 999) }',
+            'query' => 'mutation { deleteDemoUsers(id: 999) }',
         ]));
 
         expect($res['body']['errors'][0]['extensions'] ?? [])->not->toHaveKey('trace');
@@ -149,7 +149,7 @@ describe('GraphQL Endpoint', function () {
         $_ENV['APP_ENV'] = 'development';
 
         $res = callGraphqlEndpoint(json_encode([
-            'query' => 'mutation { deleteUsers(id: 999) }',
+            'query' => 'mutation { deleteDemoUsers(id: 999) }',
         ]));
 
         expect($res['body']['errors'][0]['extensions'])->toHaveKey('trace');

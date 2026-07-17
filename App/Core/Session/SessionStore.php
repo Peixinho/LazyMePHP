@@ -29,7 +29,19 @@ class SessionStore
 
     public function __construct()
     {
-        if (session_status() === PHP_SESSION_NONE) {
+        // headers_sent() guard: a request with no real session (a GraphQL/API
+        // call authenticated via Bearer token, not a cookie) can still end up
+        // here — e.g. Core\Helpers\ActivityLogger's access-log resolver calls
+        // Tools\Auth::id() -> Session::get() for every request, including
+        // API-only ones. If the response has already been written (any output
+        // large enough to exceed PHP's output buffer flushes early, headers
+        // and all — GraphQL error responses with a full debug trace routinely
+        // do), attempting session_set_cookie_params()/session_start() here
+        // would emit "headers already sent" warnings that this app's own error
+        // handler then escalates into a second, garbled error page appended to
+        // the real response. There's nothing useful a session can do once
+        // headers are already gone, so just skip it silently.
+        if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
             $isProd = ($_ENV['APP_ENV'] ?? 'production') !== 'development';
             session_set_cookie_params([
                 'lifetime' => 0,
