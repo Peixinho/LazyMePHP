@@ -7,19 +7,46 @@ namespace Core\Helpers;
 use Core\LazyMePHP;
 
 /**
- * Audit logger — records INSERT, UPDATE, and DELETE operations to __LOG_ACTIVITY / __LOG_DATA.
+ * Activity + audit logger.
  *
- * Only writes a database row when at least one data change was collected during the request.
- * Plain GET requests (or any request with no model mutations) produce no log entry.
+ * Every request that reaches Kernel::afterRequest() gets one __LOG_ACTIVITY row
+ * (who, method, URI, status, timing) — this is the access log: it answers "who
+ * navigated where," independent of whether anything was written to the DB.
+ *
+ * Requests that also changed data get __LOG_DATA child rows (one per changed
+ * field, before/after) linked to that same __LOG_ACTIVITY row via
+ * id_log_activity — this is the audit trail: it answers "what changed."
  *
  * Sensitive column names (password, token, secret, api_key, and AUTH_PASSWORD_COLUMN)
- * are stripped from the log automatically.
+ * are stripped from the field-level log automatically.
+ *
+ * Who counts as "the current user" tries, in order: $userResolver (an app's
+ * own session-based web auth, if registered — Core\Auth\Auth::check() is
+ * always false for a plain HTML <a>/<form>, which never carries an
+ * Authorization header), then Core\Auth\Auth itself (a Bearer-token GraphQL/API
+ * request has no PHP session, so it needs this one instead), then the
+ * env-configured fallback identity. Register a resolver in App/Routes/Routes.php:
+ *
+ *   Core\Helpers\ActivityLogger::$userResolver = fn() => Tools\Auth::id();
  */
 class ActivityLogger
 {
     private static array $logdata = [];
     /** Connection object id => already ensured. Keyed by connection so a swapped/reset DB re-checks. */
     private static array $tablesEnsured = [];
+    /** Optional override: fn(): int|string|null — the current user's identity for the access log. */
+    public static $userResolver = null;
+    /**
+     * Guards against writing two __LOG_ACTIVITY rows for one request. Several
+     * routes/middleware (AuthMiddleware's login redirect and role checks,
+     * AuthEndpoint's JSON responses) call exit() directly, which skips
+     * Kernel::afterRequest()'s explicit logActivity() call entirely — a
+     * shutdown-function safety net (registered in Kernel::installErrorHandler())
+     * also calls logActivity() so those requests still get logged. Both can
+     * legitimately fire for the same request, so logActivity() itself must be
+     * idempotent.
+     */
+    private static bool $flushed = false;
 
     /** Columns whose values are never written to the audit log. */
     private static function sensitiveColumns(): array
@@ -54,14 +81,18 @@ class ActivityLogger
     }
 
     /**
-     * Flush collected changes to the database.
-     * Call once at the end of each request (done by public/index.php and public/api/index.php).
-     * No-op when nothing was changed during the request.
+     * Write the access-log row for this request, plus audit rows for any data
+     * changes collected along the way. Safe to call more than once per request —
+     * only the first call that actually has a DB connection does anything (see
+     * $flushed). Called from Core\Http\Kernel::afterRequest() and, as a safety
+     * net for requests that exit() before reaching that point, from a shutdown
+     * function registered in Kernel::installErrorHandler().
      */
     public static function logActivity(): void
     {
         if (!LazyMePHP::ACTIVITY_LOG() || !LazyMePHP::DB_CONNECTION()) return;
-        if (empty(self::$logdata)) return; // only audit, not access-log
+        if (self::$flushed) return;
+        self::$flushed = true;
 
         $db          = LazyMePHP::DB_CONNECTION();
         self::ensureTables();
@@ -76,9 +107,19 @@ class ActivityLogger
                          : 0;
         $traceId     = bin2hex(random_bytes(8));
 
-        // Prefer the authenticated user; fall back to the env-configured identity
+        // Try the app's own resolver (e.g. session-based web auth) first, then
+        // the framework's stateless JWT facade (a request can be identified by
+        // either depending on which door it came through — a plain page
+        // navigation has a session but no Bearer token, a GraphQL/API call has
+        // a Bearer token but no session — neither should shadow the other),
+        // then the env-configured fallback identity.
         $user = '';
-        if (class_exists(\Core\Auth\Auth::class)) {
+        if (self::$userResolver !== null) {
+            try {
+                $user = (string) ((self::$userResolver)() ?? '');
+            } catch (\Throwable) {}
+        }
+        if ($user === '' && class_exists(\Core\Auth\Auth::class)) {
             try {
                 if (\Core\Auth\Auth::check()) {
                     $user = (string)(\Core\Auth\Auth::id() ?? '');
@@ -135,6 +176,7 @@ class ActivityLogger
     public static function reset(): void
     {
         self::$logdata = [];
+        self::$flushed = false;
     }
 
     public static function getLogData(): array

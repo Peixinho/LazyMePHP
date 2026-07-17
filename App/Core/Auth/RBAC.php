@@ -123,12 +123,22 @@ class RBAC
         if ($roleId === null) {
             throw new \InvalidArgumentException("Role '$roleName' does not exist.");
         }
+        $alreadyHasRole = in_array($roleName, self::rolesFor($userId), true);
+
         $db = LazyMePHP::DB_CONNECTION();
         $db->query(
             'INSERT INTO __AUTH_USER_ROLES (user_id, role_id) SELECT ?, ? WHERE NOT EXISTS (SELECT 1 FROM __AUTH_USER_ROLES WHERE user_id = ? AND role_id = ?)',
             [(string)$userId, $roleId, (string)$userId, $roleId]
         );
         unset(self::$cache[(string)$userId]);
+
+        // Role membership lives in this side table, not a column on any model
+        // the caller controls — Model::Save()'s automatic changeLog can never
+        // see it, so log it here instead of relying on every caller to
+        // remember to do it themselves.
+        if (!$alreadyHasRole && LazyMePHP::ACTIVITY_LOG()) {
+            \Core\Helpers\ActivityLogger::logData('__AUTH_USER_ROLES', ['role' => [null, $roleName]], (string) $userId, 'INSERT');
+        }
     }
 
     public static function removeRole(mixed $userId, string $roleName): void
@@ -136,11 +146,17 @@ class RBAC
         self::ensureTables();
         $roleId = self::roleId($roleName);
         if ($roleId === null) return;
+        $hadRole = in_array($roleName, self::rolesFor($userId), true);
+
         LazyMePHP::DB_CONNECTION()->query(
             'DELETE FROM __AUTH_USER_ROLES WHERE user_id = ? AND role_id = ?',
             [(string)$userId, $roleId]
         );
         unset(self::$cache[(string)$userId]);
+
+        if ($hadRole && LazyMePHP::ACTIVITY_LOG()) {
+            \Core\Helpers\ActivityLogger::logData('__AUTH_USER_ROLES', ['role' => [$roleName, null]], (string) $userId, 'DELETE');
+        }
     }
 
     // -------------------------------------------------------------------------

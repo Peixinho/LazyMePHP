@@ -106,6 +106,19 @@ class Kernel
                 ErrorHandler::handleWebException($exception);
             }
         });
+
+        // Safety net for routes/middleware that call exit() directly (AuthMiddleware's
+        // login redirect and role checks, AuthEndpoint's JSON responses, ...) — those
+        // skip afterRequest() entirely, which would otherwise silently drop the access-log
+        // row for exactly the requests most worth auditing (unauthenticated/forbidden
+        // access attempts). Shutdown functions run regardless of how the script ends.
+        // logActivity() is idempotent, so this is harmless alongside the normal
+        // afterRequest() call for requests that complete without exit().
+        register_shutdown_function(function (): void {
+            if (class_exists(LazyMePHP::class)) {
+                ActivityLogger::logActivity();
+            }
+        });
     }
 
     /** Serves the pre-built docs site at /docs, bypassing the router and layout entirely. Returns true if handled. */

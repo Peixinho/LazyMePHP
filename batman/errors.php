@@ -57,17 +57,30 @@ $debugInfo = [];
 
 if ($db) {
     try {
-        // Check if table exists
-        $tableCheck = $db->Query("SHOW TABLES LIKE '__LOG_ERRORS'");
-        $debugInfo['table_exists'] = $tableCheck && $tableCheck->GetCount() > 0;
-        
+        // Check if table exists — DB-portable (SHOW TABLES is MySQL-only and
+        // throws on sqlite/mssql, which used to abort this whole try block
+        // before the real query below ever ran, silently hiding real error rows)
+        $dbType = strtolower(LazyMePHP::DB_TYPE() ?? 'mysql');
+        $tableExistsQuery = match ($dbType) {
+            'sqlite'          => "SELECT name FROM sqlite_master WHERE type='table' AND name='__LOG_ERRORS'",
+            'mssql', 'sqlsrv' => "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME='__LOG_ERRORS'",
+            default           => "SHOW TABLES LIKE '__LOG_ERRORS'",
+        };
+        // GetCount()/rowCount() is documented as unreliable for SELECT on the
+        // sqlite PDO driver (only INSERT/UPDATE/DELETE are guaranteed) — it
+        // reads 0 here even when the table genuinely exists. fetchArray() is
+        // the portable way to check "did this SELECT return a row".
+        $tableCheck = $db->Query($tableExistsQuery);
+        $debugInfo['table_exists'] = $tableCheck && $tableCheck->FetchArray() !== null;
+
         if ($debugInfo['table_exists']) {
             // Check total records
             $totalCheck = $db->Query("SELECT COUNT(*) as total FROM __LOG_ERRORS");
             $debugInfo['total_records'] = $totalCheck ? $totalCheck->FetchArray()['total'] : 0;
-            
-            // Check recent records
-            $recentCheck = $db->Query("SELECT COUNT(*) as total FROM __LOG_ERRORS WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)");
+
+            // Check recent records — bound parameter instead of MySQL-only DATE_SUB(NOW(), ...)
+            $sevenDaysAgo = date('Y-m-d H:i:s', strtotime('-7 days'));
+            $recentCheck = $db->Query("SELECT COUNT(*) as total FROM __LOG_ERRORS WHERE created_at >= ?", [$sevenDaysAgo]);
             $debugInfo['recent_records'] = $recentCheck ? $recentCheck->FetchArray()['total'] : 0;
         }
         
@@ -105,7 +118,7 @@ if ($db) {
         
         // Get paginated results
         $query = "SELECT 
-                    id, error_id, error_code, error_message, http_status, severity, context, file_path, line_number, stack_trace, context_data, user_agent, ip_address, request_uri, request_method, created_at, updated_at
+                    id, error_id, error_code, error_message, http_status, severity, context, file_path, line_number, stack_trace, context_data, user_agent, ip_address, request_uri, request_method, created_at
                   FROM __LOG_ERRORS 
                   $whereClause 
                   ORDER BY created_at DESC 
@@ -138,45 +151,55 @@ $statusData = [];
 
 if ($db) {
     try {
+        // DB-portable date truncation — DATE_SUB(NOW(), ...) is MySQL-only and
+        // throws on sqlite/mssql; bind the cutoff as a parameter instead.
+        $thirtyDaysAgo = date('Y-m-d H:i:s', strtotime('-30 days'));
+        $dbType = strtolower(LazyMePHP::DB_TYPE() ?? 'mysql');
+        $dateTrunc = match ($dbType) {
+            'sqlite'          => 'date(created_at)',
+            'mssql', 'sqlsrv' => 'CAST(created_at AS DATE)',
+            default           => 'DATE(created_at)',
+        };
+
         // Get trend data (errors per day for last 30 days)
-        $trendQuery = "SELECT 
-            DATE(created_at) as date,
+        $trendQuery = "SELECT
+            $dateTrunc as date,
             COUNT(*) as count
-        FROM __LOG_ERRORS 
-        WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-        GROUP BY DATE(created_at)
+        FROM __LOG_ERRORS
+        WHERE created_at >= ?
+        GROUP BY $dateTrunc
         ORDER BY date DESC";
-        
-        $trendResult = $db->Query($trendQuery);
+
+        $trendResult = $db->Query($trendQuery, [$thirtyDaysAgo]);
         while ($row = $trendResult->FetchArray()) {
             $trendData[$row['date']] = (int)$row['count'];
         }
-        
+
         // Get severity distribution
-        $severityQuery = "SELECT 
+        $severityQuery = "SELECT
             severity,
             COUNT(*) as count
-        FROM __LOG_ERRORS 
-        WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+        FROM __LOG_ERRORS
+        WHERE created_at >= ?
         GROUP BY severity";
-        
-        $severityResult = $db->Query($severityQuery);
+
+        $severityResult = $db->Query($severityQuery, [$thirtyDaysAgo]);
         while ($row = $severityResult->FetchArray()) {
             $severityData[$row['severity']] = (int)$row['count'];
         }
-        
+
         // Get status code distribution
-        $statusQuery = "SELECT 
+        $statusQuery = "SELECT
             http_status,
             COUNT(*) as count
-        FROM __LOG_ERRORS 
-        WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+        FROM __LOG_ERRORS
+        WHERE created_at >= ?
         AND http_status IS NOT NULL
         GROUP BY http_status
         ORDER BY count DESC
         LIMIT 10";
-        
-        $statusResult = $db->Query($statusQuery);
+
+        $statusResult = $db->Query($statusQuery, [$thirtyDaysAgo]);
         while ($row = $statusResult->FetchArray()) {
             $statusData[$row['http_status']] = (int)$row['count'];
         }

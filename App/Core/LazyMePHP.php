@@ -535,7 +535,9 @@ class LazyMePHP
     self::$_app_activity_log = null;
     self::$_app_activity_auth = null;
     self::$_app_debug_mode = null;
-    // Activity logging data reset moved to ActivityLogger
+    if (class_exists(\Core\Helpers\ActivityLogger::class)) {
+      \Core\Helpers\ActivityLogger::reset();
+    }
     
     // Reset database instances to prevent singleton conflicts during testing
     if (class_exists('Core\DB\MySQL')) {

@@ -38,6 +38,24 @@ test('ActivityLogger creates __LOG_ACTIVITY and __LOG_DATA on first use', functi
     expect(internalTableExists('__LOG_DATA'))->toBeTrue();
 });
 
+test('ActivityLogger writes an access-log row even with no data changes collected', function () {
+    // No logData() call first — a plain navigation/GET request with nothing to
+    // audit. This must still produce a __LOG_ACTIVITY row (the access log
+    // answers "who went where", independent of whether anything changed) but
+    // no __LOG_DATA rows (nothing to audit).
+    ActivityLogger::logActivity();
+
+    expect(internalTableExists('__LOG_ACTIVITY'))->toBeTrue();
+
+    $row = LazyMePHP::DB_CONNECTION()->query('SELECT COUNT(*) as c FROM "__LOG_ACTIVITY"')->fetchArray();
+    expect((int) $row['c'])->toBe(1);
+
+    // __LOG_DATA is created alongside __LOG_ACTIVITY either way, but gets no
+    // rows written when there was nothing to audit.
+    $dataRow = LazyMePHP::DB_CONNECTION()->query('SELECT COUNT(*) as c FROM "__LOG_DATA"')->fetchArray();
+    expect((int) $dataRow['c'])->toBe(0);
+});
+
 test('ErrorHandler::ensureErrorsTable creates __LOG_ERRORS on first use', function () {
     ErrorHandler::ensureErrorsTable(LazyMePHP::DB_CONNECTION());
 
