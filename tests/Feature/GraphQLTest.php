@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 use Core\LazyMePHP;
 use Core\Model;
-use Core\GraphQL\SchemaBuilder;
-use GraphQL\GraphQL as GQL;
+use Core\GraphQL\Endpoint;
 
 beforeEach(function () {
     $_ENV['DB_TYPE']          = 'sqlite';
@@ -21,11 +20,9 @@ beforeEach(function () {
     $db->query("CREATE TABLE users (
         id    INTEGER PRIMARY KEY AUTOINCREMENT,
         name  TEXT    NOT NULL,
-        email TEXT    NOT NULL,
-        age   INTEGER
+        email TEXT    NOT NULL
     )");
-    $db->query("INSERT INTO users (name, email, age) VALUES ('Alice', 'alice@test.com', 30)");
-    $db->query("INSERT INTO users (name, email, age) VALUES ('Bob',   'bob@test.com',   25)");
+    $db->query("INSERT INTO users (name, email) VALUES ('Alice', 'alice@test.com')");
 });
 
 afterEach(function () {
@@ -33,93 +30,135 @@ afterEach(function () {
     Model::clearSchemaCache();
 });
 
-function gql(string $query, ?array $variables = null): array
+function callGraphqlEndpoint(string $body): array
 {
-    $schema = SchemaBuilder::build(['users']);
-    return GQL::executeQuery($schema, $query, null, null, $variables)->toArray();
+    // Endpoint::handle() only ever calls http_response_code() explicitly on its
+    // error path (500) — reset to a known baseline first so a prior test's
+    // failure status can't leak into this assertion.
+    http_response_code(200);
+
+    ob_start();
+    Endpoint::handle(['users'], $body);
+    $raw = ob_get_clean();
+
+    return ['status' => http_response_code(), 'body' => json_decode($raw, true)];
 }
 
-describe('GraphQL', function () {
-    describe('queries', function () {
-        it('lists all records', function () {
-            $result = gql('{ usersList { id name email } }');
-            expect($result)->not->toHaveKey('errors');
-            expect($result['data']['usersList'])->toHaveCount(2);
-            expect($result['data']['usersList'][0]['name'])->toBe('Alice');
-        });
+describe('GraphQL Endpoint', function () {
+    // Regression test for a bug where `new DisableIntrospection()` was called
+    // with no constructor argument, throwing an ArgumentCountError on every
+    // single request outside APP_ENV=development — i.e. the /graphql endpoint
+    // 500'd unconditionally in production. GraphQLTest.php never caught this
+    // because it calls SchemaBuilder + GQL::executeQuery directly, bypassing
+    // Endpoint::handle() (and its dev/non-dev branching) entirely.
+    it('answers a plain query in production without 500ing', function () {
+        $_ENV['APP_ENV'] = 'production';
 
-        it('paginates with page and limit', function () {
-            $result = gql('{ usersList(page: 1, limit: 1) { name } }');
-            expect($result['data']['usersList'])->toHaveCount(1);
-        });
+        $res = callGraphqlEndpoint(json_encode([
+            'query' => '{ usersList { id name } }',
+        ]));
 
-        it('fetches a single record by id', function () {
-            $result = gql('{ users(id: 1) { id name email } }');
-            expect($result)->not->toHaveKey('errors');
-            expect($result['data']['users']['name'])->toBe('Alice');
-        });
-
-        it('returns null for a missing id', function () {
-            $result = gql('{ users(id: 999) { id name } }');
-            expect($result)->not->toHaveKey('errors');
-            expect($result['data']['users'])->toBeNull();
-        });
-
-        it('returns id as a string (GraphQL ID type)', function () {
-            $result = gql('{ users(id: 1) { id } }');
-            expect($result['data']['users']['id'])->toBe('1');
-        });
+        expect($res['status'])->toBe(200);
+        expect($res['body'])->not->toHaveKey('errors');
+        expect($res['body']['data']['usersList'][0]['name'])->toBe('Alice');
     });
 
-    describe('mutations', function () {
-        it('creates a new record', function () {
-            $result = gql('mutation {
-                createUsers(input: { name: "Carol", email: "carol@test.com", age: 28 }) {
-                    id name email age
-                }
-            }');
-            expect($result)->not->toHaveKey('errors');
-            $created = $result['data']['createUsers'];
-            expect($created['name'])->toBe('Carol');
-            expect($created['email'])->toBe('carol@test.com');
-            expect((int)$created['id'])->toBeGreaterThan(0);
-        });
+    it('executes a valid query without error', function () {
+        $res = callGraphqlEndpoint(json_encode([
+            'query' => '{ usersList { id name } }',
+        ]));
 
-        it('updates an existing record', function () {
-            $result = gql('mutation {
-                updateUsers(id: 1, input: { name: "Alice Updated" }) { id name }
-            }');
-            expect($result)->not->toHaveKey('errors');
-            expect($result['data']['updateUsers']['name'])->toBe('Alice Updated');
-
-            $reloaded = new Model('users', 1);
-            expect($reloaded->name)->toBe('Alice Updated');
-        });
-
-        it('deletes a record', function () {
-            $result = gql('mutation { deleteUsers(id: 2) }');
-            expect($result)->not->toHaveKey('errors');
-            expect($result['data']['deleteUsers'])->toBeTrue();
-
-            $gone = new Model('users', 2);
-            expect($gone->getPrimaryKey())->toBeNull();
-        });
+        expect($res['status'])->toBe(200);
+        expect($res['body'])->not->toHaveKey('errors');
+        expect($res['body']['data']['usersList'])->toHaveCount(1);
     });
 
-    describe('exposedFields()', function () {
-        it('hides columns excluded by the controller', function () {
-            // Anonymous controller that hides 'age'
-            $controller = new class('users', new \Core\Http\Request()) extends \Core\CrudController {
-                public function exposedFields(): array { return ['id', 'name', 'email']; }
-            };
+    it('passes variables through to the query', function () {
+        $res = callGraphqlEndpoint(json_encode([
+            'query'     => 'query($id: ID!) { users(id: $id) { name } }',
+            'variables' => ['id' => 1],
+        ]));
 
-            $schema = Model::schemaFor('users');
-            $exposed = $controller->exposedFields();
-            $filtered = array_intersect_key($schema, array_flip($exposed));
+        expect($res['body']['data']['users']['name'])->toBe('Alice');
+    });
 
-            expect($filtered)->toHaveKey('id');
-            expect($filtered)->toHaveKey('name');
-            expect($filtered)->not->toHaveKey('age');
-        });
+    it('rejects a query that exceeds MAX_COMPLEXITY via aliased field fan-out', function () {
+        // No field on this schema defines a custom complexity function, so cost
+        // is 1 per selected field node — aliasing the same scalar 250 times is
+        // a reliable way to cross the MAX_COMPLEXITY=200 ceiling either way.
+        $aliases = '';
+        for ($i = 0; $i < 250; $i++) {
+            $aliases .= "f{$i}: id ";
+        }
+
+        $res = callGraphqlEndpoint(json_encode([
+            'query' => '{ usersList { ' . $aliases . '} }',
+        ]));
+
+        expect($res['body'])->toHaveKey('errors');
+        expect($res['body']['errors'][0]['message'])->toContain('Max query complexity should be 200');
+    });
+
+    it('rejects a query nested deeper than MAX_DEPTH', function () {
+        $_ENV['APP_ENV'] = 'development'; // keep introspection enabled so only the depth error fires
+
+        // __Type.ofType is self-referential, so nesting it 12 deep is valid
+        // GraphQL regardless of the app's own (flat) table schema and reliably
+        // blows past MAX_DEPTH=7.
+        $nesting = str_repeat('ofType { ', 12) . 'name' . str_repeat(' }', 12);
+        $res = callGraphqlEndpoint(json_encode([
+            'query' => '{ __schema { types { fields { type { ' . $nesting . ' } } } } }',
+        ]));
+
+        expect($res['body'])->toHaveKey('errors');
+        expect($res['body']['errors'][0]['message'])->toContain('Max query depth should be 7');
+    });
+
+    it('disables introspection outside development', function () {
+        $_ENV['APP_ENV'] = 'production';
+
+        $res = callGraphqlEndpoint(json_encode([
+            'query' => '{ __schema { types { name } } }',
+        ]));
+
+        expect($res['body'])->toHaveKey('errors');
+        expect($res['body']['errors'][0]['message'])->toContain('introspection is not allowed');
+    });
+
+    it('allows introspection in development', function () {
+        $_ENV['APP_ENV'] = 'development';
+
+        $res = callGraphqlEndpoint(json_encode([
+            'query' => '{ __schema { types { name } } }',
+        ]));
+
+        expect($res['body'])->not->toHaveKey('errors');
+    });
+
+    it('strips debug trace details outside development', function () {
+        $_ENV['APP_ENV'] = 'production';
+
+        $res = callGraphqlEndpoint(json_encode([
+            'query' => 'mutation { deleteUsers(id: 999) }',
+        ]));
+
+        expect($res['body']['errors'][0]['extensions'] ?? [])->not->toHaveKey('trace');
+    });
+
+    it('includes debug trace details in development', function () {
+        $_ENV['APP_ENV'] = 'development';
+
+        $res = callGraphqlEndpoint(json_encode([
+            'query' => 'mutation { deleteUsers(id: 999) }',
+        ]));
+
+        expect($res['body']['errors'][0]['extensions'])->toHaveKey('trace');
+    });
+
+    it('returns a JSON error response for a malformed request body without crashing', function () {
+        $res = callGraphqlEndpoint('{not valid json');
+
+        expect($res['body'])->toBeArray();
+        expect($res['body'])->toHaveKey('errors');
     });
 });

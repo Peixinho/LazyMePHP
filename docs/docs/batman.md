@@ -32,6 +32,15 @@ Batman authenticates against `BATMAN_SECRET` using `password_verify()` — it do
 - **Performance metrics** — slow operations flagged by the monitoring layer
 - **Record diffs** — before/after field values for every change, sensitive columns excluded
 
+## API Explorer
+
+The data API is a single `POST /graphql` endpoint whose schema is built at runtime from the DB schema (`Core\GraphQL\SchemaBuilder`) — there's no route file to grep for it. `api-client.php` has a **GraphQL API** panel that:
+
+- Calls `discover-graphql.php`, which boots the app the same way `LazyMePHP::boot()` does and introspects the built schema in-process (not over HTTP) to list every query and mutation currently exposed, each with a ready-to-run sample query and variables payload.
+- Sends `POST {baseUrl}/graphql` with `{ query, variables }`, and an optional Bearer token field for instances with `AUTH_TABLE` configured (the endpoint is behind `JwtMiddleware` in that case).
+
+The **Legacy Route Discovery** section below it only regex-scans a directory (default `App/Routes`) for `SimpleRouter::get()` / `@route` style definitions — it predates the GraphQL migration and won't find anything under the old `App/Api` path since that directory no longer exists.
+
 ## Security
 
 - Batman login is separate from JWT auth — a different username/password

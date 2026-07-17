@@ -1,5 +1,12 @@
 <?php
 // Batman Route Discovery Endpoint
+//
+// Regex-scans a directory for web-route definitions (SimpleRouter::get(),
+// $router->post(), @route doc comments). This only finds the legacy REST-style
+// routes registered in App/Routes/*.php — the actual data API is served over a
+// single POST /graphql endpoint built at runtime from the DB schema, which
+// can't be found by scanning source text for route calls. See
+// discover-graphql.php for that.
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
@@ -10,14 +17,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+if (!isset($_SESSION['is_logged_in']) || !$_SESSION['is_logged_in']) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'message' => 'Authentication required']);
+    exit;
+}
+
 try {
     $input = file_get_contents('php://input');
     $data = json_decode($input, true);
-    $path = $data['path'] ?? 'App/Api';
+    $path = $data['path'] ?? 'App/Routes';
 
-    $fullPath = __DIR__ . '/../' . $path;
+    $projectRoot = realpath(__DIR__ . '/..');
+    $fullPath = realpath($projectRoot . '/' . $path);
 
-    if (!is_dir($fullPath)) {
+    if ($fullPath === false || !is_dir($fullPath) || !str_starts_with($fullPath, $projectRoot . DIRECTORY_SEPARATOR)) {
         echo json_encode([
             'success' => false,
             'message' => 'Directory not found: ' . $path

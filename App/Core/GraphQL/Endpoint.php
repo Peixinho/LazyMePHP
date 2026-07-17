@@ -32,6 +32,9 @@ use GraphQL\Validator\Rules\DisableIntrospection;
  *
  * Clients send: POST /graphql  Content-Type: application/json
  *   { "query": "{ usersList { id name } }", "variables": {} }
+ *
+ * $rawBody is normally left null, which reads the real request body from
+ * php://input; tests pass a literal JSON string to bypass that stream.
  */
 class Endpoint
 {
@@ -41,7 +44,7 @@ class Endpoint
     /** Maximum allowed query complexity score. */
     private const MAX_COMPLEXITY = 200;
 
-    public static function handle(array $tables): void
+    public static function handle(array $tables, ?string $rawBody = null): void
     {
         header('Content-Type: application/json');
 
@@ -49,7 +52,7 @@ class Endpoint
             $schema = SchemaBuilder::build($tables);
             $isDev  = ($_ENV['APP_ENV'] ?? 'production') === 'development';
 
-            $rawBody   = (string) file_get_contents('php://input');
+            $rawBody   = $rawBody ?? (string) file_get_contents('php://input');
             $input     = json_decode($rawBody, true) ?? [];
             $query     = (string) ($input['query'] ?? '');
             $variables = isset($input['variables']) && is_array($input['variables'])
@@ -63,7 +66,7 @@ class Endpoint
 
             // Introspection reveals the full schema — disable it outside dev
             if (!$isDev) {
-                $validationRules[] = new DisableIntrospection();
+                $validationRules[] = new DisableIntrospection(DisableIntrospection::ENABLED);
             }
 
             $debug = $isDev

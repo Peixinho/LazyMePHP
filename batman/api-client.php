@@ -631,6 +631,21 @@ try {
         .method-put { background: #f59e0b; color: white; }
         .method-delete { background: #ef4444; color: white; }
         .method-patch { background: #8b5cf6; color: white; }
+        .method-query { background: #3b82f6; color: white; }
+        .method-mutation { background: #ef4444; color: white; }
+
+        .section-hint {
+            color: #7f8c8d;
+            font-size: 0.95em;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .section-hint code {
+            background: rgba(0, 0, 0, 0.08);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
 
         .route-path {
             font-family: 'Courier New', monospace;
@@ -898,29 +913,67 @@ try {
             </div>
         <?php endif; ?>
 
+        <!-- Base URL (shared by both the GraphQL and REST explorers below) -->
+        <div class="api-client-section">
+            <div class="base-url-section">
+                <h3><i class="fas fa-link"></i> Base URL</h3>
+                <div class="form-group">
+                    <label for="base-url">API Base URL</label>
+                    <input type="url" id="base-url" name="base_url" value="<?php echo htmlspecialchars($baseUrl); ?>" placeholder="http://localhost:8000" required>
+                </div>
+            </div>
+        </div>
+
+        <!-- GraphQL Explorer -->
+        <div class="api-client-section">
+            <h2><i class="fas fa-project-diagram"></i> GraphQL API</h2>
+            <p class="section-hint">The data API is a single <code>POST /graphql</code> endpoint built at runtime from the DB schema. Click <strong>Discover Schema</strong> to list every query &amp; mutation it currently exposes, or write your own below.</p>
+
+            <div class="discovery-info">
+                <button type="button" class="btn btn-secondary" onclick="discoverGraphqlSchema()">
+                    <i class="fas fa-search"></i> Discover Schema
+                </button>
+            </div>
+
+            <div id="discovered-graphql" style="display: none;">
+                <h3>Available Operations</h3>
+                <div class="routes-grid" id="graphql-operations-list"></div>
+            </div>
+
+            <form id="graphql-form">
+                <div class="form-group full-width">
+                    <label for="graphql-token">Bearer Token (only needed if AUTH_TABLE is configured on the target app)</label>
+                    <input type="text" id="graphql-token" name="token" placeholder="eyJhbGciOi...">
+                </div>
+
+                <div class="form-group full-width">
+                    <label for="graphql-query">Query / Mutation</label>
+                    <textarea id="graphql-query" name="query" placeholder="{ usersList { id name } }" style="min-height: 140px; font-family: 'Courier New', monospace;"></textarea>
+                </div>
+
+                <div class="form-group full-width">
+                    <label for="graphql-variables">Variables (JSON)</label>
+                    <textarea id="graphql-variables" name="variables" placeholder='{"id": 1}'></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="graphql-submit-btn">
+                    <i class="fas fa-paper-plane"></i> Send Query
+                </button>
+            </form>
+        </div>
+
         <!-- API Request Form -->
         <div class="api-client-section">
-            <h2><i class="fas fa-paper-plane"></i> Make API Request</h2>
-            
+            <h2><i class="fas fa-paper-plane"></i> Legacy REST Route Tester</h2>
+            <p class="section-hint">For the handful of plain web routes registered outside the GraphQL schema (see <strong>API Discovery</strong> below). Most data no longer lives here — use the GraphQL panel above instead.</p>
+
             <form id="api-form">
-                <!-- Base URL Section -->
-                <div class="base-url-section">
-                    <h3><i class="fas fa-link"></i> Base URL</h3>
-                    <div class="form-group">
-                        <label for="base-url">API Base URL</label>
-                        <input type="url" id="base-url" name="base_url" value="<?php echo htmlspecialchars($baseUrl); ?>" placeholder="http://localhost:8000" required>
-                        <div class="url-preview" id="url-preview">
-                            <strong>Full URL:</strong> <span id="full-url"><?php echo htmlspecialchars($baseUrl); ?>/</span><span id="endpoint-preview"></span>
-                        </div>
-                    </div>
-                </div>
-                
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="endpoint">Endpoint</label>
                         <input type="text" id="endpoint" name="endpoint" placeholder="api/users" required>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="method">Method</label>
                         <select id="method" name="method">
@@ -933,23 +986,23 @@ try {
                             <option value="OPTIONS">OPTIONS</option>
                         </select>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="timeout">Timeout (s)</label>
                         <input type="number" id="timeout" name="timeout" value="30" min="1" max="300">
                     </div>
                 </div>
-                
+
                 <div class="form-group full-width">
                     <label for="headers">Headers (one per line, format: Key: Value)</label>
                     <textarea id="headers" name="headers" placeholder="Content-Type: application/json&#10;Authorization: Bearer your-token-here&#10;Accept: application/json"></textarea>
                 </div>
-                
+
                 <div class="form-group full-width">
                     <label for="body">Request Body</label>
                     <textarea id="body" name="body" placeholder='{"key": "value", "number": 123}'></textarea>
                 </div>
-                
+
                 <button type="submit" class="btn btn-primary" id="submit-btn">
                     <i class="fas fa-paper-plane"></i> Send Request
                 </button>
@@ -1033,23 +1086,23 @@ try {
             </div>
         </div>
 
-        <!-- API Discovery Section -->
+        <!-- API Discovery Section (legacy REST routes only — see GraphQL Explorer above for the real data API) -->
         <div class="discovery-section">
-            <h2><i class="fas fa-search"></i> API Discovery</h2>
+            <h2><i class="fas fa-search"></i> Legacy Route Discovery</h2>
             <div class="discovery-info">
                 <div class="form-group">
-                    <label for="api_path">API Path to Scan</label>
+                    <label for="api_path">Path to Scan for SimpleRouter/@route Definitions</label>
                     <div style="display: flex; gap: 10px; align-items: center;">
-                        <input type="text" id="api_path" name="api_path" placeholder="e.g., App/Api, App/Routes" value="App/Api" style="flex: 1;">
+                        <input type="text" id="api_path" name="api_path" placeholder="e.g., App/Routes" value="App/Routes" style="flex: 1;">
                         <button type="button" class="btn btn-secondary" onclick="discoverRoutes()">
                             <i class="fas fa-search"></i> Discover Routes
                         </button>
                     </div>
                 </div>
             </div>
-            
+
             <div id="discovered-routes" style="display: none;">
-                <h3>Discovered API Routes</h3>
+                <h3>Discovered Routes</h3>
                 <div class="routes-grid" id="routes-list">
                     <!-- Routes will be populated here -->
                 </div>
@@ -1159,6 +1212,122 @@ try {
         function fillRequestFromRoute(route) {
             document.getElementById('method').value = route.method;
             document.getElementById('endpoint').value = route.path.replace(/^\//, '');
+        }
+
+        // Discover the GraphQL schema (introspected server-side, not over HTTP)
+        function discoverGraphqlSchema() {
+            fetch('discover-graphql.php', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById('discovered-graphql');
+                    const list = document.getElementById('graphql-operations-list');
+
+                    container.style.display = 'block';
+                    list.innerHTML = '';
+
+                    if (!data.success) {
+                        list.innerHTML = `<p>${data.message || 'Failed to introspect schema'}</p>`;
+                        return;
+                    }
+
+                    if (!data.operations || data.operations.length === 0) {
+                        list.innerHTML = '<p>No tables are registered with the schema yet.</p>';
+                        return;
+                    }
+
+                    data.operations.forEach(op => {
+                        const card = document.createElement('div');
+                        card.className = 'route-card';
+                        card.innerHTML = `
+                            <div class="route-method method-${op.operationType}">${op.operationType}</div>
+                            <div class="route-path">${op.name}(${op.args.map(a => a.name + ': ' + a.type).join(', ')}): ${op.returnType}</div>
+                            <div class="route-description">Click to load a sample query into the editor below</div>
+                        `;
+                        card.onclick = () => fillGraphqlFromOperation(op);
+                        list.appendChild(card);
+                    });
+                })
+                .catch(error => {
+                    const container = document.getElementById('discovered-graphql');
+                    const list = document.getElementById('graphql-operations-list');
+                    container.style.display = 'block';
+                    list.innerHTML = '<p>Error discovering schema: ' + error.message + '</p>';
+                });
+        }
+
+        // Fill the GraphQL editor from a discovered operation
+        function fillGraphqlFromOperation(op) {
+            document.getElementById('graphql-query').value = op.sampleQuery;
+            document.getElementById('graphql-variables').value = JSON.stringify(op.sampleVariables, null, 2);
+        }
+
+        // Submit a GraphQL request against POST {baseUrl}/graphql
+        function submitGraphqlRequest(event) {
+            event.preventDefault();
+
+            const baseUrl = document.getElementById('base-url').value.trim();
+            const token = document.getElementById('graphql-token').value.trim();
+            const query = document.getElementById('graphql-query').value.trim();
+            const variablesRaw = document.getElementById('graphql-variables').value.trim();
+
+            if (!baseUrl) {
+                alert('Please enter a base URL');
+                return;
+            }
+            if (!query) {
+                alert('Please enter a query or mutation');
+                return;
+            }
+
+            let variables = null;
+            if (variablesRaw) {
+                try {
+                    variables = JSON.parse(variablesRaw);
+                } catch (e) {
+                    alert('Variables must be valid JSON: ' + e.message);
+                    return;
+                }
+            }
+
+            const submitBtn = document.getElementById('graphql-submit-btn');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Sending...';
+            submitBtn.disabled = true;
+
+            const graphqlHeaders = { 'Content-Type': 'application/json' };
+            if (token) {
+                graphqlHeaders['Authorization'] = 'Bearer ' + token;
+            }
+
+            fetch(baseUrl.replace(/\/$/, '') + '/graphql', {
+                method: 'POST',
+                headers: graphqlHeaders,
+                body: JSON.stringify({ query, variables }),
+            })
+                .then(response => {
+                    const contentType = response.headers.get('content-type') || '';
+                    return response.text().then(text => ({
+                        status: response.status,
+                        statusText: response.statusText,
+                        headers: Object.fromEntries(response.headers.entries()),
+                        content_type: contentType,
+                        body: text,
+                    }));
+                })
+                .then(displayApiResponse)
+                .catch(error => {
+                    displayApiResponse({
+                        status: 0,
+                        statusText: 'Error',
+                        headers: {},
+                        content_type: 'text/plain',
+                        body: error.message,
+                    });
+                })
+                .finally(() => {
+                    submitBtn.textContent = originalText;
+                    submitBtn.disabled = false;
+                });
         }
 
         // Submit API request
@@ -1332,7 +1501,8 @@ try {
             
             // Add form submit handler
             document.getElementById('api-form').addEventListener('submit', submitApiRequest);
-            
+            document.getElementById('graphql-form').addEventListener('submit', submitGraphqlRequest);
+
             // Add textarea auto-resize
             const textareas = document.querySelectorAll('textarea');
             textareas.forEach(textarea => {
