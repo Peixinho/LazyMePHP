@@ -32,7 +32,8 @@ use Core\Http\Request;
  *     delete{Table}(id: ID!): Boolean
  *
  * To restrict which fields are exposed, override exposedFields() in Controllers\{Table}.
- * To restrict which roles may query/mutate a table at all, override requiredRoles().
+ * To restrict which roles may query/mutate a table at all, override requiredRoles()
+ * (or requiredRolesForRead()/requiredRolesForWrite() when they need to differ).
  */
 class SchemaBuilder
 {
@@ -45,7 +46,8 @@ class SchemaBuilder
             $schema     = Model::schemaFor($table);
             $controller = CrudController::forTable($table, new Request());
             $exposed    = $controller->exposedFields();
-            $requiredRoles = $controller->requiredRoles();
+            $readRoles  = $controller->requiredRolesForRead();
+            $writeRoles = $controller->requiredRolesForWrite();
 
             if (!empty($exposed)) {
                 $schema = array_intersect_key($schema, array_flip($exposed));
@@ -65,8 +67,8 @@ class SchemaBuilder
                 $queryFields[$gqlName] = [
                     'type'    => $objType,
                     'args'    => ['id' => ['type' => Type::nonNull(Type::id())]],
-                    'resolve' => function ($root, array $args) use ($table, $requiredRoles): ?Model {
-                        self::authorize($requiredRoles, $table);
+                    'resolve' => function ($root, array $args) use ($table, $readRoles): ?Model {
+                        self::authorize($readRoles, $table);
                         $m = new Model($table, $args['id']);
                         return $m->getPrimaryKey() !== null ? $m : null;
                     },
@@ -80,8 +82,8 @@ class SchemaBuilder
                     'page'  => ['type' => Type::int(), 'defaultValue' => 1],
                     'limit' => ['type' => Type::int(), 'defaultValue' => 20],
                 ],
-                'resolve' => function ($root, array $args) use ($table, $requiredRoles): array {
-                    self::authorize($requiredRoles, $table);
+                'resolve' => function ($root, array $args) use ($table, $readRoles): array {
+                    self::authorize($readRoles, $table);
                     return Model::query($table)
                         ->limit($args['limit'], ($args['page'] - 1) * $args['limit'])
                         ->get();
@@ -98,8 +100,8 @@ class SchemaBuilder
                 $mutationFields['create' . $typeName] = [
                     'type'    => $objType,
                     'args'    => ['input' => ['type' => Type::nonNull($inputType)]],
-                    'resolve' => function ($root, array $args) use ($table, $requiredRoles): Model {
-                        self::authorize($requiredRoles, $table);
+                    'resolve' => function ($root, array $args) use ($table, $writeRoles): Model {
+                        self::authorize($writeRoles, $table);
                         $controller = CrudController::forTable($table, new Request());
                         $result     = $controller->saveData($args['input']);
                         if ($result === false) {
@@ -115,8 +117,8 @@ class SchemaBuilder
                         'id'    => ['type' => Type::nonNull(Type::id())],
                         'input' => ['type' => Type::nonNull($inputType)],
                     ],
-                    'resolve' => function ($root, array $args) use ($table, $requiredRoles): Model {
-                        self::authorize($requiredRoles, $table);
+                    'resolve' => function ($root, array $args) use ($table, $writeRoles): Model {
+                        self::authorize($writeRoles, $table);
                         $controller = CrudController::forTable($table, new Request());
                         $result     = $controller->saveData($args['input'], $args['id']);
                         if ($result === false) {
@@ -129,8 +131,8 @@ class SchemaBuilder
                 $mutationFields['delete' . $typeName] = [
                     'type'    => Type::boolean(),
                     'args'    => ['id' => ['type' => Type::nonNull(Type::id())]],
-                    'resolve' => function ($root, array $args) use ($table, $requiredRoles): bool {
-                        self::authorize($requiredRoles, $table);
+                    'resolve' => function ($root, array $args) use ($table, $writeRoles): bool {
+                        self::authorize($writeRoles, $table);
                         $obj = new Model($table, $args['id']);
                         if ($obj->getPrimaryKey() === null) {
                             throw new \GraphQL\Error\UserError("Record not found in $table");
@@ -152,7 +154,7 @@ class SchemaBuilder
     }
 
     /**
-     * @param list<string> $requiredRoles From CrudController::requiredRoles() — empty means no restriction.
+     * @param list<string> $requiredRoles From CrudController::requiredRolesForRead()/requiredRolesForWrite() — empty means no restriction.
      * @throws \GraphQL\Error\UserError When authentication or role membership is missing.
      */
     private static function authorize(array $requiredRoles, string $table): void

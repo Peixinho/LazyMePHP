@@ -62,6 +62,19 @@ class Users extends CrudController {
 
 Empty (the default) means no restriction beyond authentication — every table keeps working exactly as before unless you opt in. When non-empty, every query and mutation for that table checks `Core\Auth\RBAC::is($role)` — which resolves via `Core\Auth\Auth::id()`, the same JWT identity `JwtMiddleware` already validated — and throws a `GraphQL\Error\UserError` ("Forbidden: ...") if the caller has none of the required roles.
 
+`requiredRoles()` applies the same list to both reading and writing. When they need to differ — e.g. any authenticated user can browse a table but only a manager role can create/update/delete it — override `requiredRolesForRead()` / `requiredRolesForWrite()` instead; both default to `requiredRoles()`, so overriding neither keeps the combined behavior above:
+
+```php
+class Rooms extends CrudController {
+    public function requiredRolesForRead(): array {
+        return []; // anyone authenticated may browse
+    }
+    public function requiredRolesForWrite(): array {
+        return ['Gestor'];
+    }
+}
+```
+
 This declaration only governs GraphQL. If your app also restricts the same table's web routes via its own middleware (path-prefix rules, typically), that's a separate declaration today — nothing stops you from having your middleware call the same table's `requiredRoles()` too, so the rule lives in one place, but the framework doesn't do that wiring for you. See [Extending & Customizing](./extending).
 
 ## Content Security Policy

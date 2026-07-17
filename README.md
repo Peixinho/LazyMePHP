@@ -768,7 +768,10 @@ class Users extends CrudController {
 
     // Restricts this table's GraphQL queries/mutations to callers with the
     // given role(s) — checked via Core\Auth\RBAC::is(). Empty (the default)
-    // means no restriction beyond authentication.
+    // means no restriction beyond authentication. Applies to both reading
+    // and writing; override requiredRolesForRead()/requiredRolesForWrite()
+    // instead when a table needs those to differ (e.g. anyone can browse,
+    // only 'admin' can create/update/delete).
     public function requiredRoles(): array {
         return ['admin'];
     }
@@ -823,6 +826,17 @@ class Users extends CrudController {
 ```
 
 Every query/mutation for that table then checks `Core\Auth\RBAC::is($role)` and throws a `GraphQL\Error\UserError` if the caller has none of the required roles.
+
+`requiredRoles()` applies the same list to both reading and writing. Override `requiredRolesForRead()` / `requiredRolesForWrite()` instead when a table needs those to differ — e.g. any authenticated user can browse it, only a manager role can change it:
+
+```php
+class Rooms extends CrudController {
+    public function requiredRolesForRead(): array { return []; }        // anyone authenticated
+    public function requiredRolesForWrite(): array { return ['admin']; } // create/update/delete only
+}
+```
+
+Both default to `requiredRoles()`, so overriding neither keeps the single-list behavior above.
 
 ---
 

@@ -83,7 +83,9 @@ class Users extends CrudController {
     }
 
     // Restrict this table's GraphQL queries/mutations to specific roles —
-    // empty (default) means no restriction beyond authentication. See
+    // empty (default) means no restriction beyond authentication. Applies to
+    // both reading and writing; override requiredRolesForRead()/
+    // requiredRolesForWrite() instead when they need to differ. See
     // Security > GraphQL authorization for how this is enforced.
     public function requiredRoles(): array {
         return ['admin'];

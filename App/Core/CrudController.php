@@ -150,10 +150,11 @@ abstract class CrudController
     public function exposedFields(): array { return []; }
 
     /**
-     * Roles allowed to query or mutate this table via GraphQL. Empty array
-     * (default) = no restriction beyond whatever JwtMiddleware already
-     * enforces (a valid Bearer token, if AUTH_TABLE is configured) — matching
-     * today's behaviour for tables that don't opt in.
+     * Roles allowed to query AND mutate this table via GraphQL — shorthand for
+     * "the same restriction on both read and write." Empty array (default) =
+     * no restriction beyond whatever JwtMiddleware already enforces (a valid
+     * Bearer token, if AUTH_TABLE is configured) — matching today's behaviour
+     * for tables that don't opt in.
      *
      * GraphQL has no web route of its own to attach role-restricting
      * middleware to (Core\Http\Kernel::loadRoutes() registers it directly, and
@@ -167,8 +168,20 @@ abstract class CrudController
      *   public function requiredRoles(): array {
      *       return ['Gestor'];
      *   }
+     *
+     * When reading and writing need different roles (e.g. TAS can browse a
+     * table but not create/edit/delete it), don't override this — override
+     * requiredRolesForRead() / requiredRolesForWrite() instead. Overriding
+     * both of those makes this method's own return value irrelevant, since
+     * nothing calls it directly anymore.
      */
     public function requiredRoles(): array { return []; }
+
+    /** Roles allowed to run the single-record and list queries. Defaults to requiredRoles(). */
+    public function requiredRolesForRead(): array { return $this->requiredRoles(); }
+
+    /** Roles allowed to run create/update/delete mutations. Defaults to requiredRoles(). */
+    public function requiredRolesForWrite(): array { return $this->requiredRoles(); }
 
     /**
      * Called before the record is saved.
