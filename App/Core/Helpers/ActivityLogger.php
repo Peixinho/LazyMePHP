@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Core\Helpers;
 
+use Core\DB\Ident;
 use Core\LazyMePHP;
 
 /**
@@ -131,7 +132,7 @@ class ActivityLogger
         }
 
         $db->query(
-            'INSERT INTO "__LOG_ACTIVITY" ("date","user","method","status_code","response_time","ip_address","user_agent","request_uri","trace_id")
+            'INSERT INTO ' . Ident::quote('__LOG_ACTIVITY') . ' (' . Ident::quoteList(['date','user','method','status_code','response_time','ip_address','user_agent','request_uri','trace_id']) . ')
              VALUES (?,?,?,?,?,?,?,?,?)',
             [$now, $user, $method, $status, $responseMs, $ip, $ua, $uri, $traceId]
         );
@@ -165,7 +166,7 @@ class ActivityLogger
 
         if (!empty($parts)) {
             $db->query(
-                'INSERT INTO "__LOG_DATA" ("id_log_activity","table","pk","method","field","dataBefore","dataAfter") VALUES ' . implode(',', $parts),
+                'INSERT INTO ' . Ident::quote('__LOG_DATA') . ' (' . Ident::quoteList(['id_log_activity','table','pk','method','field','dataBefore','dataAfter']) . ') VALUES ' . implode(',', $parts),
                 $params
             );
         }

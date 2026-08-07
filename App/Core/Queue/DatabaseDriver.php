@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Core\Queue;
 
+use Core\DB\Ident;
 use Core\LazyMePHP;
 
 /**
@@ -78,7 +79,7 @@ class DatabaseDriver implements QueueDriver
     {
         $availableAt = date('Y-m-d H:i:s', time() + $job->delay);
         $this->db()->query(
-            'INSERT INTO "__queue_jobs" ("queue","payload","attempts","available_at","created_at") VALUES (?,?,?,?,?)',
+            'INSERT INTO ' . Ident::quote('__queue_jobs') . ' (' . Ident::quoteList(['queue','payload','attempts','available_at','created_at']) . ') VALUES (?,?,?,?,?)',
             [$queue, $job->serialize(), 0, $availableAt, date('Y-m-d H:i:s')]
         );
     }
@@ -87,7 +88,7 @@ class DatabaseDriver implements QueueDriver
     {
         $now = date('Y-m-d H:i:s');
         $result = $this->db()->query(
-            'SELECT * FROM "__queue_jobs" WHERE "queue"=? AND "reserved_at" IS NULL AND "failed_at" IS NULL AND "available_at"<=? ORDER BY "id" ASC LIMIT 1',
+            'SELECT * FROM ' . Ident::quote('__queue_jobs') . ' WHERE ' . Ident::quote('queue') . '=? AND ' . Ident::quote('reserved_at') . ' IS NULL AND ' . Ident::quote('failed_at') . ' IS NULL AND ' . Ident::quote('available_at') . '<=? ORDER BY ' . Ident::quote('id') . ' ASC LIMIT 1',
             [$queue, $now]
         );
 
@@ -95,7 +96,7 @@ class DatabaseDriver implements QueueDriver
         if (!$job) return null;
 
         $this->db()->query(
-            'UPDATE "__queue_jobs" SET "reserved_at"=?, "attempts"="attempts"+1 WHERE "id"=?',
+            'UPDATE ' . Ident::quote('__queue_jobs') . ' SET ' . Ident::quote('reserved_at') . '=?, ' . Ident::quote('attempts') . '=' . Ident::quote('attempts') . '+1 WHERE ' . Ident::quote('id') . '=?',
             [date('Y-m-d H:i:s'), $job['id']]
         );
 
@@ -104,13 +105,13 @@ class DatabaseDriver implements QueueDriver
 
     public function ack(mixed $id): void
     {
-        $this->db()->query('DELETE FROM "__queue_jobs" WHERE "id"=?', [$id]);
+        $this->db()->query('DELETE FROM ' . Ident::quote('__queue_jobs') . ' WHERE ' . Ident::quote('id') . '=?', [$id]);
     }
 
     public function fail(mixed $id, string $error): void
     {
         $this->db()->query(
-            'UPDATE "__queue_jobs" SET "failed_at"=?, "error"=?, "reserved_at"=NULL WHERE "id"=?',
+            'UPDATE ' . Ident::quote('__queue_jobs') . ' SET ' . Ident::quote('failed_at') . '=?, ' . Ident::quote('error') . '=?, ' . Ident::quote('reserved_at') . '=NULL WHERE ' . Ident::quote('id') . '=?',
             [date('Y-m-d H:i:s'), substr($error, 0, 1000), $id]
         );
     }
@@ -118,7 +119,7 @@ class DatabaseDriver implements QueueDriver
     public function size(string $queue = 'default'): int
     {
         $result = $this->db()->query(
-            'SELECT COUNT(*) as "cnt" FROM "__queue_jobs" WHERE "queue"=? AND "reserved_at" IS NULL AND "failed_at" IS NULL',
+            'SELECT COUNT(*) as ' . Ident::quote('cnt') . ' FROM ' . Ident::quote('__queue_jobs') . ' WHERE ' . Ident::quote('queue') . '=? AND ' . Ident::quote('reserved_at') . ' IS NULL AND ' . Ident::quote('failed_at') . ' IS NULL',
             [$queue]
         );
         $row = $result->fetchArray();
@@ -128,7 +129,7 @@ class DatabaseDriver implements QueueDriver
     public function listFailed(string $queue = 'default'): array
     {
         $result = $this->db()->query(
-            'SELECT "id","queue","payload","attempts","error","failed_at" FROM "__queue_jobs" WHERE "queue"=? AND "failed_at" IS NOT NULL ORDER BY "failed_at" DESC',
+            'SELECT ' . Ident::quoteList(['id','queue','payload','attempts','error','failed_at']) . ' FROM ' . Ident::quote('__queue_jobs') . ' WHERE ' . Ident::quote('queue') . '=? AND ' . Ident::quote('failed_at') . ' IS NOT NULL ORDER BY ' . Ident::quote('failed_at') . ' DESC',
             [$queue]
         );
         $rows = [];
@@ -146,18 +147,18 @@ class DatabaseDriver implements QueueDriver
 
     public function retryFailed(mixed $id): void
     {
-        $result = $this->db()->query('SELECT * FROM "__queue_jobs" WHERE "id"=? AND "failed_at" IS NOT NULL', [$id]);
+        $result = $this->db()->query('SELECT * FROM ' . Ident::quote('__queue_jobs') . ' WHERE ' . Ident::quote('id') . '=? AND ' . Ident::quote('failed_at') . ' IS NOT NULL', [$id]);
         $row    = $result->fetchArray();
         if (!$row) return;
 
         $this->db()->query(
-            'UPDATE "__queue_jobs" SET "failed_at"=NULL,"error"=NULL,"reserved_at"=NULL,"attempts"=0,"available_at"=? WHERE "id"=?',
+            'UPDATE ' . Ident::quote('__queue_jobs') . ' SET ' . Ident::quote('failed_at') . '=NULL,' . Ident::quote('error') . '=NULL,' . Ident::quote('reserved_at') . '=NULL,' . Ident::quote('attempts') . '=0,' . Ident::quote('available_at') . '=? WHERE ' . Ident::quote('id') . '=?',
             [date('Y-m-d H:i:s'), $id]
         );
     }
 
     public function flushFailed(string $queue = 'default'): void
     {
-        $this->db()->query('DELETE FROM "__queue_jobs" WHERE "queue"=? AND "failed_at" IS NOT NULL', [$queue]);
+        $this->db()->query('DELETE FROM ' . Ident::quote('__queue_jobs') . ' WHERE ' . Ident::quote('queue') . '=? AND ' . Ident::quote('failed_at') . ' IS NOT NULL', [$queue]);
     }
 }

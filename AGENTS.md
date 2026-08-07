@@ -60,7 +60,7 @@ Scopes: local (`scopeXxx()` methods), global (per-class), universal (`Model::add
 Validation: `protected static array $rules` + `validate()/passes()/errors()`.
 Events: `Core\Events\ModelEvents::listen('table','creating', fn($m)=>...)` — return `false` to veto; also observer-class style. Fires `saving→creating|updating→created|updated→saved` / `deleting→deleted`.
 
-**Gotcha:** `ModelQuery` quotes identifiers with double quotes (ANSI/SQLite/MySQL style) — not MSSQL bracket syntax. MSSQL support in `Model`/`ModelQuery` is schema-introspection-complete but query-builder SQL portability to MSSQL hasn't been specifically verified.
+**Gotcha:** `ModelQuery` / `Model` quote identifiers via `Core\DB\Ident` (backticks on MySQL, brackets on MSSQL, double quotes on SQLite). Do not hardcode `"column"` in new DML. Migrations must use `Core\Migration\Schema` + `Blueprint` — never raw SQLite-only DDL (`AUTOINCREMENT`, etc.) or a MySQL deploy will fail.
 
 ## HTTP layer
 

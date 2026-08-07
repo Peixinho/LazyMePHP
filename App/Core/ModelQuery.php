@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Core;
 
+use Core\DB\Ident;
 use Core\LazyMePHP;
 
 /**
@@ -105,7 +106,7 @@ class ModelQuery
      */
     public function join(string $table, string $localKey, string $foreignKey, string $type = 'INNER'): static
     {
-        $this->joins[] = strtoupper($type) . " JOIN \"{$table}\" ON {$this->quoteKey($localKey)} = {$this->quoteKey($foreignKey)}";
+        $this->joins[] = strtoupper($type) . ' JOIN ' . Ident::quote($table) . " ON {$this->quoteKey($localKey)} = {$this->quoteKey($foreignKey)}";
         return $this;
     }
 
@@ -122,11 +123,7 @@ class ModelQuery
     /** Quote a key that may be `table.column` or just `column`. */
     private function quoteKey(string $key): string
     {
-        if (str_contains($key, '.')) {
-            [$t, $c] = explode('.', $key, 2);
-            return "\"{$t}\".\"{$c}\"";
-        }
-        return "\"{$key}\"";
+        return Ident::quotePath($key);
     }
 
     /**
@@ -379,15 +376,15 @@ class ModelQuery
         if (method_exists($this->modelClass, 'softDeleteColumn')) {
             $col = ($this->modelClass)::softDeleteColumn();
             if (!$this->includeTrashed) {
-                $conds[] = ($hasCond ? ' AND ' : '') . "\"{$col}\" IS NULL";
+                $conds[] = ($hasCond ? ' AND ' : '') . Ident::quote($col) . ' IS NULL';
             } elseif ($this->onlyTrashedFlag) {
-                $conds[] = ($hasCond ? ' AND ' : '') . "\"{$col}\" IS NOT NULL";
+                $conds[] = ($hasCond ? ' AND ' : '') . Ident::quote($col) . ' IS NOT NULL';
             }
         }
 
         $joins  = $this->joins ? ' ' . implode(' ', $this->joins) : '';
         $where  = $conds ? 'WHERE ' . implode('', $conds) : '';
-        $result = $db->query("SELECT COUNT(*) AS cnt FROM \"{$this->tableName}\"{$joins} {$where}", $binds);
+        $result = $db->query('SELECT COUNT(*) AS cnt FROM ' . Ident::quote($this->tableName) . "{$joins} {$where}", $binds);
         $row    = $result->fetchArray();
         return (int)($row['cnt'] ?? 0);
     }
@@ -422,11 +419,11 @@ class ModelQuery
             $col = ($this->modelClass)::softDeleteColumn();
             if (!$this->includeTrashed) {
                 $prefix   = $hasCond ? ' AND ' : '';
-                $conds[]  = "{$prefix}\"{$col}\" IS NULL";
+                $conds[]  = $prefix . Ident::quote($col) . ' IS NULL';
                 $hasCond  = true;
             } elseif ($this->onlyTrashedFlag) {
                 $prefix   = $hasCond ? ' AND ' : '';
-                $conds[]  = "{$prefix}\"{$col}\" IS NOT NULL";
+                $conds[]  = $prefix . Ident::quote($col) . ' IS NOT NULL';
                 $hasCond  = true;
             }
         }
@@ -444,7 +441,7 @@ class ModelQuery
                 if (!($rel instanceof \Core\Relationships\Relationship)) continue;
                 $alias             = $relation . '_count';
                 $extraAliases[]    = [$alias, 'int'];
-                $extraSubqueries[] = $rel->countSubquery($this->tableName) . " AS \"{$alias}\"";
+                $extraSubqueries[] = $rel->countSubquery($this->tableName) . ' AS ' . Ident::quote($alias);
             }
 
             foreach ($this->withAggregates as $agg) {
@@ -454,11 +451,11 @@ class ModelQuery
                 $alias             = $agg['alias'];
                 $extraAliases[]    = [$alias, 'float'];
                 $extraSubqueries[] = $rel->aggregateSubquery($this->tableName, $agg['fn'], $agg['column'])
-                                   . " AS \"{$alias}\"";
+                                   . ' AS ' . Ident::quote($alias);
             }
         }
 
-        $base   = $this->selectColumns ? implode(', ', $this->selectColumns) : "\"{$this->tableName}\".*";
+        $base   = $this->selectColumns ? implode(', ', $this->selectColumns) : Ident::quote($this->tableName) . '.*';
         $select = empty($extraSubqueries) ? $base : $base . ', ' . implode(', ', $extraSubqueries);
         $joins  = $this->joins ? ' ' . implode(' ', $this->joins) : '';
         $where  = $conds ? 'WHERE ' . implode('', $conds) : '';
@@ -470,7 +467,7 @@ class ModelQuery
         $allBindings = array_merge($binds, $this->havingBindings);
 
         $result = $db->query(
-            "SELECT {$select} FROM \"{$this->tableName}\"{$joins} {$where} {$group} {$having} {$order} {$limit}",
+            'SELECT ' . $select . ' FROM ' . Ident::quote($this->tableName) . "{$joins} {$where} {$group} {$having} {$order} {$limit}",
             $allBindings
         );
 
@@ -534,7 +531,7 @@ class ModelQuery
      */
     public function pluck(string $column): array
     {
-        $rows = $this->select("\"{$column}\"")-> get();
+        $rows = $this->select(Ident::quote($column))->get();
         return array_map(fn(Model $m) => $m->$column, $rows);
     }
 
@@ -545,7 +542,7 @@ class ModelQuery
      */
     public function value(string $column): mixed
     {
-        $row = $this->select("\"{$column}\"")->first();
+        $row = $this->select(Ident::quote($column))->first();
         return $row?->$column;
     }
 
@@ -659,13 +656,13 @@ class ModelQuery
 
         if (method_exists($this->modelClass, 'softDeleteColumn') && !$this->includeTrashed) {
             $col     = ($this->modelClass)::softDeleteColumn();
-            $conds[] = ($hasCond ? ' AND ' : '') . "\"{$col}\" IS NULL";
+            $conds[] = ($hasCond ? ' AND ' : '') . Ident::quote($col) . ' IS NULL';
         }
 
         $joins  = $this->joins ? ' ' . implode(' ', $this->joins) : '';
         $where  = $conds ? 'WHERE ' . implode('', $conds) : '';
         $result = $db->query(
-            "SELECT {$fn}(\"{$column}\") AS agg FROM \"{$this->tableName}\"{$joins} {$where}",
+            'SELECT ' . $fn . '(' . Ident::quote($column) . ') AS agg FROM ' . Ident::quote($this->tableName) . "{$joins} {$where}",
             $binds
         );
         $row = $result->fetchArray();
@@ -785,11 +782,11 @@ class ModelQuery
         $this->applyGlobalScopes();
 
         $db    = LazyMePHP::DB_CONNECTION();
-        $set   = implode(', ', array_map(fn($k) => "\"$k\" = ?", array_keys($data)));
+        $set   = implode(', ', array_map(fn($k) => Ident::quote($k) . ' = ?', array_keys($data)));
         $where = $this->conditions ? 'WHERE ' . implode('', $this->conditions) : '';
         $params = array_merge(array_values($data), $this->bindings);
 
-        $db->query("UPDATE \"{$this->tableName}\" SET {$set} {$where}", $params);
+        $db->query('UPDATE ' . Ident::quote($this->tableName) . " SET {$set} {$where}", $params);
         self::invalidateTable($this->tableName);
     }
 
@@ -804,15 +801,15 @@ class ModelQuery
     {
         $this->applyGlobalScopes();
         $db     = LazyMePHP::DB_CONNECTION();
-        $sets   = ["\"$column\" = \"$column\" + ?"];
+        $sets   = [Ident::quote($column) . ' = ' . Ident::quote($column) . ' + ?'];
         $params = [$amount];
         foreach ($extra as $k => $v) {
-            $sets[]   = "\"$k\" = ?";
+            $sets[]   = Ident::quote($k) . ' = ?';
             $params[] = $v;
         }
         $where  = $this->conditions ? 'WHERE ' . implode('', $this->conditions) : '';
         $params = array_merge($params, $this->bindings);
-        $db->query("UPDATE \"{$this->tableName}\" SET " . implode(', ', $sets) . " $where", $params);
+        $db->query('UPDATE ' . Ident::quote($this->tableName) . ' SET ' . implode(', ', $sets) . " $where", $params);
         self::invalidateTable($this->tableName);
     }
 
@@ -837,7 +834,7 @@ class ModelQuery
         $this->applyGlobalScopes();
         $db    = LazyMePHP::DB_CONNECTION();
         $where = $this->conditions ? 'WHERE ' . implode('', $this->conditions) : '';
-        $db->query("DELETE FROM \"{$this->tableName}\" {$where}", $this->bindings);
+        $db->query('DELETE FROM ' . Ident::quote($this->tableName) . " {$where}", $this->bindings);
         self::invalidateTable($this->tableName);
     }
 

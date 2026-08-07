@@ -10,20 +10,28 @@ declare(strict_types=1);
 
 namespace Core\Migration;
 
+use Core\DB\Ident;
 use Core\LazyMePHP;
 use Core\Model;
 
 /**
  * Runs and tracks database migrations from database/migrations/*.php.
  *
- * Each migration file must return an array:
+ * Prefer Schema / Blueprint so the same file works on SQLite, MySQL, and MSSQL:
  *
  *   return [
- *       'up'   => function ($db): void { $db->query("CREATE TABLE ..."); },
- *       'down' => function ($db): void { $db->query("DROP TABLE IF EXISTS ..."); },
+ *       'up'   => function (): void {
+ *           Schema::create('posts', function (Blueprint $t) {
+ *               $t->id();
+ *               $t->string('title');
+ *           });
+ *       },
+ *       'down' => function (): void {
+ *           Schema::dropIfExists('posts');
+ *       },
  *   ];
  *
- * 'up' and 'down' may also be plain SQL strings instead of closures.
+ * 'up' and 'down' may also be plain SQL strings or closures that receive $db.
  * 'down' is optional but required for rollback.
  */
 class Runner
@@ -190,13 +198,7 @@ class Runner
 
         foreach ($tables as $table) {
             if ($dbType === 'sqlite' && in_array($table, $sqliteInternal, true)) continue;
-            if ($dbType === 'sqlite') {
-                $db->query('DROP TABLE IF EXISTS "' . $table . '"');
-            } elseif ($dbType === 'mysql') {
-                $db->query('DROP TABLE IF EXISTS `' . $table . '`');
-            } else {
-                $db->query('DROP TABLE IF EXISTS [' . $table . ']');
-            }
+            $db->query('DROP TABLE IF EXISTS ' . Ident::quote($table));
             echo "  Dropped: $table\n";
         }
 
@@ -212,18 +214,19 @@ class Runner
             return <<<PHP
 <?php
 
+use Core\\Migration\\Blueprint;
+use Core\\Migration\\Schema;
+
 return [
-    'up' => function (\$db): void {
-        \$db->query("
-            CREATE TABLE {$table} (
-                id   INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT    NOT NULL
-            )
-        ");
+    'up' => function (): void {
+        Schema::create('{$table}', function (Blueprint \$t): void {
+            \$t->id();
+            \$t->string('name');
+        });
     },
 
-    'down' => function (\$db): void {
-        \$db->query("DROP TABLE IF EXISTS {$table}");
+    'down' => function (): void {
+        Schema::dropIfExists('{$table}');
     },
 ];
 PHP;
@@ -235,14 +238,20 @@ PHP;
             return <<<PHP
 <?php
 
+use Core\\Migration\\Blueprint;
+use Core\\Migration\\Schema;
+
 return [
-    'up' => function (\$db): void {
-        \$db->query("ALTER TABLE {$table} ADD COLUMN {$column} TEXT");
+    'up' => function (): void {
+        Schema::table('{$table}', function (Blueprint \$t): void {
+            \$t->string('{$column}')->nullable();
+        });
     },
 
-    'down' => function (\$db): void {
-        // SQLite does not support DROP COLUMN before 3.35.0
-        // \$db->query("ALTER TABLE {$table} DROP COLUMN {$column}");
+    'down' => function (): void {
+        Schema::table('{$table}', function (Blueprint \$t): void {
+            \$t->dropColumn('{$column}');
+        });
     },
 ];
 PHP;
@@ -253,12 +262,14 @@ PHP;
             return <<<PHP
 <?php
 
+use Core\\Migration\\Schema;
+
 return [
-    'up' => function (\$db): void {
-        \$db->query("DROP TABLE IF EXISTS {$table}");
+    'up' => function (): void {
+        Schema::dropIfExists('{$table}');
     },
 
-    'down' => function (\$db): void {
+    'down' => function (): void {
         // Recreate the {$table} table here if you need rollback support
     },
 ];
@@ -271,31 +282,37 @@ PHP;
             return <<<PHP
 <?php
 
+use Core\\Migration\\Schema;
+
 return [
-    'up' => function (\$db): void {
-        \$db->query("ALTER TABLE {$oldTable} RENAME TO {$newTable}");
+    'up' => function (): void {
+        Schema::rename('{$oldTable}', '{$newTable}');
     },
 
-    'down' => function (\$db): void {
-        \$db->query("ALTER TABLE {$newTable} RENAME TO {$oldTable}");
+    'down' => function (): void {
+        Schema::rename('{$newTable}', '{$oldTable}');
     },
 ];
 PHP;
         }
 
-        // Generic stub
+        // Generic stub — still prefer Schema for portable DDL
         return <<<PHP
 <?php
 
+use Core\\Migration\\Blueprint;
+use Core\\Migration\\Schema;
+
 return [
-    'up' => function (\$db): void {
-        \$db->query("
-            -- Write your SQL here
-        ");
+    'up' => function (): void {
+        // Schema::create('table', function (Blueprint \$t): void {
+        //     \$t->id();
+        //     \$t->string('name');
+        // });
     },
 
-    'down' => function (\$db): void {
-        // Reverse the 'up' operation
+    'down' => function (): void {
+        // Schema::dropIfExists('table');
     },
 ];
 PHP;
@@ -384,7 +401,8 @@ PHP;
     protected static function ranMigrations(): array
     {
         $db     = LazyMePHP::DB_CONNECTION();
-        $result = $db->query('SELECT migration, batch FROM "' . self::TABLE . '" ORDER BY batch, migration');
+        $t      = Ident::quote(self::TABLE);
+        $result = $db->query("SELECT migration, batch FROM {$t} ORDER BY batch, migration");
         $rows   = [];
         while ($row = $result->fetchArray()) {
             $rows[] = $row;
@@ -395,7 +413,8 @@ PHP;
     protected static function lastBatch(): ?int
     {
         $db     = LazyMePHP::DB_CONNECTION();
-        $result = $db->query('SELECT MAX(batch) AS b FROM "' . self::TABLE . '"');
+        $t      = Ident::quote(self::TABLE);
+        $result = $db->query("SELECT MAX(batch) AS b FROM {$t}");
         $row    = $result->fetchArray();
         return isset($row['b']) && $row['b'] !== null ? (int)$row['b'] : null;
     }
@@ -403,7 +422,8 @@ PHP;
     protected static function filesInBatch(int $batch): array
     {
         $db     = LazyMePHP::DB_CONNECTION();
-        $result = $db->query('SELECT migration FROM "' . self::TABLE . '" WHERE batch = ? ORDER BY migration', [$batch]);
+        $t      = Ident::quote(self::TABLE);
+        $result = $db->query("SELECT migration FROM {$t} WHERE batch = ? ORDER BY migration", [$batch]);
         $rows   = [];
         while ($row = $result->fetchArray()) {
             $rows[] = $row['migration'];
@@ -413,16 +433,18 @@ PHP;
 
     protected static function record(string $file, int $batch): void
     {
+        $t = Ident::quote(self::TABLE);
         LazyMePHP::DB_CONNECTION()->query(
-            'INSERT INTO "' . self::TABLE . '" (migration, batch) VALUES (?, ?)',
+            "INSERT INTO {$t} (migration, batch) VALUES (?, ?)",
             [$file, $batch]
         );
     }
 
     protected static function remove(string $file): void
     {
+        $t = Ident::quote(self::TABLE);
         LazyMePHP::DB_CONNECTION()->query(
-            'DELETE FROM "' . self::TABLE . '" WHERE migration = ?',
+            "DELETE FROM {$t} WHERE migration = ?",
             [$file]
         );
     }

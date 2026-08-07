@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Core\Tenancy;
 
+use Core\DB\Ident;
 use Core\LazyMePHP;
 use Core\Model;
 use Pecee\Http\Middleware\IMiddleware;
@@ -46,7 +47,7 @@ class TenantMiddleware implements IMiddleware
         $column = $_ENV['TENANT_COLUMN'] ?? 'slug';
 
         $result = LazyMePHP::DB_CONNECTION()->query(
-            'SELECT * FROM "' . $table . '" WHERE "' . $column . '"=? LIMIT 1',
+            'SELECT * FROM ' . Ident::quote($table) . ' WHERE ' . Ident::quote($column) . '=? LIMIT 1',
             [$identifier]
         );
 

@@ -8,33 +8,38 @@ sidebar_position: 1
 
 Migrations are plain PHP files in `database/migrations/`. Each file returns an array with `up` and `down` callables. Migration state is tracked in `__migrations`.
 
+**Always use `Schema` / `Blueprint`** so the same migration runs on SQLite, MySQL, and MSSQL. Raw `$db->query("CREATE TABLE ...")` with SQLite-only syntax (`AUTOINCREMENT`, unquoted types, etc.) will fail when you deploy to another driver.
+
 ## Creating a migration
 
 ```bash
-php LazyMePHP make:migration create_posts
-# creates database/migrations/2026_07_15_0001_create_posts.php
+php LazyMePHP make:migration create_posts_table
+# creates database/migrations/YYYY_MM_DD_NNNN_create_posts_table.php
 ```
 
 ```php
-// database/migrations/2026_07_15_0001_create_posts.php
+// database/migrations/2026_07_15_0001_create_posts_table.php
+
+use Core\Migration\Blueprint;
+use Core\Migration\Schema;
 
 return [
-    'up' => function ($db): void {
-        $db->query("CREATE TABLE posts (
-            id      INTEGER PRIMARY KEY AUTOINCREMENT,
-            title   TEXT    NOT NULL,
-            body    TEXT,
-            user_id INTEGER NOT NULL,
-            created_at TEXT NOT NULL
-        )");
+    'up' => function (): void {
+        Schema::create('posts', function (Blueprint $t): void {
+            $t->id();
+            $t->string('title');
+            $t->text('body')->nullable();
+            $t->integer('user_id');
+            $t->timestamps();
+        });
     },
-    'down' => function ($db): void {
-        $db->query("DROP TABLE IF EXISTS posts");
+    'down' => function (): void {
+        Schema::dropIfExists('posts');
     },
 ];
 ```
 
-The `$db` argument is the active `ISQL` connection — use `$db->query()` for any DDL.
+`Schema` emits the correct DDL for the active `DB_TYPE` at runtime. You can still pass `$db` into a closure and run raw SQL when you need driver-specific statements.
 
 ## Running migrations
 
@@ -52,20 +57,38 @@ The schema cache is cleared automatically after every run or rollback.
 
 Migrations run together in a batch. Rolling back undoes the entire last batch, not just the last file.
 
-## Adding columns (non-destructive)
+## Adding columns
 
 ```php
+use Core\Migration\Blueprint;
+use Core\Migration\Schema;
+
 return [
-    'up' => function ($db): void {
-        $db->query("ALTER TABLE users ADD COLUMN avatar TEXT NULL");
+    'up' => function (): void {
+        Schema::table('users', function (Blueprint $t): void {
+            $t->string('avatar')->nullable();
+        });
     },
-    'down' => function ($db): void {
-        // SQLite doesn't support DROP COLUMN on older versions —
-        // recreate the table without the column if needed
-        $db->query("ALTER TABLE users DROP COLUMN avatar");
+    'down' => function (): void {
+        Schema::table('users', function (Blueprint $t): void {
+            $t->dropColumn('avatar');
+        });
     },
 ];
 ```
+
+## Column helpers
+
+| Method | SQLite | MySQL | MSSQL |
+|--------|--------|-------|-------|
+| `$t->id()` | `INTEGER PRIMARY KEY AUTOINCREMENT` | `INT AUTO_INCREMENT PRIMARY KEY` | `INT IDENTITY(1,1) PRIMARY KEY` |
+| `$t->string('name')` | `TEXT` | `VARCHAR(255)` | `NVARCHAR(255)` |
+| `$t->text('body')` | `TEXT` | `TEXT` | `NVARCHAR(MAX)` |
+| `$t->integer('n')` | `INTEGER` | `INT` | `INT` |
+| `$t->boolean('ok')` | `INTEGER` | `TINYINT(1)` | `BIT` |
+| `$t->timestamps()` | nullable datetime pair | same | same |
+
+Modifiers: `->nullable()`, `->unique()`, `->default($value)`.
 
 ## Queue jobs table
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Core\Relationships;
 
+use Core\DB\Ident;
 use Core\Model;
 use Core\LazyMePHP;
 
@@ -54,10 +55,10 @@ class BelongsToMany extends Relationship
         $parentKey = $this->parent->{$this->localKey};
 
         $result = $db->query(
-            "SELECT r.* FROM \"{$this->relatedTable}\" r
-             INNER JOIN \"{$this->pivotTable}\" p
-               ON p.\"{$this->relatedForeignKey}\" = r.\"{$relatedPk}\"
-             WHERE p.\"{$this->foreignKey}\" = ?",
+            'SELECT r.* FROM ' . Ident::quote($this->relatedTable) . ' r
+             INNER JOIN ' . Ident::quote($this->pivotTable) . ' p
+               ON p.' . Ident::quote($this->relatedForeignKey) . ' = r.' . Ident::quote($relatedPk) . '
+             WHERE p.' . Ident::quote($this->foreignKey) . ' = ?',
             [$parentKey]
         );
 
@@ -82,11 +83,11 @@ class BelongsToMany extends Relationship
 
         // Alias the pivot FK to avoid column name clashes with the related table
         $result = $db->query(
-            "SELECT r.*, p.\"{$this->foreignKey}\" AS __pivot_parent_fk
-             FROM \"{$this->relatedTable}\" r
-             INNER JOIN \"{$this->pivotTable}\" p
-               ON p.\"{$this->relatedForeignKey}\" = r.\"{$relatedPk}\"
-             WHERE p.\"{$this->foreignKey}\" IN ({$placeholders})",
+            'SELECT r.*, p.' . Ident::quote($this->foreignKey) . ' AS __pivot_parent_fk
+             FROM ' . Ident::quote($this->relatedTable) . ' r
+             INNER JOIN ' . Ident::quote($this->pivotTable) . ' p
+               ON p.' . Ident::quote($this->relatedForeignKey) . ' = r.' . Ident::quote($relatedPk) . '
+             WHERE p.' . Ident::quote($this->foreignKey) . " IN ({$placeholders})",
             $keys
         );
 
@@ -104,15 +105,19 @@ class BelongsToMany extends Relationship
 
     public function countSubquery(string $parentTable): string
     {
-        return "(SELECT COUNT(*) FROM \"{$this->pivotTable}\" WHERE \"{$this->pivotTable}\".\"{$this->foreignKey}\" = \"{$parentTable}\".\"{$this->localKey}\")";
+        return '(SELECT COUNT(*) FROM ' . Ident::quote($this->pivotTable)
+            . ' WHERE ' . Ident::quotePath($this->pivotTable . '.' . $this->foreignKey)
+            . ' = ' . Ident::quotePath($parentTable . '.' . $this->localKey) . ')';
     }
 
     public function aggregateSubquery(string $parentTable, string $fn, string $column): string
     {
         $relatedPk = $this->relatedPk();
-        return "(SELECT {$fn}(r.\"{$column}\") FROM \"{$this->relatedTable}\" r"
-             . " INNER JOIN \"{$this->pivotTable}\" p ON p.\"{$this->relatedForeignKey}\" = r.\"{$relatedPk}\""
-             . " WHERE p.\"{$this->foreignKey}\" = \"{$parentTable}\".\"{$this->localKey}\")";
+        return '(SELECT ' . $fn . '(r.' . Ident::quote($column) . ') FROM ' . Ident::quote($this->relatedTable) . ' r'
+             . ' INNER JOIN ' . Ident::quote($this->pivotTable) . ' p ON p.' . Ident::quote($this->relatedForeignKey)
+             . ' = r.' . Ident::quote($relatedPk)
+             . ' WHERE p.' . Ident::quote($this->foreignKey)
+             . ' = ' . Ident::quotePath($parentTable . '.' . $this->localKey) . ')';
     }
 
     public function getPivotTable(): string        { return $this->pivotTable; }

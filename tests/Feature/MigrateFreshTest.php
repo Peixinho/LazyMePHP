@@ -76,30 +76,32 @@ PHP);
 });
 
 describe('Runner::inferStub (scaffold naming conventions)', function () {
-    it('generates CREATE TABLE stub for create_X_table names', function () {
+    it('generates Schema::create stub for create_X_table names', function () {
         $stub = Runner::scaffoldStub('create_orders_table');
-        expect($stub)->toContain('CREATE TABLE orders');
-        expect($stub)->toContain("DROP TABLE IF EXISTS orders");
+        expect($stub)->toContain("Schema::create('orders'");
+        expect($stub)->toContain("Schema::dropIfExists('orders')");
+        expect($stub)->not->toContain('AUTOINCREMENT');
     });
 
-    it('generates ALTER TABLE ADD COLUMN stub for add_X_to_Y names', function () {
+    it('generates Schema::table ADD COLUMN stub for add_X_to_Y names', function () {
         $stub = Runner::scaffoldStub('add_email_to_users');
-        expect($stub)->toContain('ALTER TABLE users ADD COLUMN email');
+        expect($stub)->toContain("Schema::table('users'");
+        expect($stub)->toContain("string('email')");
     });
 
-    it('generates DROP TABLE stub for drop_X_table names', function () {
+    it('generates Schema::dropIfExists stub for drop_X_table names', function () {
         $stub = Runner::scaffoldStub('drop_sessions_table');
-        expect($stub)->toContain("DROP TABLE IF EXISTS sessions");
+        expect($stub)->toContain("Schema::dropIfExists('sessions')");
     });
 
-    it('generates RENAME stub for rename_X_to_Y names', function () {
+    it('generates Schema::rename stub for rename_X_to_Y names', function () {
         $stub = Runner::scaffoldStub('rename_posts_to_articles');
-        expect($stub)->toContain('ALTER TABLE posts RENAME TO articles');
-        expect($stub)->toContain('ALTER TABLE articles RENAME TO posts');
+        expect($stub)->toContain("Schema::rename('posts', 'articles')");
+        expect($stub)->toContain("Schema::rename('articles', 'posts')");
     });
 
-    it('falls back to generic stub for unrecognised names', function () {
+    it('falls back to generic Schema stub for unrecognised names', function () {
         $stub = Runner::scaffoldStub('my_custom_migration');
-        expect($stub)->toContain('Write your SQL here');
+        expect($stub)->toContain('Schema::create');
     });
 });

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Core;
 
+use Core\DB\Ident;
+
 /**
  * Soft-delete support for Model subclasses.
  *
@@ -37,7 +39,7 @@ trait SoftDeletes
         if ($pk === null || $pkCol === null) return false;
 
         LazyMePHP::DB_CONNECTION()->query(
-            "UPDATE \"{$this->getTable()}\" SET \"{$col}\" = ? WHERE \"{$pkCol}\" = ?",
+            'UPDATE ' . Ident::quote($this->getTable()) . ' SET ' . Ident::quote($col) . ' = ? WHERE ' . Ident::quote($pkCol) . ' = ?',
             [date('Y-m-d H:i:s'), $pk]
         );
         $this->$col = date('Y-m-d H:i:s');
@@ -53,7 +55,7 @@ trait SoftDeletes
         if ($pk === null || $pkCol === null) return false;
 
         LazyMePHP::DB_CONNECTION()->query(
-            "UPDATE \"{$this->getTable()}\" SET \"{$col}\" = NULL WHERE \"{$pkCol}\" = ?",
+            'UPDATE ' . Ident::quote($this->getTable()) . ' SET ' . Ident::quote($col) . ' = NULL WHERE ' . Ident::quote($pkCol) . ' = ?',
             [$pk]
         );
         $this->$col = null;

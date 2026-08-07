@@ -183,15 +183,15 @@ class DebugToolbar
         return "
         {$errorIndicator}
         <div id='lazymephp-debug-toolbar' class='{$toolbarClasses}' data-error-count='{$errorCount}' data-restore-state='1'>
-            <div class='lazymephp-debug-header' id='lazymephp-debug-header' title='Clique para expandir ou recolher Â· Ctrl+Shift+D'>
-                <span class='lazymephp-debug-title'>ð��� LazyMePHP Debug</span>
+            <div class='lazymephp-debug-header' id='lazymephp-debug-header' title='Clique para expandir ou recolher · Ctrl+Shift+D'>
+                <span class='lazymephp-debug-title'>&#128640; LazyMePHP Debug</span>
                 <div class='lazymephp-debug-stats'>
                     <span class='lazymephp-debug-stat lazymephp-debug-stat--time' title='Execution Time'>{$executionTime}ms</span>
                     <span class='lazymephp-debug-stat lazymephp-debug-stat--memory' title='Memory Usage'>{$memoryUsage}</span>
                     <span class='lazymephp-debug-stat lazymephp-debug-stat--queries' title='SQL Queries'>{$queryCount} SQL</span>
                     <span class='lazymephp-debug-stat lazymephp-debug-stat--errors" . ($errorCount > 0 ? ' lazymephp-debug-stat--errors-active' : '') . "' title='Errors'>{$errorCount} err</span>
                 </div>
-                <span class='lazymephp-debug-shortcut' title='Toggle panel'>â�¨ Ctrl+Shift+D</span>
+                <span class='lazymephp-debug-shortcut' title='Toggle panel'>Ctrl+Shift+D</span>
                 <span class='lazymephp-debug-chevron lazymephp-debug-icon-btn' aria-hidden='true' title='Clique para expandir / recolher'></span>
                 <button class='lazymephp-debug-dock' type='button' title='Ocultar barra de debug' aria-label='Ocultar barra de debug'>
                     <span class='lazymephp-debug-dock__open'>Ocultar</span>
@@ -806,11 +806,11 @@ class DebugToolbar
         }
 
         .lazymephp-debug-chevron::before {
-            content: 'â�²';
+            content: '\25B2';
         }
 
         .lazymephp-debug-toolbar--expanded .lazymephp-debug-chevron::before {
-            content: 'â�¼';
+            content: '\25BC';
         }
 
         .lazymephp-debug-icon-btn:hover {

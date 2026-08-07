@@ -171,28 +171,55 @@ class LazyMePHP
 
   static function DB_CONNECTION(): ?\Core\DB\ISQL
   {
-    if (!self::$_db_connection) {
-      // Ensure $_db_type is a string before strtolower, defaulting to 'mysql' if not set.
-      $db_type_check = strtolower((string)(self::$_db_type ?? 'mysql')); 
+    // Tests / overrides may inject a connection without env config
+    if (self::$_db_connection) {
+      return self::$_db_connection;
+    }
 
-      if ($db_type_check == 'mssql') {
-        self::$_db_connection = DBMSSQL::getInstance(self::$_db_name, self::$_db_user, self::$_db_password, self::$_db_host);
-      } elseif ($db_type_check == 'mysql') {
-        self::$_db_connection = DBMYSQL::getInstance(self::$_db_name, self::$_db_user, self::$_db_password, self::$_db_host);
-      } elseif ($db_type_check == 'sqlite') {
-        self::$_db_connection = DBSQLite::getInstance(self::$_db_file_path);
+    if (!self::hasDatabaseConfig()) {
+      return null;
+    }
+
+    // Ensure $_db_type is a string before strtolower, defaulting to 'mysql' if not set.
+    $db_type_check = strtolower((string)(self::$_db_type ?? 'mysql')); 
+
+    if ($db_type_check == 'mssql') {
+      self::$_db_connection = DBMSSQL::getInstance(self::$_db_name, self::$_db_user, self::$_db_password, self::$_db_host);
+    } elseif ($db_type_check == 'mysql') {
+      self::$_db_connection = DBMYSQL::getInstance(self::$_db_name, self::$_db_user, self::$_db_password, self::$_db_host);
+    } elseif ($db_type_check == 'sqlite') {
+      self::$_db_connection = DBSQLite::getInstance(self::$_db_file_path);
+    } else {
+      // If the DB type is unsupported, trigger an error and return null.
+      // ErrorUtil::trigger_error is used if available, otherwise fallback to PHP's trigger_error.
+      if (class_exists(ErrorUtil::class)) {
+          ErrorUtil::trigger_error("Unsupported DB_TYPE configured: " . self::$_db_type, E_USER_ERROR);
       } else {
-        // If the DB type is unsupported, trigger an error and return null.
-        // ErrorUtil::trigger_error is used if available, otherwise fallback to PHP's trigger_error.
-        if (class_exists(ErrorUtil::class)) {
-            ErrorUtil::trigger_error("Unsupported DB_TYPE configured: " . self::$_db_type, E_USER_ERROR);
-        } else {
-            trigger_error("Unsupported DB_TYPE configured: " . self::$_db_type, E_USER_ERROR);
-        }
-        return null;
+          trigger_error("Unsupported DB_TYPE configured: " . self::$_db_type, E_USER_ERROR);
       }
+      return null;
     }
     return self::$_db_connection;
+  }
+
+  /**
+   * True when enough DB settings exist to attempt a connection.
+   * Empty DB_NAME (mysql/mssql), empty DB_TYPE/none, or unset sqlite path → false.
+   * The home page and AutoRouter skip DB work when this is false.
+   */
+  static function hasDatabaseConfig(): bool
+  {
+    $type = strtolower(trim((string) (self::$_db_type ?? '')));
+    if ($type === '' || $type === 'none') {
+      return false;
+    }
+    if ($type === 'sqlite') {
+      return trim((string) (self::$_db_file_path ?? '')) !== '';
+    }
+    if (in_array($type, ['mysql', 'mssql'], true)) {
+      return trim((string) (self::$_db_name ?? '')) !== '';
+    }
+    return false;
   }
 
   /**
@@ -382,10 +409,16 @@ class LazyMePHP
   {
     // --- Database Configuration ---
     // Determine DB_TYPE from environment, default to 'mysql'.
-    self::$_db_type = strtolower($_ENV['DB_TYPE'] ?? 'mysql');
+    // Empty / 'none' means no database — home page still works; CRUD stays off.
+    self::$_db_type = strtolower(trim((string) ($_ENV['DB_TYPE'] ?? 'mysql')));
 
     // Configure database parameters based on DB_TYPE.
-    if (self::$_db_type === 'sqlite') {
+    if (self::$_db_type === '' || self::$_db_type === 'none') {
+        self::$_db_type = 'none';
+        self::$_db_file = null;
+        self::$_db_file_path = null;
+        self::$_db_name = null;
+    } elseif (self::$_db_type === 'sqlite') {
         self::$_db_file = "SQLite.php"; // DB driver file name for SQLite.
         // Default path for SQLite database file if not specified in .env.
         self::$_db_file_path = $_ENV['DB_FILE_PATH'] ?? __DIR__.'/../../database/database.sqlite'; 
@@ -409,21 +442,24 @@ class LazyMePHP
             } else {
                 trigger_error("Unrecognized DB_TYPE '" . ($_ENV['DB_TYPE'] ?? 'null') . "', defaulting to mysql.", E_USER_NOTICE);
             }
+            self::$_db_type = 'mysql';
         }
     }
 
     // Construct the full path to the database driver file and require it.
-    $db_file_full_path = __DIR__."/DB/".self::$_db_file;
-    if (file_exists($db_file_full_path)) {
-        require_once $db_file_full_path;
-        // Optionally, store the full path if needed later, though typically just the name is fine for identification.
-        // self::$_db_file = $db_file_full_path; 
-    } else {
-        // Trigger a fatal error if the database driver file is not found.
-         if (class_exists(ErrorUtil::class)) {
-            ErrorUtil::trigger_error("Database driver file not found: " . $db_file_full_path, E_USER_ERROR);
+    if (self::$_db_file) {
+        $db_file_full_path = __DIR__."/DB/".self::$_db_file;
+        if (file_exists($db_file_full_path)) {
+            require_once $db_file_full_path;
+            // Optionally, store the full path if needed later, though typically just the name is fine for identification.
+            // self::$_db_file = $db_file_full_path; 
         } else {
-            trigger_error("Database driver file not found: " . $db_file_full_path, E_USER_ERROR);
+            // Trigger a fatal error if the database driver file is not found.
+             if (class_exists(ErrorUtil::class)) {
+                ErrorUtil::trigger_error("Database driver file not found: " . $db_file_full_path, E_USER_ERROR);
+            } else {
+                trigger_error("Database driver file not found: " . $db_file_full_path, E_USER_ERROR);
+            }
         }
     }
 

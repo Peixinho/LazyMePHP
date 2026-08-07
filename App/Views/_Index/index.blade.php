@@ -2,10 +2,15 @@
     $dbOk = false;
     $dbType = strtoupper(\Core\LazyMePHP::DB_TYPE() ?? '');
     $dbName = \Core\LazyMePHP::DB_NAME() ?? '';
-    try {
-        $conn = \Core\LazyMePHP::DB_CONNECTION();
-        $dbOk = $conn !== null;
-    } catch (\Throwable) {}
+    if (\Core\LazyMePHP::hasDatabaseConfig()) {
+        try {
+            $conn = \Core\LazyMePHP::DB_CONNECTION();
+            if ($conn !== null) {
+                $conn->query('SELECT 1');
+                $dbOk = true;
+            }
+        } catch (\Throwable) {}
+    }
     $phpVersion = PHP_VERSION;
     $env = $_ENV['APP_ENV'] ?? 'production';
 @endphp

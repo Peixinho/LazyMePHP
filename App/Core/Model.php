@@ -11,6 +11,7 @@ declare(strict_types=1);
 namespace Core;
 
 use Core\DB\IDB;
+use Core\DB\Ident;
 use Core\DB\DatabaseException;
 use Core\LazyMePHP;
 use Core\Events\ModelEvents;
@@ -259,7 +260,7 @@ class Model implements IDB
                         if ($value === null || $value === '') return null;
                         [$table, $col, $exceptId] = array_pad(explode(',', (string)$param), 3, null);
                         $db  = \Core\LazyMePHP::DB_CONNECTION();
-                        $sql = "SELECT COUNT(*) as \"cnt\" FROM \"{$table}\" WHERE \"{$col}\" = ?";
+                        $sql = 'SELECT COUNT(*) as ' . Ident::quote('cnt') . ' FROM ' . Ident::quote($table) . ' WHERE ' . Ident::quote($col) . ' = ?';
                         $args = [$value];
                         if ($exceptId !== null) {
                             $sql  .= " AND \"id\" != ?";
@@ -273,7 +274,7 @@ class Model implements IDB
                         if ($value === null || $value === '') return null;
                         [$table, $col] = array_pad(explode(',', (string)$param), 2, null);
                         $db     = \Core\LazyMePHP::DB_CONNECTION();
-                        $result = $db->query("SELECT COUNT(*) as \"cnt\" FROM \"{$table}\" WHERE \"{$col}\" = ?", [$value]);
+                        $result = $db->query('SELECT COUNT(*) as ' . Ident::quote('cnt') . ' FROM ' . Ident::quote($table) . ' WHERE ' . Ident::quote($col) . ' = ?', [$value]);
                         $row    = $result->fetchArray();
                         return ((int) ($row['cnt'] ?? 0)) === 0 ? "{$field} does not exist." : null;
                     })(),
@@ -396,12 +397,12 @@ class Model implements IDB
 
         $db      = LazyMePHP::DB_CONNECTION();
         $columns = array_keys($rows[0]);
-        $cols    = implode(', ', array_map(fn($k) => "\"$k\"", $columns));
+        $cols    = Ident::quoteList($columns);
         $ph      = '(' . implode(', ', array_fill(0, count($columns), '?')) . ')';
         $count   = 0;
 
         foreach ($rows as $row) {
-            $db->query("INSERT INTO \"{$table}\" ({$cols}) VALUES {$ph}", array_values($row));
+            $db->query('INSERT INTO ' . Ident::quote($table) . " ({$cols}) VALUES {$ph}", array_values($row));
             $count++;
         }
 
@@ -616,23 +617,34 @@ class Model implements IDB
 
     private static function listTablesFromDb(): array
     {
-        $db     = LazyMePHP::DB_CONNECTION();
-        $dbType = strtolower(LazyMePHP::DB_TYPE() ?? 'mysql');
-
-        $sql = match($dbType) {
-            'sqlite' => "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '#__%' ESCAPE '#' ORDER BY name",
-            'mysql'  => "SELECT TABLE_NAME AS name FROM information_schema.TABLES WHERE TABLE_SCHEMA = '" . LazyMePHP::DB_NAME() . "' AND TABLE_NAME NOT LIKE '\\_\\_%'",
-            'mssql'  => "SELECT TABLE_NAME AS name FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME NOT LIKE '\\_\\_%'",
-            default  => throw new \RuntimeException("Unsupported DB type: $dbType"),
-        };
-
-        $result = $db->query($sql);
-        $tables = [];
-        while ($row = $result->fetchArray()) {
-            $name = $row['name'] ?? $row['TABLE_NAME'] ?? '';
-            if ($name !== '') $tables[] = $name;
+        if (!LazyMePHP::hasDatabaseConfig()) {
+            return [];
         }
-        return $tables;
+
+        try {
+            $db = LazyMePHP::DB_CONNECTION();
+            if ($db === null) {
+                return [];
+            }
+            $dbType = strtolower(LazyMePHP::DB_TYPE() ?? 'mysql');
+
+            $sql = match($dbType) {
+                'sqlite' => "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '#__%' ESCAPE '#' ORDER BY name",
+                'mysql'  => "SELECT TABLE_NAME AS name FROM information_schema.TABLES WHERE TABLE_SCHEMA = '" . LazyMePHP::DB_NAME() . "' AND TABLE_NAME NOT LIKE '\\_\\_%'",
+                'mssql'  => "SELECT TABLE_NAME AS name FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME NOT LIKE '\\_\\_%'",
+                default  => throw new \RuntimeException("Unsupported DB type: $dbType"),
+            };
+
+            $result = $db->query($sql);
+            $tables = [];
+            while ($row = $result->fetchArray()) {
+                $name = $row['name'] ?? $row['TABLE_NAME'] ?? '';
+                if ($name !== '') $tables[] = $name;
+            }
+            return $tables;
+        } catch (\Throwable) {
+            return [];
+        }
     }
 
     /**
@@ -951,18 +963,18 @@ class Model implements IDB
         if ($this->exists) {
             if (!ModelEvents::fire($this->tableName, 'updating', $this)) return false;
 
-            $set    = implode(', ', array_map(fn($k) => "\"$k\" = :$k", array_keys($row)));
+            $set    = implode(', ', array_map(fn($k) => Ident::quote($k) . " = :$k", array_keys($row)));
             $params = array_combine(array_map(fn($k) => ":$k", array_keys($row)), array_values($row));
             $params[":{$this->primaryKey}"] = $this->data[$this->primaryKey];
-            $ret    = $db->query("UPDATE \"{$this->tableName}\" SET $set WHERE \"{$this->primaryKey}\" = :{$this->primaryKey}", $params);
+            $ret    = $db->query('UPDATE ' . Ident::quote($this->tableName) . " SET $set WHERE " . Ident::quote($this->primaryKey) . " = :{$this->primaryKey}", $params);
             $method = 'U';
         } else {
             if (!ModelEvents::fire($this->tableName, 'creating', $this)) return false;
 
-            $cols       = implode(', ', array_map(fn($k) => "\"$k\"", array_keys($row)));
+            $cols       = Ident::quoteList(array_keys($row));
             $holders    = implode(', ', array_map(fn($k) => ":$k", array_keys($row)));
             $params     = array_combine(array_map(fn($k) => ":$k", array_keys($row)), array_values($row));
-            $ret        = $db->query("INSERT INTO \"{$this->tableName}\" ($cols) VALUES ($holders)", $params);
+            $ret        = $db->query('INSERT INTO ' . Ident::quote($this->tableName) . " ($cols) VALUES ($holders)", $params);
             if ($this->primaryKey !== null) {
                 $this->data[$this->primaryKey] = $db->getLastInsertedId();
             }
@@ -1005,7 +1017,7 @@ class Model implements IDB
         }
 
         LazyMePHP::DB_CONNECTION()->query(
-            "DELETE FROM \"{$this->tableName}\" WHERE \"{$this->primaryKey}\" = ?",
+            'DELETE FROM ' . Ident::quote($this->tableName) . ' WHERE ' . Ident::quote($this->primaryKey) . ' = ?',
             [$this->data[$this->primaryKey]]
         );
         $this->exists = false;
@@ -1071,7 +1083,7 @@ class Model implements IDB
 
         $now = date('Y-m-d H:i:s');
         LazyMePHP::DB_CONNECTION()->query(
-            "UPDATE \"{$this->tableName}\" SET \"$column\" = ? WHERE \"{$this->primaryKey}\" = ?",
+            'UPDATE ' . Ident::quote($this->tableName) . ' SET ' . Ident::quote($column) . ' = ? WHERE ' . Ident::quote($this->primaryKey) . ' = ?',
             [$now, $this->data[$this->primaryKey]]
         );
         $this->data[$column] = $now;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Core\Relationships;
 
+use Core\DB\Ident;
 use Core\Model;
 
 /**
@@ -50,12 +51,17 @@ class HasMany extends Relationship
 
     public function countSubquery(string $parentTable): string
     {
-        return "(SELECT COUNT(*) FROM \"{$this->relatedTable}\" WHERE \"{$this->relatedTable}\".\"{$this->foreignKey}\" = \"{$parentTable}\".\"{$this->localKey}\")";
+        return '(SELECT COUNT(*) FROM ' . Ident::quote($this->relatedTable)
+            . ' WHERE ' . Ident::quotePath($this->relatedTable . '.' . $this->foreignKey)
+            . ' = ' . Ident::quotePath($parentTable . '.' . $this->localKey) . ')';
     }
 
     public function aggregateSubquery(string $parentTable, string $fn, string $column): string
     {
-        return "(SELECT {$fn}(\"{$this->relatedTable}\".\"{$column}\") FROM \"{$this->relatedTable}\" WHERE \"{$this->relatedTable}\".\"{$this->foreignKey}\" = \"{$parentTable}\".\"{$this->localKey}\")";
+        return '(SELECT ' . $fn . '(' . Ident::quotePath($this->relatedTable . '.' . $column) . ') FROM '
+            . Ident::quote($this->relatedTable)
+            . ' WHERE ' . Ident::quotePath($this->relatedTable . '.' . $this->foreignKey)
+            . ' = ' . Ident::quotePath($parentTable . '.' . $this->localKey) . ')';
     }
 
     /** @return list<mixed> */
